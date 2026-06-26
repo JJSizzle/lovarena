@@ -30,6 +30,7 @@ export function useWebRTC(
 
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(true);
   const [connectionState, setConnectionState] = useState<string>("new");
 
   async function flushIceQueue(pc: RTCPeerConnection) {
@@ -63,6 +64,7 @@ export function useWebRTC(
     pcRef.current?.close();
     pcRef.current = null;
     setVideoEnabled(false);
+    setAudioEnabled(false);
     setConnectionState("closed");
   }
 
@@ -74,6 +76,16 @@ export function useWebRTC(
       t.enabled = next;
     });
     setVideoEnabled(next);
+  }
+
+  function toggleAudio() {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+    const next = !audioEnabled;
+    stream.getAudioTracks().forEach((t) => {
+      t.enabled = next;
+    });
+    setAudioEnabled(next);
   }
 
   useEffect(() => {
@@ -97,6 +109,7 @@ export function useWebRTC(
 
         localStreamRef.current = stream;
         setVideoEnabled(true);
+        setAudioEnabled(true);
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
@@ -220,7 +233,9 @@ export function useWebRTC(
     remoteVideoRef,
     mediaError,
     videoEnabled,
+    audioEnabled,
     toggleVideo,
+    toggleAudio,
     stopMedia,
     connectionState,
   };

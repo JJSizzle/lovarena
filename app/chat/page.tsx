@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   getMatchPrefs,
-  matchModeLabel,
 } from "@/lib/match-prefs";
 import { randomIceBreaker } from "@/lib/ice-breakers";
 import { useWebRTC } from "@/lib/webrtc/useWebRTC";
@@ -57,10 +56,18 @@ export default function ChatPage() {
     remoteVideoRef,
     mediaError,
     videoEnabled,
+    audioEnabled,
     toggleVideo,
+    toggleAudio,
     stopMedia,
     connectionState,
   } = useWebRTC(roomId, userId, webrtcActive);
+
+  const matchPrefs = getMatchPrefs();
+  const roomBadge =
+    matchPrefs.matchMode === "regional"
+      ? `REGIONAL · ${matchPrefs.countryCode}`
+      : "GLOBAL ROOM";
 
   useEffect(() => {
     if (authLoading) return;
@@ -413,77 +420,88 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row w-full max-w-5xl mx-auto bg-slate-950 text-white">
-    <main className="flex-1 flex flex-col min-w-0 min-h-screen w-full max-w-2xl mx-auto lg:mx-0">
-      <header className="flex items-center justify-between px-4 py-4 border-b border-white/10 gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link href="/" className="text-sm text-slate-400 hover:text-white shrink-0">
-            Lovarena
-          </Link>
-          {user && profile ? (
-            <span className="text-[10px] text-slate-500 truncate hidden sm:block">
-              {profile.username}
-            </span>
-          ) : (
-            <Link
-              href="/login?next=/chat"
-              className="text-xs text-sky-400 hover:text-sky-300 shrink-0"
-            >
-              Sign in
-            </Link>
-          )}
+    <div className="min-h-screen flex flex-col lg:flex-row w-full bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white">
+    <main className="flex-1 flex flex-col min-w-0 w-full max-w-4xl mx-auto lg:mx-0">
+      <header className="flex items-center justify-between px-4 py-3 gap-2 text-sm">
+        <Link href="/" className="text-slate-400 hover:text-white shrink-0 text-xs">
+          ← Home
+        </Link>
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              status === "connected"
+                ? "bg-emerald-400"
+                : status === "matching"
+                  ? "bg-amber-400 animate-pulse"
+                  : "bg-red-400"
+            }`}
+          />
+          {status === "matching" && "Looking for someone…"}
+          {status === "connected" && "Connected"}
+          {status === "disconnected" && "Stranger left"}
+          {status === "restricted" && "Restricted"}
         </div>
-        <div className="flex flex-col items-center gap-0.5 text-sm">
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                status === "connected"
-                  ? "bg-emerald-400"
-                  : status === "matching"
-                    ? "bg-amber-400 animate-pulse"
-                    : "bg-red-400"
-              }`}
-            />
-            {status === "matching" && "Looking for someone..."}
-            {status === "connected" && "Connected to stranger"}
-            {status === "disconnected" && "Stranger left"}
-            {status === "restricted" && "Session restricted"}
-          </div>
-          <span className="text-[10px] text-slate-500">
-            {matchModeLabel(getMatchPrefs().matchMode)}
-            {getMatchPrefs().matchMode === "regional" &&
-              ` · ${getMatchPrefs().countryCode}`}
-          </span>
-        </div>
-        {roomId && status === "connected" && (
-          <span className="text-[10px] text-slate-600 font-mono">
-            room {roomId.slice(0, 8)}
+        {profile && (
+          <span className="text-[10px] text-slate-500 truncate hidden sm:block">
+            {profile.username}
           </span>
         )}
-        <button
-          onClick={handleNext}
-          disabled={loadingNext || status === "restricted"}
-          className="rounded-xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm font-medium disabled:opacity-50"
-        >
-          Next
-        </button>
       </header>
 
-      <VideoPanel
-        localVideoRef={localVideoRef}
-        remoteVideoRef={remoteVideoRef}
-        mediaError={mediaError}
-        connectionState={connectionState}
-        visible={status === "connected"}
-      />
+      {status !== "restricted" && (
+        <VideoPanel
+          localVideoRef={localVideoRef}
+          remoteVideoRef={remoteVideoRef}
+          mediaError={mediaError}
+          connectionState={connectionState}
+          status={status}
+          matchBadge={roomBadge}
+          videoEnabled={videoEnabled}
+          audioEnabled={audioEnabled}
+          onToggleVideo={toggleVideo}
+          onToggleAudio={toggleAudio}
+          onStop={stopMedia}
+          onNext={handleNext}
+          onIceBreaker={generateIceBreaker}
+          loadingNext={loadingNext}
+          showConnect={status === "connected"}
+          connectSlot={
+            <>
+              <button
+                type="button"
+                onClick={handleConnect}
+                disabled={connectLoading || friendsMatched}
+                className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-40 text-white font-bold text-sm px-5 py-3 rounded-2xl transition shadow-lg shadow-pink-500/30"
+              >
+                {friendsMatched
+                  ? "❤️ Friends"
+                  : youClickedConnect
+                    ? "❤️ Waiting…"
+                    : "❤️ Connect"}
+              </button>
+              {roomId && (
+                <SafetyActions
+                  roomId={roomId}
+                  onBlocked={() => {
+                    stopMedia();
+                    setRoomId(null);
+                    setStatus("disconnected");
+                    setError("User blocked. Press Next for a new match.");
+                  }}
+                />
+              )}
+            </>
+          }
+        />
+      )}
 
       {connectNotice && (
-        <div className="mx-4 mt-3 rounded-xl border border-pink-500/40 bg-pink-500/15 px-4 py-3 text-sm text-pink-200 text-center animate-fade-in">
+        <div className="mx-4 mb-3 rounded-xl border border-pink-500/40 bg-pink-500/15 px-4 py-3 text-sm text-pink-200 text-center animate-fade-in">
           {connectNotice}
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-[120px]">
+      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 min-h-[100px] max-w-4xl w-full mx-auto">
         {error && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
@@ -545,56 +563,8 @@ export default function ChatPage() {
 
       <form
         onSubmit={sendMessage}
-        className="p-4 border-t border-white/10 space-y-3"
+        className="p-4 border-t border-purple-500/20 space-y-3 max-w-4xl w-full mx-auto"
       >
-        {status === "connected" && (
-          <div className="flex flex-wrap items-center justify-center gap-2 bg-white/5 backdrop-blur px-4 py-3 rounded-2xl border border-white/10">
-            <button
-              type="button"
-              onClick={handleConnect}
-              disabled={connectLoading || friendsMatched}
-              className="bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm shadow-md shadow-pink-600/20"
-            >
-              {friendsMatched
-                ? "❤️ Friends"
-                : youClickedConnect
-                  ? "❤️ Waiting…"
-                  : "❤️ Connect"}
-            </button>
-            <button
-              type="button"
-              onClick={stopMedia}
-              className="bg-red-600/90 hover:bg-red-600 text-white font-medium px-4 py-2.5 rounded-xl transition text-sm"
-            >
-              Stop cam
-            </button>
-            <button
-              type="button"
-              onClick={generateIceBreaker}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow-md shadow-indigo-600/20"
-            >
-              Ice Breaker
-            </button>
-            <button
-              type="button"
-              onClick={toggleVideo}
-              className="bg-white/10 hover:bg-white/15 text-white font-medium px-4 py-2.5 rounded-xl transition text-sm"
-            >
-              {videoEnabled ? "Hide cam" : "Show cam"}
-            </button>
-            {roomId && (
-              <SafetyActions
-                roomId={roomId}
-                onBlocked={() => {
-                  stopMedia();
-                  setRoomId(null);
-                  setStatus("disconnected");
-                  setError("User blocked. Press Next for a new match.");
-                }}
-              />
-            )}
-          </div>
-        )}
         <div className="flex gap-2">
         <input
           value={input}
@@ -607,12 +577,12 @@ export default function ChatPage() {
                 ? "Stranger left — press Next"
                 : "Waiting for match..."
           }
-          className="flex-1 rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-violet-500 disabled:opacity-50 text-white"
+          className="flex-1 rounded-xl bg-slate-950/60 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 disabled:opacity-50 text-white"
         />
         <button
           type="submit"
           disabled={status !== "connected" || !input.trim()}
-          className="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold hover:bg-violet-500 disabled:opacity-50"
+          className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 text-sm font-semibold hover:from-violet-500 hover:to-fuchsia-500 disabled:opacity-50"
         >
           Send
         </button>
@@ -620,41 +590,39 @@ export default function ChatPage() {
       </form>
 
       {showIceBreakerPopup && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-fade-in"
-          onClick={() => setShowIceBreakerPopup(false)}
-        >
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
           <div
-            className="bg-slate-900 border border-indigo-500/30 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl"
+            className="bg-slate-900 border-2 border-fuchsia-500 p-8 rounded-3xl max-w-sm w-full text-center shadow-[0_0_40px_rgba(217,70,239,0.3)] transform scale-100 transition-all"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-indigo-400 font-bold text-lg mb-3">
-              Ask the stranger:
+            <div className="text-4xl mb-3 animate-pulse">🔮</div>
+            <h3 className="text-fuchsia-400 font-extrabold text-xl tracking-wide mb-4">
+              Break the Ice!
             </h3>
-            <p className="text-slate-200 text-base italic mb-6 px-2">
+            <p className="text-slate-100 text-base md:text-lg font-medium italic leading-relaxed mb-6 px-1">
               &ldquo;{iceBreakerQuestion}&rdquo;
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               <button
                 type="button"
                 onClick={useIceBreakerQuestion}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-4 rounded-xl transition text-sm"
+                className="bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-600 text-white font-bold py-2.5 px-4 rounded-xl text-sm tracking-wider transition"
               >
-                Use this question
+                Send to chat
               </button>
               <button
                 type="button"
                 onClick={generateIceBreaker}
-                className="bg-white/10 hover:bg-white/15 text-white font-medium py-2 px-4 rounded-xl transition text-sm"
+                className="bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-cyan-400 font-bold py-2.5 px-4 rounded-xl border border-cyan-400/20 text-xs tracking-wider transition"
               >
-                Give me another one
+                🎲 Reroll Question
               </button>
               <button
                 type="button"
                 onClick={() => setShowIceBreakerPopup(false)}
-                className="text-slate-400 hover:text-white transition text-xs pt-2"
+                className="text-slate-400 hover:text-rose-400 transition-colors text-xs font-bold pt-2 uppercase tracking-widest"
               >
-                Close
+                Dismiss
               </button>
             </div>
           </div>
