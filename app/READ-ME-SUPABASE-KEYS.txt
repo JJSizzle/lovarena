@@ -1,0 +1,28 @@
+PUT YOUR SUPABASE KEYS HERE (read this first)
+=============================================
+
+Your keys go in a file named .env.local at the project root.
+You may not see .env.local in Cursor because it is hidden.
+
+EASIEST WAY - double-click this file in File Explorer:
+  edit-supabase-keys.bat
+(it opens Notepad with .env.local)
+
+OR in Cursor:
+  File → Open File → paste:
+  C:\Users\jjw11\Documents\omegle-clone\.env.local
+
+Get keys from: supabase.com → Settings → API
+  - Project URL
+  - anon public key  
+  - service_role key
+
+Replace these 3 lines in .env.local:
+
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+Save, then in terminal:
+  cd C:\Users\jjw11\Documents\omegle-clone
+  npm run dev

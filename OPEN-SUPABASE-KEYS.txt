@@ -1,0 +1,24 @@
+OPEN THIS FILE TO SET YOUR SUPABASE KEYS
+==========================================
+
+The real config file is named .env.local (a hidden-style file).
+After changing settings, it should appear in the left sidebar.
+
+If you still cannot see it:
+  1. File → Open File
+  2. Paste this path and press Enter:
+
+     C:\Users\jjw11\Documents\omegle-clone\.env.local
+
+STEPS:
+  1. Go to supabase.com → your project → Settings → API
+  2. Copy Project URL, anon public key, and service_role key
+  3. Open .env.local (path above) and replace the 3 placeholder lines
+  4. Save (Ctrl + S)
+  5. Restart: Ctrl+C in terminal, then npm run dev
+
+TEMPLATE (copy into .env.local):
+
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
