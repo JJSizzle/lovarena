@@ -5,9 +5,7 @@
 export const SEVERE_BLOCKLIST_ROOTS: readonly string[] = [
   // Racial / ethnic slurs and common variants
   "nigger",
-  "nigga",
   "n1gger",
-  "n1gga",
   "negro",
   "coon",
   "spic",
@@ -15,8 +13,6 @@ export const SEVERE_BLOCKLIST_ROOTS: readonly string[] = [
   "chink",
   "gook",
   "kike",
-  "raghead",
-  "towelhead",
   // Anti-LGBT slurs
   "faggot",
   "fagot",
