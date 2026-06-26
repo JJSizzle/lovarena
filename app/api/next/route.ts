@@ -1,24 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, roomId, matchMode, countryCode } = await req.json();
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
 
-    if (!userId) {
-      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    const { profile } = auth;
+    const { roomId, matchMode, countryCode } = await req.json();
+
+    const ip = clientIp(req);
+    const rl = await rateLimit(`next:${profile.id}:${ip}`, 20, 60);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many skip requests. Please wait." },
+        { status: 429 }
+      );
     }
 
     const mode = matchMode === "regional" ? "regional" : "worldwide";
-
     const supabase = createAdminClient();
 
-    if (await isUserFlaggedForAbuse(supabase, userId)) {
+    if (await isUserFlaggedForAbuse(supabase, profile.id)) {
       return NextResponse.json(
         {
           error:
-            "Your session is restricted due to a community guidelines violation.",
+            "Your account is restricted due to a community guidelines violation.",
           flagged: true,
         },
         { status: 403 }
@@ -27,17 +37,17 @@ export async function POST(req: NextRequest) {
 
     if (roomId) {
       await supabase.rpc("leave_chat", {
-        p_user_id: userId,
+        p_user_id: profile.id,
         p_room_id: roomId,
       });
     } else {
-      await supabase.from("waiting_users").delete().eq("user_id", userId);
+      await supabase.from("waiting_users").delete().eq("user_id", profile.id);
     }
 
     const { data: newRoomId, error } = await supabase.rpc(
       "find_or_create_match",
       {
-        p_user_id: userId,
+        p_user_id: profile.id,
         p_match_mode: mode,
         p_country_code: mode === "regional" ? countryCode : null,
       }
@@ -47,7 +57,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ roomId: newRoomId });
+    return NextResponse.json({ roomId: newRoomId, userId: profile.id });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Next match request failed unexpectedly";

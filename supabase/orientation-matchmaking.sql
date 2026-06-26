@@ -1,15 +1,3 @@
-drop function if exists find_or_create_match(uuid);
-drop function if exists find_or_create_match(uuid, text, text);
-
-alter table waiting_users
-  add column if not exists match_mode text not null default 'worldwide';
-
-alter table waiting_users
-  add column if not exists country_code text;
-
-alter table chat_rooms
-  add column if not exists match_mode text default 'worldwide';
-
 alter table profiles
   add column if not exists gender_identity text,
   add column if not exists looking_for text;
@@ -68,6 +56,9 @@ as $$
     orientation_partner_matches(a_looking_for, b_gender, b_looking_for)
     and orientation_partner_matches(b_looking_for, a_gender, a_looking_for);
 $$;
+
+drop function if exists find_or_create_match(uuid);
+drop function if exists find_or_create_match(uuid, text, text);
 
 create or replace function find_or_create_match(
   p_user_id uuid,
@@ -187,19 +178,5 @@ begin
 end;
 $$;
 
-create or replace function leave_chat(p_user_id uuid, p_room_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  delete from waiting_users where user_id = p_user_id;
-
-  update chat_rooms
-  set status = 'ended'
-  where id = p_room_id
-    and status = 'active'
-    and (user1_id = p_user_id or user2_id = p_user_id);
-end;
-$$;
+alter function find_or_create_match(uuid, text, text) security definer;
+alter function find_or_create_match(uuid, text, text) set search_path = public;

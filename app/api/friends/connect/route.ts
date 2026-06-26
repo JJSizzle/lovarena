@@ -1,35 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-async function getPartnerProfileId(
-  supabase: ReturnType<typeof createAdminClient>,
-  roomId: string,
-  sessionUserId: string
-): Promise<string | null> {
-  const { data: room } = await supabase
-    .from("chat_rooms")
-    .select("user1_id, user2_id")
-    .eq("id", roomId)
-    .maybeSingle();
-
-  if (!room) return null;
-
-  const partnerSessionId =
-    room.user1_id === sessionUserId ? room.user2_id : room.user1_id;
-
-  if (room.user1_id !== sessionUserId && room.user2_id !== sessionUserId) {
-    return null;
-  }
-
-  const { data: link } = await supabase
-    .from("room_session_links")
-    .select("profile_id")
-    .eq("session_user_id", partnerSessionId)
-    .maybeSingle();
-
-  return link?.profile_id ?? null;
-}
+import {
+  assertRoomMember,
+  getPartnerId,
+  isBlockedEitherWay,
+  requireAuthProfile,
+} from "@/lib/auth/api-auth";
 
 async function areFriends(
   supabase: ReturnType<typeof createAdminClient>,
@@ -49,62 +25,54 @@ async function areFriends(
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
 
     const roomId = req.nextUrl.searchParams.get("roomId");
-    const sessionUserId = req.nextUrl.searchParams.get("sessionUserId");
-
-    if (!roomId || !sessionUserId) {
-      return NextResponse.json({ error: "Missing params" }, { status: 400 });
+    if (!roomId) {
+      return NextResponse.json({ error: "Missing roomId" }, { status: 400 });
     }
 
+    const membership = await assertRoomMember(roomId, auth.profile.id);
+    if ("error" in membership) return membership.error;
+
     const supabase = createAdminClient();
+    const partnerId = getPartnerId(membership.room, auth.profile.id);
 
     const { data: myClick } = await supabase
       .from("room_connect_clicks")
       .select("id")
       .eq("room_id", roomId)
-      .eq("profile_id", user.id)
+      .eq("profile_id", auth.profile.id)
       .maybeSingle();
 
-    const partnerProfileId = await getPartnerProfileId(
-      supabase,
-      roomId,
-      sessionUserId
-    );
-
     let partnerClicked = false;
-    if (partnerProfileId) {
+    let partnerUsername: string | null = null;
+
+    if (partnerId) {
       const { data: partnerClick } = await supabase
         .from("room_connect_clicks")
         .select("id")
         .eq("room_id", roomId)
-        .eq("profile_id", partnerProfileId)
+        .eq("profile_id", partnerId)
         .maybeSingle();
       partnerClicked = !!partnerClick;
-    }
 
-    const matched =
-      partnerProfileId &&
-      (await areFriends(supabase, user.id, partnerProfileId));
-
-    let partnerUsername: string | null = null;
-    if (partnerProfileId) {
       const { data: partnerProfile } = await supabase
         .from("profiles")
         .select("username")
-        .eq("id", partnerProfileId)
+        .eq("id", partnerId)
         .maybeSingle();
       partnerUsername = partnerProfile?.username ?? null;
     }
 
+    const matched =
+      partnerId && (await areFriends(supabase, auth.profile.id, partnerId));
+
     return NextResponse.json({
       youClicked: !!myClick,
       partnerClicked,
-      partnerProfileId,
+      partnerProfileId: partnerId,
       partnerUsername,
       matched: !!matched,
     });
@@ -116,68 +84,45 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: "Sign in to connect with strangers", needsAuth: true },
-        { status: 401 }
-      );
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
+
+    const { roomId } = await req.json();
+    if (!roomId) {
+      return NextResponse.json({ error: "Missing roomId" }, { status: 400 });
     }
 
-    const { roomId, sessionUserId } = await req.json();
-    if (!roomId || !sessionUserId) {
-      return NextResponse.json({ error: "Missing roomId or sessionUserId" }, { status: 400 });
+    const membership = await assertRoomMember(roomId, auth.profile.id);
+    if ("error" in membership) return membership.error;
+
+    if (membership.room.status !== "active") {
+      return NextResponse.json({ error: "Room not active" }, { status: 400 });
+    }
+
+    const partnerId = getPartnerId(membership.room, auth.profile.id);
+    if (!partnerId) {
+      return NextResponse.json({ error: "Partner not found" }, { status: 400 });
+    }
+
+    if (await isBlockedEitherWay(auth.profile.id, partnerId)) {
+      return NextResponse.json(
+        { error: "Cannot connect with a blocked user." },
+        { status: 403 }
+      );
     }
 
     const supabase = createAdminClient();
 
-    const { data: room } = await supabase
-      .from("chat_rooms")
-      .select("user1_id, user2_id, status")
-      .eq("id", roomId)
-      .maybeSingle();
-
-    if (!room || room.status !== "active") {
-      return NextResponse.json({ error: "Room not active" }, { status: 400 });
-    }
-
-    if (
-      room.user1_id !== sessionUserId &&
-      room.user2_id !== sessionUserId
-    ) {
-      return NextResponse.json({ error: "Not in this room" }, { status: 403 });
-    }
-
-    await supabase.from("room_session_links").upsert({
-      session_user_id: sessionUserId,
-      profile_id: user.id,
-    });
-
     await supabase.from("room_connect_clicks").upsert({
       room_id: roomId,
-      profile_id: user.id,
+      profile_id: auth.profile.id,
     });
-
-    const partnerProfileId = await getPartnerProfileId(
-      supabase,
-      roomId,
-      sessionUserId
-    );
-
-    if (!partnerProfileId) {
-      return NextResponse.json({
-        youClicked: true,
-        partnerClicked: false,
-        matched: false,
-        waitingForPartner: true,
-      });
-    }
 
     const { data: partnerClick } = await supabase
       .from("room_connect_clicks")
       .select("id")
       .eq("room_id", roomId)
-      .eq("profile_id", partnerProfileId)
+      .eq("profile_id", partnerId)
       .maybeSingle();
 
     if (!partnerClick) {
@@ -186,21 +131,29 @@ export async function POST(req: NextRequest) {
         partnerClicked: false,
         matched: false,
         waitingForPartner: true,
-        partnerProfileId,
+        partnerProfileId: partnerId,
       });
     }
 
     const alreadyFriends = await areFriends(
       supabase,
-      user.id,
-      partnerProfileId
+      auth.profile.id,
+      partnerId
     );
 
     if (!alreadyFriends) {
       await supabase.from("friendships").upsert(
         [
-          { user_id: user.id, friend_id: partnerProfileId, status: "accepted" },
-          { user_id: partnerProfileId, friend_id: user.id, status: "accepted" },
+          {
+            user_id: auth.profile.id,
+            friend_id: partnerId,
+            status: "accepted",
+          },
+          {
+            user_id: partnerId,
+            friend_id: auth.profile.id,
+            status: "accepted",
+          },
         ],
         { onConflict: "user_id,friend_id", ignoreDuplicates: true }
       );
@@ -209,14 +162,14 @@ export async function POST(req: NextRequest) {
     const { data: partnerProfile } = await supabase
       .from("profiles")
       .select("username")
-      .eq("id", partnerProfileId)
+      .eq("id", partnerId)
       .maybeSingle();
 
     return NextResponse.json({
       youClicked: true,
       partnerClicked: true,
       matched: true,
-      partnerProfileId,
+      partnerProfileId: partnerId,
       partnerUsername: partnerProfile?.username ?? null,
     });
   } catch (err) {

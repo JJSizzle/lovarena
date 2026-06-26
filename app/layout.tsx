@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { AgeGate } from "@/components/AgeGate";
 import { AuthProvider } from "@/components/AuthProvider";
+import { CookieConsent } from "@/components/CookieConsent";
+import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -53,7 +55,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-950 text-white">
         <AuthProvider>
-          <AgeGate>{children}</AgeGate>
+          <AgeGate>
+            <div className="flex flex-col min-h-full flex-1">{children}</div>
+            <SiteFooter />
+            <CookieConsent />
+          </AgeGate>
         </AuthProvider>
       </body>
     </html>

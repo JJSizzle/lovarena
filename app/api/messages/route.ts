@@ -1,21 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  assertRoomMember,
+  requireAuthProfile,
+} from "@/lib/auth/api-auth";
+import {
   enforceSevereViolation,
   isUserFlaggedForAbuse,
 } from "@/lib/moderation/enforce-violation";
 import { scanMessageForSevereViolation } from "@/lib/moderation/scan-message";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
   try {
-    const roomId = req.nextUrl.searchParams.get("roomId");
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
 
+    const roomId = req.nextUrl.searchParams.get("roomId");
     if (!roomId) {
       return NextResponse.json({ error: "Missing roomId" }, { status: 400 });
     }
 
-    const supabase = createAdminClient();
+    const membership = await assertRoomMember(roomId, auth.profile.id);
+    if ("error" in membership) return membership.error;
 
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("messages")
       .select("*")
@@ -36,18 +45,38 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { roomId, senderId, content } = await req.json();
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
 
-    if (!roomId || !senderId || !content?.trim()) {
+    const { profile } = auth;
+    const { roomId, content } = await req.json();
+
+    if (!roomId || !content?.trim()) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    const ip = clientIp(req);
+    const rl = await rateLimit(`msg:${profile.id}:${ip}`, 60, 60);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many messages. Slow down." },
+        { status: 429 }
+      );
+    }
+
+    const membership = await assertRoomMember(roomId, profile.id);
+    if ("error" in membership) return membership.error;
+
+    if (membership.room.status !== "active") {
+      return NextResponse.json({ error: "Room is not active" }, { status: 400 });
     }
 
     const supabase = createAdminClient();
 
-    if (await isUserFlaggedForAbuse(supabase, senderId)) {
+    if (await isUserFlaggedForAbuse(supabase, profile.id)) {
       return NextResponse.json(
         {
-          error: "Your session is restricted due to a community guidelines violation.",
+          error: "Your account is restricted due to a community guidelines violation.",
           violation: true,
           sessionTerminated: true,
         },
@@ -59,8 +88,7 @@ export async function POST(req: NextRequest) {
     const scan = scanMessageForSevereViolation(text);
 
     if (scan.violation) {
-      await enforceSevereViolation(supabase, senderId, roomId);
-
+      await enforceSevereViolation(supabase, profile.id, roomId);
       return NextResponse.json(
         {
           error:
@@ -76,7 +104,7 @@ export async function POST(req: NextRequest) {
       .from("messages")
       .insert({
         room_id: roomId,
-        sender_id: senderId,
+        sender_id: profile.id,
         content: text,
       })
       .select()

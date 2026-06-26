@@ -4,17 +4,17 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { getUserId } from "@/lib/user-id";
 import {
   getMatchPrefs,
   matchModeLabel,
 } from "@/lib/match-prefs";
-import { isAgeVerified } from "@/lib/age-gate";
 import { randomIceBreaker } from "@/lib/ice-breakers";
 import { useWebRTC } from "@/lib/webrtc/useWebRTC";
 import { VideoPanel } from "./video-panel";
 import { useAuth } from "@/components/AuthProvider";
 import { FriendsPanel } from "@/components/FriendsPanel";
+import { SafetyActions } from "@/components/SafetyActions";
+import { isOrientationProfileComplete } from "@/lib/profile-orientation";
 
 type Message = {
   id: string;
@@ -31,8 +31,8 @@ function appendMessage(list: Message[], msg: Message): Message[] {
 
 export default function ChatPage() {
   const router = useRouter();
-  const { user, profile } = useAuth();
-  const [userId, setUserId] = useState("");
+  const { user, profile, loading: authLoading } = useAuth();
+  const userId = profile?.id ?? "";
   const [roomId, setRoomId] = useState<string | null>(null);
   const [status, setStatus] = useState<
     "matching" | "connected" | "disconnected" | "restricted"
@@ -63,28 +63,28 @@ export default function ChatPage() {
   } = useWebRTC(roomId, userId, webrtcActive);
 
   useEffect(() => {
-    setUserId(getUserId());
-  }, []);
-
-  useEffect(() => {
-    if (!user || !userId) return;
-
-    fetch("/api/session-link", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionUserId: userId,
-        ageVerified: isAgeVerified(),
-      }),
-    }).catch(() => {});
-  }, [user, userId]);
+    if (authLoading) return;
+    if (!user) {
+      router.replace("/login?next=/chat");
+      return;
+    }
+    if (profile && !isOrientationProfileComplete(profile)) {
+      router.replace("/onboarding?next=/chat");
+      return;
+    }
+    if (user && profile && !profile.age_verified) {
+      setError(
+        "Confirm you are 18+ on the age verification screen, then refresh."
+      );
+    }
+  }, [authLoading, user, profile, router]);
 
   const refreshConnectStatus = useCallback(async () => {
-    if (!roomId || !userId || !user) return;
+    if (!roomId || !userId) return;
 
     try {
       const res = await fetch(
-        `/api/friends/connect?roomId=${encodeURIComponent(roomId)}&sessionUserId=${encodeURIComponent(userId)}`,
+        `/api/friends/connect?roomId=${encodeURIComponent(roomId)}`,
         { cache: "no-store" }
       );
       const data = await res.json();
@@ -101,10 +101,10 @@ export default function ChatPage() {
     } catch {
       // retry on next poll
     }
-  }, [roomId, userId, user]);
+  }, [roomId, userId]);
 
   useEffect(() => {
-    if (!roomId || status !== "connected" || !user) return;
+    if (!roomId || status !== "connected" || !userId) return;
 
     refreshConnectStatus();
     const interval = setInterval(refreshConnectStatus, 2000);
@@ -130,10 +130,10 @@ export default function ChatPage() {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [roomId, status, user, refreshConnectStatus]);
+  }, [roomId, status, userId, refreshConnectStatus]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || authLoading || !profile?.age_verified) return;
 
     let cancelled = false;
     let interval: ReturnType<typeof setInterval>;
@@ -144,7 +144,6 @@ export default function ChatPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
             matchMode: getMatchPrefs().matchMode,
             countryCode: getMatchPrefs().countryCode,
           }),
@@ -162,6 +161,10 @@ export default function ChatPage() {
 
         const data = JSON.parse(text);
         if (!res.ok || data.error) {
+          if (data.needsAuth) {
+            router.replace("/login?next=/chat");
+            return;
+          }
           if (data.flagged) {
             setStatus("restricted");
             clearInterval(interval);
@@ -188,7 +191,7 @@ export default function ChatPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [userId]);
+  }, [userId, authLoading, profile?.age_verified]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -271,7 +274,7 @@ export default function ChatPage() {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId, senderId: userId, content: text }),
+        body: JSON.stringify({ roomId, content: text }),
       });
       const data = await res.json();
 
@@ -310,7 +313,6 @@ export default function ChatPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId,
         roomId: previousRoomId,
         matchMode: getMatchPrefs().matchMode,
         countryCode: getMatchPrefs().countryCode,
@@ -332,7 +334,6 @@ export default function ChatPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
           matchMode: getMatchPrefs().matchMode,
           countryCode: getMatchPrefs().countryCode,
         }),
@@ -371,7 +372,7 @@ export default function ChatPage() {
       const res = await fetch("/api/friends/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId, sessionUserId: userId }),
+        body: JSON.stringify({ roomId }),
       });
       const data = await res.json();
 
@@ -401,6 +402,14 @@ export default function ChatPage() {
     } finally {
       setConnectLoading(false);
     }
+  }
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400">
+        Loading…
+      </div>
+    );
   }
 
   return (
@@ -573,6 +582,17 @@ export default function ChatPage() {
             >
               {videoEnabled ? "Hide cam" : "Show cam"}
             </button>
+            {roomId && (
+              <SafetyActions
+                roomId={roomId}
+                onBlocked={() => {
+                  stopMedia();
+                  setRoomId(null);
+                  setStatus("disconnected");
+                  setError("User blocked. Press Next for a new match.");
+                }}
+              />
+            )}
           </div>
         )}
         <div className="flex gap-2">

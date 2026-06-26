@@ -10,11 +10,15 @@ import {
 } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import type { GenderIdentity, LookingFor } from "@/lib/profile-orientation";
 
 export type Profile = {
   id: string;
   username: string;
   age_verified: boolean;
+  is_admin: boolean;
+  gender_identity: GenderIdentity | null;
+  looking_for: LookingFor | null;
 };
 
 type AuthContextValue = {
@@ -45,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data } = await supabase
       .from("profiles")
-      .select("id, username, age_verified")
+      .select("id, username, age_verified, is_admin, gender_identity, looking_for")
       .eq("id", authUser.id)
       .maybeSingle();
 

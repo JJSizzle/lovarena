@@ -9,10 +9,11 @@ import {
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
 import { useAuth } from "@/components/AuthProvider";
+import { isOrientationProfileComplete } from "@/lib/profile-orientation";
 
 export default function HomePage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [mode, setMode] = useState<MatchMode>("worldwide");
   const [country, setCountry] = useState("US");
 
@@ -22,7 +23,11 @@ export default function HomePage() {
 
   function handleStart() {
     setMatchPrefs(mode, country);
-    router.push("/chat");
+    if (user && profile && !isOrientationProfileComplete(profile)) {
+      router.push("/onboarding?next=/chat");
+      return;
+    }
+    router.push(user ? "/chat" : "/login?next=/chat");
   }
 
   return (
@@ -142,7 +147,15 @@ export default function HomePage() {
           </button>
 
           <p className="text-center text-xs text-slate-500">
-            No sign-up. Be kind. Press Next anytime to skip.
+            Sign in required. By entering you agree to our{" "}
+            <Link href="/terms" className="text-sky-400 underline">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-sky-400 underline">
+              Privacy Policy
+            </Link>
+            .
           </p>
           <p className="text-center text-xs text-slate-600">lovarena.app</p>
         </div>

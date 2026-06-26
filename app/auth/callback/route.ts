@@ -1,14 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isOrientationProfileComplete } from "@/lib/profile-orientation";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const nextParam = searchParams.get("next") ?? "/";
 
   if (code) {
-    const supabaseResponse = NextResponse.redirect(`${origin}${next}`);
+    let redirectPath = nextParam;
+
+    const supabaseResponse = NextResponse.redirect(`${origin}${redirectPath}`);
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,7 +40,7 @@ export async function GET(request: NextRequest) {
         const admin = createAdminClient();
         const { data: profile } = await admin
           .from("profiles")
-          .select("id")
+          .select("id, gender_identity, looking_for")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -46,6 +49,15 @@ export async function GET(request: NextRequest) {
             id: user.id,
             username: `user_${user.id.replace(/-/g, "").slice(0, 8)}`,
             age_verified: false,
+          });
+          redirectPath = `/onboarding?next=${encodeURIComponent(nextParam)}`;
+        } else if (!isOrientationProfileComplete(profile)) {
+          redirectPath = `/onboarding?next=${encodeURIComponent(nextParam)}`;
+        }
+
+        if (redirectPath !== nextParam) {
+          return NextResponse.redirect(`${origin}${redirectPath}`, {
+            headers: supabaseResponse.headers,
           });
         }
       }

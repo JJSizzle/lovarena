@@ -8,6 +8,16 @@ create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text not null,
   age_verified boolean not null default false,
+  gender_identity text check (gender_identity in ('male', 'female', 'non_binary')),
+  looking_for text check (
+    looking_for in (
+      'straight_men',
+      'straight_women',
+      'gay_men',
+      'lesbian_women',
+      'everyone'
+    )
+  ),
   created_at timestamptz not null default now(),
   constraint profiles_username_length check (char_length(username) between 3 and 32),
   constraint profiles_username_format check (username ~ '^[a-zA-Z0-9_]+$')
