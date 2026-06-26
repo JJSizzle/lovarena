@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { AgeGate } from "@/components/AgeGate";
+import { AuthProvider } from "@/components/AuthProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -50,7 +52,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-950 text-white">
-        {children}
+        <AuthProvider>
+          <AgeGate>{children}</AgeGate>
+        </AuthProvider>
       </body>
     </html>
   );

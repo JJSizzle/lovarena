@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,6 +19,17 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
+
+    if (await isUserFlaggedForAbuse(supabase, userId)) {
+      return NextResponse.json(
+        {
+          error:
+            "Your session is restricted due to a community guidelines violation.",
+          flagged: true,
+        },
+        { status: 403 }
+      );
+    }
 
     const { data: roomId, error } = await supabase.rpc("find_or_create_match", {
       p_user_id: userId,

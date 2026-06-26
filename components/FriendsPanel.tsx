@@ -1,0 +1,195 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+type PrivateMessage = {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+};
+
+type FriendsPanelProps = {
+  friendId: string;
+  friendUsername: string;
+  myId: string;
+};
+
+function appendPrivateMessage(
+  list: PrivateMessage[],
+  msg: PrivateMessage
+): PrivateMessage[] {
+  if (list.some((m) => m.id === msg.id)) return list;
+  return [...list, msg];
+}
+
+export function FriendsPanel({
+  friendId,
+  friendUsername,
+  myId,
+}: FriendsPanelProps) {
+  const [messages, setMessages] = useState<PrivateMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch(
+        `/api/private-messages?friendId=${encodeURIComponent(friendId)}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json();
+      if (res.ok && data.messages) {
+        setMessages(data.messages);
+      }
+    }
+
+    load();
+
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel(`private:${myId}:${friendId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "private_messages",
+          filter: `sender_id=eq.${friendId}`,
+        },
+        (payload) => {
+          const msg = payload.new as PrivateMessage;
+          if (msg.receiver_id === myId) {
+            setMessages((prev) => appendPrivateMessage(prev, msg));
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "private_messages",
+          filter: `sender_id=eq.${myId}`,
+        },
+        (payload) => {
+          const msg = payload.new as PrivateMessage;
+          if (msg.receiver_id === friendId) {
+            setMessages((prev) => appendPrivateMessage(prev, msg));
+          }
+        }
+      )
+      .subscribe();
+
+    const poll = setInterval(load, 5000);
+
+    return () => {
+      clearInterval(poll);
+      supabase.removeChannel(channel);
+    };
+  }, [friendId, myId]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  async function sendPrivate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const text = input.trim();
+    setInput("");
+    setError(null);
+
+    const res = await fetch("/api/private-messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ friendId, content: text }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      setError(data.error ?? "Failed to send");
+      setInput(text);
+      return;
+    }
+
+    if (data.message) {
+      setMessages((prev) => appendPrivateMessage(prev, data.message));
+    }
+  }
+
+  return (
+    <aside
+      className="w-full lg:w-80 shrink-0 border-l border-white/10 bg-slate-900/50 flex flex-col min-h-0"
+    >
+      <div className="px-4 py-3 border-b border-white/10">
+        <p className="text-xs text-pink-400 font-medium uppercase tracking-wide">
+          Friends chat
+        </p>
+        <p className="text-sm font-semibold text-white truncate">
+          {friendUsername}
+        </p>
+        <p className="text-[10px] text-slate-500 mt-0.5">
+          Private messages stay after you leave the room
+        </p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-[160px] max-h-[40vh] lg:max-h-none">
+        {error && (
+          <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-2 py-1">
+            {error}
+          </p>
+        )}
+        {messages.length === 0 && (
+          <p className="text-center text-slate-500 text-xs py-8">
+            Say hi to your new friend!
+          </p>
+        )}
+        {messages.map((msg) => {
+          const isMe = msg.sender_id === myId;
+          return (
+            <div
+              key={msg.id}
+              className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[90%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                  isMe
+                    ? "bg-pink-600 text-white"
+                    : "bg-white/10 text-slate-100"
+                }`}
+              >
+                {msg.content}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      <form
+        onSubmit={sendPrivate}
+        className="p-3 border-t border-white/10 flex gap-2"
+      >
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Private message…"
+          className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-xs outline-none focus:border-pink-500/50 text-white"
+        />
+        <button
+          type="submit"
+          disabled={!input.trim()}
+          className="rounded-lg bg-pink-600 px-3 py-2 text-xs font-semibold hover:bg-pink-500 disabled:opacity-50"
+        >
+          Send
+        </button>
+      </form>
+    </aside>
+  );
+}

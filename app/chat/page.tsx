@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getUserId } from "@/lib/user-id";
 import {
   getMatchPrefs,
   matchModeLabel,
 } from "@/lib/match-prefs";
+import { isAgeVerified } from "@/lib/age-gate";
 import { randomIceBreaker } from "@/lib/ice-breakers";
 import { useWebRTC } from "@/lib/webrtc/useWebRTC";
 import { VideoPanel } from "./video-panel";
+import { useAuth } from "@/components/AuthProvider";
+import { FriendsPanel } from "@/components/FriendsPanel";
 
 type Message = {
   id: string;
@@ -26,17 +30,25 @@ function appendMessage(list: Message[], msg: Message): Message[] {
 }
 
 export default function ChatPage() {
+  const router = useRouter();
+  const { user, profile } = useAuth();
   const [userId, setUserId] = useState("");
   const [roomId, setRoomId] = useState<string | null>(null);
-  const [status, setStatus] = useState<"matching" | "connected" | "disconnected">(
-    "matching"
-  );
+  const [status, setStatus] = useState<
+    "matching" | "connected" | "disconnected" | "restricted"
+  >("matching");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loadingNext, setLoadingNext] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showIceBreakerPopup, setShowIceBreakerPopup] = useState(false);
   const [iceBreakerQuestion, setIceBreakerQuestion] = useState("");
+  const [friendId, setFriendId] = useState<string | null>(null);
+  const [friendUsername, setFriendUsername] = useState("");
+  const [friendsMatched, setFriendsMatched] = useState(false);
+  const [connectNotice, setConnectNotice] = useState<string | null>(null);
+  const [youClickedConnect, setYouClickedConnect] = useState(false);
+  const [connectLoading, setConnectLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const webrtcActive = status === "connected" && !!roomId;
@@ -53,6 +65,72 @@ export default function ChatPage() {
   useEffect(() => {
     setUserId(getUserId());
   }, []);
+
+  useEffect(() => {
+    if (!user || !userId) return;
+
+    fetch("/api/session-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionUserId: userId,
+        ageVerified: isAgeVerified(),
+      }),
+    }).catch(() => {});
+  }, [user, userId]);
+
+  const refreshConnectStatus = useCallback(async () => {
+    if (!roomId || !userId || !user) return;
+
+    try {
+      const res = await fetch(
+        `/api/friends/connect?roomId=${encodeURIComponent(roomId)}&sessionUserId=${encodeURIComponent(userId)}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json();
+      if (!res.ok) return;
+
+      setYouClickedConnect(data.youClicked);
+      if (data.matched && data.partnerProfileId) {
+        setFriendsMatched(true);
+        setFriendId(data.partnerProfileId);
+        if (data.partnerUsername) {
+          setFriendUsername(data.partnerUsername);
+        }
+      }
+    } catch {
+      // retry on next poll
+    }
+  }, [roomId, userId, user]);
+
+  useEffect(() => {
+    if (!roomId || status !== "connected" || !user) return;
+
+    refreshConnectStatus();
+    const interval = setInterval(refreshConnectStatus, 2000);
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`connect:${roomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "room_connect_clicks",
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => {
+          refreshConnectStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, status, user, refreshConnectStatus]);
 
   useEffect(() => {
     if (!userId) return;
@@ -84,6 +162,10 @@ export default function ChatPage() {
 
         const data = JSON.parse(text);
         if (!res.ok || data.error) {
+          if (data.flagged) {
+            setStatus("restricted");
+            clearInterval(interval);
+          }
           setError(data.error ?? `Match failed (${res.status})`);
           return;
         }
@@ -194,6 +276,13 @@ export default function ChatPage() {
       const data = await res.json();
 
       if (!res.ok || data.error) {
+        if (data.violation && data.sessionTerminated) {
+          stopMedia();
+          setStatus("restricted");
+          setRoomId(null);
+          setError(data.error);
+          return;
+        }
         setError(data.error ?? "Failed to send message");
         setInput(text);
         return;
@@ -267,12 +356,74 @@ export default function ChatPage() {
     setShowIceBreakerPopup(false);
   }
 
+  async function handleConnect() {
+    if (!roomId || !userId) return;
+
+    if (!user) {
+      router.push("/login?next=/chat");
+      return;
+    }
+
+    setConnectLoading(true);
+    setConnectNotice(null);
+
+    try {
+      const res = await fetch("/api/friends/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, sessionUserId: userId }),
+      });
+      const data = await res.json();
+
+      if (data.needsAuth || res.status === 401) {
+        router.push("/login?next=/chat");
+        return;
+      }
+
+      if (!res.ok) {
+        setError(data.error ?? "Could not connect");
+        return;
+      }
+
+      setYouClickedConnect(true);
+
+      if (data.matched && data.partnerProfileId) {
+        setFriendsMatched(true);
+        setFriendId(data.partnerProfileId);
+        setFriendUsername(data.partnerUsername ?? "Friend");
+        setConnectNotice("Matched! Added to Friends");
+        setTimeout(() => setConnectNotice(null), 5000);
+      } else {
+        setConnectNotice("Waiting for them to ❤️ Connect too…");
+      }
+    } catch {
+      setError("Connect failed. Try again.");
+    } finally {
+      setConnectLoading(false);
+    }
+  }
+
   return (
-    <main className="min-h-screen flex flex-col max-w-2xl mx-auto bg-slate-950 text-white">
-      <header className="flex items-center justify-between px-4 py-4 border-b border-white/10">
-        <Link href="/" className="text-sm text-slate-400 hover:text-white">
-          Lovarena
-        </Link>
+    <div className="min-h-screen flex flex-col lg:flex-row w-full max-w-5xl mx-auto bg-slate-950 text-white">
+    <main className="flex-1 flex flex-col min-w-0 min-h-screen w-full max-w-2xl mx-auto lg:mx-0">
+      <header className="flex items-center justify-between px-4 py-4 border-b border-white/10 gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/" className="text-sm text-slate-400 hover:text-white shrink-0">
+            Lovarena
+          </Link>
+          {user && profile ? (
+            <span className="text-[10px] text-slate-500 truncate hidden sm:block">
+              {profile.username}
+            </span>
+          ) : (
+            <Link
+              href="/login?next=/chat"
+              className="text-xs text-sky-400 hover:text-sky-300 shrink-0"
+            >
+              Sign in
+            </Link>
+          )}
+        </div>
         <div className="flex flex-col items-center gap-0.5 text-sm">
           <div className="flex items-center gap-2">
             <span
@@ -287,6 +438,7 @@ export default function ChatPage() {
             {status === "matching" && "Looking for someone..."}
             {status === "connected" && "Connected to stranger"}
             {status === "disconnected" && "Stranger left"}
+            {status === "restricted" && "Session restricted"}
           </div>
           <span className="text-[10px] text-slate-500">
             {matchModeLabel(getMatchPrefs().matchMode)}
@@ -301,7 +453,7 @@ export default function ChatPage() {
         )}
         <button
           onClick={handleNext}
-          disabled={loadingNext}
+          disabled={loadingNext || status === "restricted"}
           className="rounded-xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm font-medium disabled:opacity-50"
         >
           Next
@@ -316,18 +468,32 @@ export default function ChatPage() {
         visible={status === "connected"}
       />
 
+      {connectNotice && (
+        <div className="mx-4 mt-3 rounded-xl border border-pink-500/40 bg-pink-500/15 px-4 py-3 text-sm text-pink-200 text-center animate-fade-in">
+          {connectNotice}
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-[120px]">
         {error && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
-            <p className="mt-2 text-xs text-red-400/80">
-              Local: run <code className="text-red-300">npm run dev</code> and
-              check <code className="text-red-300">.env.local</code>. Supabase:
-              run{" "}
-              <code className="text-red-300">supabase/fix-function-missing.sql</code>{" "}
-              (not full schema.sql). Production: add Supabase keys in Vercel →
-              Environment Variables, then redeploy.
-            </p>
+            {status !== "restricted" && (
+              <p className="mt-2 text-xs text-red-400/80">
+                Local: run <code className="text-red-300">npm run dev</code> and
+                check <code className="text-red-300">.env.local</code>. Supabase:
+                run{" "}
+                <code className="text-red-300">supabase/fix-function-missing.sql</code>{" "}
+                (not full schema.sql). Production: add Supabase keys in Vercel →
+                Environment Variables, then redeploy.
+              </p>
+            )}
+          </div>
+        )}
+        {status === "restricted" && !error && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            Your session was restricted for violating community guidelines. You
+            cannot send messages or match again from this browser tab.
           </div>
         )}
         {status === "disconnected" && (
@@ -373,7 +539,19 @@ export default function ChatPage() {
         className="p-4 border-t border-white/10 space-y-3"
       >
         {status === "connected" && (
-          <div className="flex items-center justify-center gap-3 bg-white/5 backdrop-blur px-4 py-3 rounded-2xl border border-white/10">
+          <div className="flex flex-wrap items-center justify-center gap-2 bg-white/5 backdrop-blur px-4 py-3 rounded-2xl border border-white/10">
+            <button
+              type="button"
+              onClick={handleConnect}
+              disabled={connectLoading || friendsMatched}
+              className="bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm shadow-md shadow-pink-600/20"
+            >
+              {friendsMatched
+                ? "❤️ Friends"
+                : youClickedConnect
+                  ? "❤️ Waiting…"
+                  : "❤️ Connect"}
+            </button>
             <button
               type="button"
               onClick={stopMedia}
@@ -463,5 +641,14 @@ export default function ChatPage() {
         </div>
       )}
     </main>
+
+    {friendsMatched && friendId && profile && (
+      <FriendsPanel
+        friendId={friendId}
+        friendUsername={friendUsername || "Friend"}
+        myId={profile.id}
+      />
+    )}
+    </div>
   );
 }

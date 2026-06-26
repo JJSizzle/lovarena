@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +13,17 @@ export async function POST(req: NextRequest) {
     const mode = matchMode === "regional" ? "regional" : "worldwide";
 
     const supabase = createAdminClient();
+
+    if (await isUserFlaggedForAbuse(supabase, userId)) {
+      return NextResponse.json(
+        {
+          error:
+            "Your session is restricted due to a community guidelines violation.",
+          flagged: true,
+        },
+        { status: 403 }
+      );
+    }
 
     if (roomId) {
       await supabase.rpc("leave_chat", {

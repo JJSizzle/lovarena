@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   type MatchMode,
   setMatchPrefs,
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [mode, setMode] = useState<MatchMode>("worldwide");
   const [country, setCountry] = useState("US");
 
@@ -43,8 +46,12 @@ export default function HomePage() {
           <span className="text-lg font-semibold tracking-tight">Lovarena</span>
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          Live globally
+          <Link
+            href={user ? "/chat" : "/login?next=/chat"}
+            className="text-sky-400 hover:text-sky-300"
+          >
+            {user ? "Account" : "Sign in"}
+          </Link>
         </div>
       </header>
 
