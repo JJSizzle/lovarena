@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("chat_rooms")
-    .select("id, status")
+    .select("id, status, user1_id, user2_id")
     .eq("id", roomId)
     .single();
 
@@ -20,5 +20,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ roomId: data.id, status: data.status });
+  return NextResponse.json({
+    roomId: data.id,
+    status: data.status,
+    user1_id: data.user1_id,
+    user2_id: data.user2_id,
+  });
 }

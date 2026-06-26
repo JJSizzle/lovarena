@@ -8,6 +8,9 @@ import {
   getMatchPrefs,
   matchModeLabel,
 } from "@/lib/match-prefs";
+import { randomIceBreaker } from "@/lib/ice-breakers";
+import { useWebRTC } from "@/lib/webrtc/useWebRTC";
+import { VideoPanel } from "./video-panel";
 
 type Message = {
   id: string;
@@ -32,7 +35,20 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [loadingNext, setLoadingNext] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showIceBreakerPopup, setShowIceBreakerPopup] = useState(false);
+  const [iceBreakerQuestion, setIceBreakerQuestion] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const webrtcActive = status === "connected" && !!roomId;
+  const {
+    localVideoRef,
+    remoteVideoRef,
+    mediaError,
+    videoEnabled,
+    toggleVideo,
+    stopMedia,
+    connectionState,
+  } = useWebRTC(roomId, userId, webrtcActive);
 
   useEffect(() => {
     setUserId(getUserId());
@@ -192,6 +208,7 @@ export default function ChatPage() {
 
   async function handleNext() {
     if (!userId || loadingNext) return;
+    stopMedia();
     setLoadingNext(true);
     setMessages([]);
     const previousRoomId = roomId;
@@ -238,6 +255,16 @@ export default function ChatPage() {
     }, 2000);
   }
 
+  function generateIceBreaker() {
+    setIceBreakerQuestion(randomIceBreaker());
+    setShowIceBreakerPopup(true);
+  }
+
+  function useIceBreakerQuestion() {
+    setInput(iceBreakerQuestion);
+    setShowIceBreakerPopup(false);
+  }
+
   return (
     <main className="min-h-screen flex flex-col max-w-2xl mx-auto bg-slate-950 text-white">
       <header className="flex items-center justify-between px-4 py-4 border-b border-white/10">
@@ -279,7 +306,15 @@ export default function ChatPage() {
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-3">
+      <VideoPanel
+        localVideoRef={localVideoRef}
+        remoteVideoRef={remoteVideoRef}
+        mediaError={mediaError}
+        connectionState={connectionState}
+        visible={status === "connected"}
+      />
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-[120px]">
         {error && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
@@ -329,8 +364,34 @@ export default function ChatPage() {
 
       <form
         onSubmit={sendMessage}
-        className="p-4 border-t border-white/10 flex gap-2"
+        className="p-4 border-t border-white/10 space-y-3"
       >
+        {status === "connected" && (
+          <div className="flex items-center justify-center gap-3 bg-white/5 backdrop-blur px-4 py-3 rounded-2xl border border-white/10">
+            <button
+              type="button"
+              onClick={stopMedia}
+              className="bg-red-600/90 hover:bg-red-600 text-white font-medium px-4 py-2.5 rounded-xl transition text-sm"
+            >
+              Stop cam
+            </button>
+            <button
+              type="button"
+              onClick={generateIceBreaker}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow-md shadow-indigo-600/20"
+            >
+              Ice Breaker
+            </button>
+            <button
+              type="button"
+              onClick={toggleVideo}
+              className="bg-white/10 hover:bg-white/15 text-white font-medium px-4 py-2.5 rounded-xl transition text-sm"
+            >
+              {videoEnabled ? "Hide cam" : "Show cam"}
+            </button>
+          </div>
+        )}
+        <div className="flex gap-2">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -351,7 +412,50 @@ export default function ChatPage() {
         >
           Send
         </button>
+        </div>
       </form>
+
+      {showIceBreakerPopup && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-fade-in"
+          onClick={() => setShowIceBreakerPopup(false)}
+        >
+          <div
+            className="bg-slate-900 border border-indigo-500/30 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-indigo-400 font-bold text-lg mb-3">
+              Ask the stranger:
+            </h3>
+            <p className="text-slate-200 text-base italic mb-6 px-2">
+              &ldquo;{iceBreakerQuestion}&rdquo;
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={useIceBreakerQuestion}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-4 rounded-xl transition text-sm"
+              >
+                Use this question
+              </button>
+              <button
+                type="button"
+                onClick={generateIceBreaker}
+                className="bg-white/10 hover:bg-white/15 text-white font-medium py-2 px-4 rounded-xl transition text-sm"
+              >
+                Give me another one
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowIceBreakerPopup(false)}
+                className="text-slate-400 hover:text-white transition text-xs pt-2"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,41 +1,40 @@
 # Lovarena
 
-Anonymous text chat with **Regional Matchmaking** or **Worldwide Arena** modes. Next.js + Supabase.
+Live at **[lovarena.app](https://lovarena.app)** — anonymous video + text chat with **Regional Matchmaking** or **Worldwide Arena**. Next.js + Supabase.
 
 ## Local development
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in Supabase keys
+cp .env.example .env.local   # then fill in keys
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_SITE_URL` | `https://lovarena.app` (or `http://localhost:3000` locally) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only) |
+
 ### Supabase setup
 
 1. Create a project at [supabase.com](https://supabase.com)
 2. Run `supabase/schema.sql` in the SQL Editor
-3. If matching or messages fail, also run the fix scripts in `supabase/` as needed
-4. Copy API keys into `.env.local` (see `.env.example`)
+3. Run `supabase/lovarena-match-modes.sql` for regional/worldwide matching
+4. Run other fix scripts in `supabase/` if you hit permission or realtime issues
 
-## Deploy on Vercel
+## Production (Vercel + lovarena.app)
 
-1. Push this repo to GitHub
-2. Go to [vercel.com/new](https://vercel.com/new) and import the repository
-3. Add environment variables (same as `.env.local`):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-4. Deploy
-
-Or with the Vercel CLI:
-
-```bash
-npx vercel
-```
-
-Add env vars in the Vercel dashboard under **Settings → Environment Variables**.
+1. Push to GitHub
+2. Import on [vercel.com](https://vercel.com)
+3. Add all env vars from `.env.example` (use `https://lovarena.app` for `NEXT_PUBLIC_SITE_URL`)
+4. **Settings → Domains** → confirm `lovarena.app` is assigned
+5. Redeploy after env changes
 
 ## Scripts
 

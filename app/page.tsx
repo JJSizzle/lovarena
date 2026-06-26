@@ -135,9 +135,12 @@ export default function HomePage() {
             Enter Lovarena
           </button>
 
-          <p className="text-center text-xs text-slate-500">
-            No sign-up. Be kind. Press Next anytime to skip.
-          </p>
+        <p className="text-center text-xs text-slate-500">
+          No sign-up. Be kind. Press Next anytime to skip.
+        </p>
+        <p className="text-center text-xs text-slate-600">
+          lovarena.app
+        </p>
         </div>
       </div>
     </main>
