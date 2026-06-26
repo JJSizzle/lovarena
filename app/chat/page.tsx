@@ -76,7 +76,9 @@ export default function ChatPage() {
         if (cancelled) return;
 
         if (!text) {
-          setError("Server returned empty response. Restart npm run dev.");
+          setError(
+            "Server returned empty response. Restart npm run dev, or redeploy on Vercel if this is lovarena.app."
+          );
           return;
         }
 
@@ -319,8 +321,12 @@ export default function ChatPage() {
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
             <p className="mt-2 text-xs text-red-400/80">
-              If this mentions a missing function, run supabase/schema.sql in
-              Supabase SQL Editor.
+              Local: run <code className="text-red-300">npm run dev</code> and
+              check <code className="text-red-300">.env.local</code>. Supabase:
+              run{" "}
+              <code className="text-red-300">supabase/fix-function-missing.sql</code>{" "}
+              (not full schema.sql). Production: add Supabase keys in Vercel →
+              Environment Variables, then redeploy.
             </p>
           </div>
         )}

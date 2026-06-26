@@ -24,7 +24,6 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen flex flex-col bg-[#070b14] text-white overflow-hidden">
-      {/* Subtle globe grid */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.07]"
         style={{
@@ -135,12 +134,10 @@ export default function HomePage() {
             Enter Lovarena
           </button>
 
-        <p className="text-center text-xs text-slate-500">
-          No sign-up. Be kind. Press Next anytime to skip.
-        </p>
-        <p className="text-center text-xs text-slate-600">
-          lovarena.app
-        </p>
+          <p className="text-center text-xs text-slate-500">
+            No sign-up. Be kind. Press Next anytime to skip.
+          </p>
+          <p className="text-center text-xs text-slate-600">lovarena.app</p>
         </div>
       </div>
     </main>

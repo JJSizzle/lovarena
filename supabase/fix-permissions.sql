@@ -2,10 +2,11 @@
 -- "permission denied for table waiting_users"
 
 -- Functions run with owner privileges (bypasses RLS / grant issues)
-alter function find_or_create_match(uuid) security definer;
+-- Functions run with owner privileges (bypasses RLS / grant issues)
+alter function find_or_create_match(uuid, text, text) security definer;
 alter function leave_chat(uuid, uuid) security definer;
 
-alter function find_or_create_match(uuid) set search_path = public;
+alter function find_or_create_match(uuid, text, text) set search_path = public;
 alter function leave_chat(uuid, uuid) set search_path = public;
 
 -- Allow API roles to use the tables
