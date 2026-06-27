@@ -277,8 +277,7 @@ export default function LoginForm() {
         options: {
           redirectTo: authRedirectUrl(),
           queryParams: {
-            access_type: "offline",
-            prompt: "consent",
+            prompt: "select_account",
           },
         },
       });
