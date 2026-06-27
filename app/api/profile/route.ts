@@ -107,6 +107,40 @@ export async function PATCH(req: NextRequest) {
 
     const supabase = createAdminClient();
 
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!existing) {
+      const username =
+        typeof updates.username === "string"
+          ? updates.username
+          : `user_${user.id.replace(/-/g, "").slice(0, 8)}`;
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("profiles")
+        .insert({
+          id: user.id,
+          username,
+          age_verified: Boolean(updates.age_verified),
+          ...updates,
+        })
+        .select(PROFILE_FIELDS)
+        .single();
+
+      if (insertError) {
+        const message =
+          insertError.code === "23505"
+            ? "That username is already taken."
+            : insertError.message;
+        return NextResponse.json({ error: message }, { status: 500 });
+      }
+
+      return NextResponse.json({ profile: inserted });
+    }
+
     const { data, error } = await supabase
       .from("profiles")
       .update(updates)

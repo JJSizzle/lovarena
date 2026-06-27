@@ -45,11 +45,9 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
       <div
         className={`fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br ${seasonal.gradient} px-6 overflow-hidden`}
       >
-        <ParticleBackground />
-        <div className="pointer-events-none absolute top-16 left-1/4 w-[320px] h-[320px] rounded-full bg-pink-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-10 right-1/4 w-[280px] h-[280px] rounded-full bg-purple-600/15 blur-3xl" />
+      <ParticleBackground />
 
-        <div className="relative z-10 max-w-md w-full rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-8 text-center shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+      <div className="relative z-10 max-w-md w-full rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-8 text-center shadow-[0_0_30px_rgba(168,85,247,0.15)]">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-fuchsia-400/40 bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-2xl font-extrabold text-fuchsia-300 shadow-[0_0_20px_rgba(217,70,239,0.2)]">
             18+
           </div>

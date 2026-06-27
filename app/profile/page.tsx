@@ -23,6 +23,8 @@ import {
   setSoundsEnabled,
 } from "@/lib/sounds";
 import { ShareInviteButton } from "@/components/ShareInviteButton";
+import { ParticleBackground } from "@/components/ParticleBackground";
+import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 type BlockRow = {
   id: string;
@@ -176,14 +178,18 @@ export default function ProfilePage() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-slate-400">
-        Loading…
+      <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-slate-400">
+        <ParticleBackground />
+        <span className="relative z-10">Loading…</span>
       </div>
     );
   }
 
+  const seasonal = getSeasonalTheme();
+
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white px-6 py-8 pb-24">
+    <main className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white px-6 py-8 pb-24 overflow-hidden`}>
+      <ParticleBackground />
       <div className="relative z-10 max-w-lg mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-sm text-slate-400 hover:text-white">← Home</Link>

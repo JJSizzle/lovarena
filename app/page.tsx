@@ -38,9 +38,6 @@ export default function HomePage() {
   return (
     <main className={`relative min-h-screen flex flex-col bg-gradient-to-br ${seasonal.gradient} text-white overflow-hidden`}>
       <ParticleBackground />
-      <div className="pointer-events-none absolute top-16 left-1/4 w-[420px] h-[420px] rounded-full bg-pink-500/10 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-10 right-1/4 w-[380px] h-[380px] rounded-full bg-purple-600/15 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full bg-cyan-500/5 blur-3xl" />
 
       <header className="relative z-10 flex items-center justify-between px-6 py-6 max-w-4xl mx-auto w-full">
         <div>

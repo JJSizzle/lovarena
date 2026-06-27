@@ -17,10 +17,12 @@ import {
 import { REFERRAL_STORAGE_KEY } from "@/lib/referral";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, profile, signOut } = useAuth();
   const next = searchParams.get("next") ?? "/";
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -28,6 +30,7 @@ export default function LoginForm() {
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
   const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
@@ -42,6 +45,16 @@ export default function LoginForm() {
     const ref = searchParams.get("ref");
     if (ref) {
       localStorage.setItem(REFERRAL_STORAGE_KEY, ref.trim().toLowerCase());
+    }
+
+    const authError = searchParams.get("error");
+    if (authError === "auth") {
+      const reason = searchParams.get("reason");
+      setError(
+        reason
+          ? `Google sign-in failed: ${decodeURIComponent(reason)}`
+          : "Google sign-in failed. Check Supabase Google provider and redirect URLs."
+      );
     }
   }, [searchParams]);
 
@@ -97,17 +110,28 @@ export default function LoginForm() {
       return existing;
     }
 
-    if (!orientation) return null;
-
-    await supabase.from("profiles").insert({
+    const profileRow = {
       id: userId,
       username: fallbackUsername,
       age_verified: isAgeVerified(),
-      gender_identity: orientation.gender_identity,
-      looking_for: orientation.looking_for,
-    });
+      ...(orientation
+        ? {
+            gender_identity: orientation.gender_identity,
+            looking_for: orientation.looking_for,
+          }
+        : {}),
+    };
 
-    return { id: userId, gender_identity: orientation.gender_identity, looking_for: orientation.looking_for };
+    const { error: insertError } = await supabase.from("profiles").insert(profileRow);
+    if (insertError && insertError.code !== "23505") {
+      throw new Error(insertError.message);
+    }
+
+    return {
+      id: userId,
+      gender_identity: orientation?.gender_identity ?? null,
+      looking_for: orientation?.looking_for ?? null,
+    };
   }
 
   async function postAuthRedirect(userId: string) {
@@ -158,13 +182,17 @@ export default function LoginForm() {
 
         if (signUpError) throw signUpError;
 
-        if (data.user) {
-          await ensureProfile(data.user.id, username, {
+        if (data.session?.user) {
+          await ensureProfile(data.session.user.id, username, {
             gender_identity: genderIdentity,
             looking_for: lookingFor,
           });
           await applyReferralCode();
-          await postAuthRedirect(data.user.id);
+          await postAuthRedirect(data.session.user.id);
+        } else if (data.user) {
+          setError(
+            "Account created — check your email to confirm, then log in here."
+          );
         } else {
           setError("Check your email to confirm your account, then log in.");
         }
@@ -175,7 +203,14 @@ export default function LoginForm() {
             password,
           });
 
-        if (signInError) throw signInError;
+        if (signInError) {
+          if (signInError.message.toLowerCase().includes("email not confirmed")) {
+            throw new Error(
+              "Confirm your email first (check inbox/spam), then log in."
+            );
+          }
+          throw signInError;
+        }
         if (data.user) await ensureProfile(data.user.id);
         if (data.user) await applyReferralCode();
         if (data.user) await postAuthRedirect(data.user.id);
@@ -189,13 +224,39 @@ export default function LoginForm() {
 
   async function handleGoogle() {
     setError(null);
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: authRedirectUrl(),
-      },
-    });
-    if (oauthError) setError(oauthError.message);
+    setGoogleLoading(true);
+
+    try {
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: authRedirectUrl(),
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (oauthError) {
+        setError(oauthError.message);
+        setGoogleLoading(false);
+        return;
+      }
+
+      if (data?.url) {
+        window.location.assign(data.url);
+        return;
+      }
+
+      setError(
+        "Could not start Google sign-in. Enable Google under Supabase → Authentication → Providers."
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed");
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   return (
@@ -203,8 +264,6 @@ export default function LoginForm() {
       className={`relative min-h-screen flex items-center justify-center bg-gradient-to-br ${seasonal.gradient} px-6 py-10 text-white overflow-hidden`}
     >
       <ParticleBackground />
-      <div className="pointer-events-none absolute top-16 left-1/4 w-[320px] h-[320px] rounded-full bg-pink-500/10 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-10 right-1/4 w-[280px] h-[280px] rounded-full bg-purple-600/15 blur-3xl" />
 
       <div className="relative z-10 w-full max-w-md rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-8 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
         <Link
@@ -221,6 +280,42 @@ export default function LoginForm() {
             ? "Sign in to add friends and send private messages."
             : "Join the arena — video + text chat with real people."}
         </p>
+
+        {user && (
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            <p>
+              Signed in as{" "}
+              <strong className="text-white">
+                {profile?.username ?? user.email}
+              </strong>
+              .
+            </p>
+            <p className="mt-1 text-xs text-amber-200/80">
+              To test with two accounts, use a{" "}
+              <strong>private/incognito window</strong> for the second one — one
+              browser profile can only hold one login at a time.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  await signOut();
+                  setError(null);
+                }}
+                className="rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs font-semibold hover:bg-amber-500/20 transition"
+              >
+                Sign out
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(next)}
+                className="rounded-lg bg-gradient-to-r from-purple-500 to-fuchsia-500 px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                Continue as this account
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 flex gap-2 rounded-xl bg-purple-500/10 border border-purple-500/20 p-1">
           <button
@@ -294,6 +389,16 @@ export default function LoginForm() {
             className={inputClass}
             required
           />
+          {mode === "login" && (
+            <div className="text-right -mt-2">
+              <Link
+                href={`/login/forgot-password?next=${encodeURIComponent(next)}`}
+                className="text-xs text-fuchsia-400 hover:text-fuchsia-300 transition"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          )}
           <input
             type="password"
             placeholder="Password"
@@ -324,9 +429,10 @@ export default function LoginForm() {
         <button
           type="button"
           onClick={handleGoogle}
-          className="mt-4 w-full rounded-xl border border-purple-500/30 bg-slate-900/60 py-3 text-sm font-medium text-slate-200 hover:bg-purple-500/10 hover:border-fuchsia-500/40 transition"
+          disabled={googleLoading || loading}
+          className="mt-4 w-full rounded-xl border border-purple-500/30 bg-slate-900/60 py-3 text-sm font-medium text-slate-200 hover:bg-purple-500/10 hover:border-fuchsia-500/40 transition disabled:opacity-50"
         >
-          Continue with Google
+          {googleLoading ? "Redirecting to Google…" : "Continue with Google"}
         </button>
       </div>
     </main>

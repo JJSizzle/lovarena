@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { FriendsPanel } from "@/components/FriendsPanel";
+import { ParticleBackground } from "@/components/ParticleBackground";
+import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 type Friend = {
   id: string;
@@ -32,17 +34,21 @@ export default function FriendsPage() {
       .catch(() => {});
   }, [user]);
 
+  const seasonal = getSeasonalTheme();
+
   if (loading || !user || !profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-slate-400">
-        Loading…
+      <div className={`relative min-h-screen flex items-center justify-center bg-gradient-to-br ${seasonal.gradient} text-slate-400`}>
+        <ParticleBackground />
+        <span className="relative z-10">Loading…</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white">
-      <main className="flex-1 max-w-md mx-auto w-full px-6 py-8">
+    <div className={`relative min-h-screen flex flex-col lg:flex-row bg-gradient-to-br ${seasonal.gradient} text-white overflow-hidden`}>
+      <ParticleBackground />
+      <main className="relative z-10 flex-1 max-w-md mx-auto w-full px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <Link href="/profile" className="text-sm text-slate-400 hover:text-white">← Profile</Link>
           <h1 className="text-lg font-extrabold bg-gradient-to-r from-pink-500 to-cyan-400 bg-clip-text text-transparent">
@@ -90,11 +96,13 @@ export default function FriendsPage() {
       </main>
 
       {activeFriend && (
-        <FriendsPanel
-          friendId={activeFriend.id}
-          friendUsername={activeFriend.username}
-          myId={profile.id}
-        />
+        <div className="relative z-10">
+          <FriendsPanel
+            friendId={activeFriend.id}
+            friendUsername={activeFriend.username}
+            myId={profile.id}
+          />
+        </div>
       )}
     </div>
   );

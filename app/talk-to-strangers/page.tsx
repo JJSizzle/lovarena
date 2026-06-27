@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { ArenaPageLayout } from "@/components/ArenaPageLayout";
 
 export const metadata = {
   title: "Talk to Strangers Online",
@@ -9,7 +10,7 @@ export const metadata = {
 
 export default function TalkToStrangersPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white px-6 py-16">
+    <ArenaPageLayout className="px-6 py-16">
       <div className="max-w-2xl mx-auto text-center space-y-6">
         <h1 className="text-4xl font-extrabold text-slate-100">
           Talk to strangers — safely
@@ -32,6 +33,6 @@ export default function TalkToStrangersPage() {
           Join {SITE_NAME}
         </Link>
       </div>
-    </main>
+    </ArenaPageLayout>
   );
 }
