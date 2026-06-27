@@ -1,5 +1,4 @@
-import type { User } from "@supabase/supabase-js";
-import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import {
   isGenderIdentity,
   isLookingFor,
@@ -25,14 +24,14 @@ function orientationFromMeta(user: User) {
 }
 
 export async function resolvePostAuthRedirect(
+  supabase: SupabaseClient,
   user: User,
   nextParam: string
 ): Promise<string> {
-  const admin = createAdminClient();
   const username = usernameFromMeta(user);
   const { gender_identity, looking_for } = orientationFromMeta(user);
 
-  const { data: profile } = await admin
+  const { data: profile } = await supabase
     .from("profiles")
     .select("id, gender_identity, looking_for, username")
     .eq("id", user.id)
@@ -49,10 +48,12 @@ export async function resolvePostAuthRedirect(
       insertRow.looking_for = looking_for;
     }
 
-    const { error: insertError } = await admin.from("profiles").insert(insertRow);
+    const { error: insertError } = await supabase
+      .from("profiles")
+      .insert(insertRow);
     if (insertError?.code === "23505") {
       insertRow.username = `${username}_${user.id.slice(0, 4)}`;
-      await admin.from("profiles").insert(insertRow);
+      await supabase.from("profiles").insert(insertRow);
     }
 
     if (gender_identity && looking_for) {
@@ -75,7 +76,7 @@ export async function resolvePostAuthRedirect(
   }
 
   if (Object.keys(updates).length > 0) {
-    await admin.from("profiles").update(updates).eq("id", user.id);
+    await supabase.from("profiles").update(updates).eq("id", user.id);
   }
 
   const merged = { ...profile, ...updates };

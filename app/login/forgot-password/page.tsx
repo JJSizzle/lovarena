@@ -9,6 +9,7 @@ import {
   authButtonClass,
   authInputClass,
 } from "@/components/AuthPageShell";
+import { authCallbackUrl } from "@/lib/auth/redirect-urls";
 
 function ForgotPasswordForm() {
   const searchParams = useSearchParams();
@@ -21,9 +22,8 @@ function ForgotPasswordForm() {
   const supabase = createClient();
 
   function resetRedirectUrl() {
-    const origin = window.location.origin;
     const afterReset = `/login/reset-password?next=${encodeURIComponent(next)}`;
-    return `${origin}/auth/callback?next=${encodeURIComponent(afterReset)}`;
+    return authCallbackUrl(afterReset, window.location.origin);
   }
 
   async function handleSubmit(e: React.FormEvent) {

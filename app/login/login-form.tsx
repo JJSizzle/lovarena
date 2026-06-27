@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isAgeVerified } from "@/lib/age-gate";
-import { SITE_URL } from "@/lib/site";
+import { authCallbackUrl, authConfirmUrl } from "@/lib/auth/redirect-urls";
 import { ProfileOrientationFields } from "@/components/ProfileOrientationFields";
 import {
   isGenderIdentity,
@@ -80,12 +80,16 @@ export default function LoginForm() {
     }
   }
 
-  function authRedirectUrl() {
-    const origin =
-      typeof window !== "undefined" && window.location.origin
-        ? window.location.origin
-        : SITE_URL;
-    return `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+  function clientOrigin() {
+    return typeof window !== "undefined" ? window.location.origin : undefined;
+  }
+
+  function oauthRedirectUrl() {
+    return authCallbackUrl(next, clientOrigin());
+  }
+
+  function emailRedirectUrl() {
+    return authConfirmUrl(next, clientOrigin());
   }
 
   async function ensureProfile(
@@ -172,7 +176,7 @@ export default function LoginForm() {
         type: "signup",
         email: trimmed,
         options: {
-          emailRedirectTo: authRedirectUrl(),
+          emailRedirectTo: emailRedirectUrl(),
         },
       });
 
@@ -213,7 +217,7 @@ export default function LoginForm() {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: authRedirectUrl(),
+            emailRedirectTo: emailRedirectUrl(),
             data: {
               username: username.trim(),
               gender_identity: genderIdentity,
@@ -275,7 +279,7 @@ export default function LoginForm() {
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: authRedirectUrl(),
+          redirectTo: oauthRedirectUrl(),
           queryParams: {
             prompt: "select_account",
           },
