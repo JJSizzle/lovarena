@@ -126,8 +126,8 @@ export function ParticleBackground() {
         const a = s.alpha * tw;
         const px = s.x * w;
         const py = s.y * h;
-        const outer = s.r * 2.8;
-        const inner = outer * 0.28;
+        const outer = s.r * 2;
+        const inner = outer * 0.32;
         const rot = s.twinkle * 0.15;
 
         drawFourPointStar(ctx!, px, py, outer, inner, a, s.hue, rot);
