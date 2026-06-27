@@ -29,8 +29,10 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
   const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
@@ -52,9 +54,14 @@ export default function LoginForm() {
       const reason = searchParams.get("reason");
       setError(
         reason
-          ? `Google sign-in failed: ${decodeURIComponent(reason)}`
-          : "Google sign-in failed. Check Supabase Google provider and redirect URLs."
+          ? `Sign-in failed: ${decodeURIComponent(reason)}`
+          : "Sign-in link expired or invalid. Try again or request a new email."
       );
+    }
+
+    if (searchParams.get("confirmed") === "1") {
+      setMessage("Email confirmed! You can log in now.");
+      setMode("login");
     }
   }, [searchParams]);
 
@@ -149,9 +156,39 @@ export default function LoginForm() {
     router.refresh();
   }
 
+  async function handleResendConfirmation() {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError("Enter your email address first.");
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    setResendLoading(true);
+
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email: trimmed,
+        options: {
+          emailRedirectTo: authRedirectUrl(),
+        },
+      });
+
+      if (resendError) throw resendError;
+      setMessage("Confirmation email sent — check inbox and spam.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend email");
+    } finally {
+      setResendLoading(false);
+    }
+  }
+
   async function handleEmailAuth(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setMessage(null);
     setLoading(true);
 
     try {
@@ -173,10 +210,15 @@ export default function LoginForm() {
         }
 
         const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             emailRedirectTo: authRedirectUrl(),
+            data: {
+              username: username.trim(),
+              gender_identity: genderIdentity,
+              looking_for: lookingFor,
+            },
           },
         });
 
@@ -190,11 +232,13 @@ export default function LoginForm() {
           await applyReferralCode();
           await postAuthRedirect(data.session.user.id);
         } else if (data.user) {
-          setError(
-            "Account created — check your email to confirm, then log in here."
+          setMessage(
+            "Almost there! We sent a confirmation link to your email. Click it, then log in here."
           );
+          setMode("login");
         } else {
-          setError("Check your email to confirm your account, then log in.");
+          setMessage("Check your email to confirm your account, then log in.");
+          setMode("login");
         }
       } else {
         const { data, error: signInError } =
@@ -204,9 +248,10 @@ export default function LoginForm() {
           });
 
         if (signInError) {
-          if (signInError.message.toLowerCase().includes("email not confirmed")) {
+          const msg = signInError.message.toLowerCase();
+          if (msg.includes("email not confirmed")) {
             throw new Error(
-              "Confirm your email first (check inbox/spam), then log in."
+              "Email not confirmed yet. Check inbox/spam, or resend below."
             );
           }
           throw signInError;
@@ -408,10 +453,25 @@ export default function LoginForm() {
             minLength={6}
             required
           />
+          {message && (
+            <p className="text-sm text-emerald-300 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+              {message}
+            </p>
+          )}
           {error && (
             <p className="text-sm text-red-400 rounded-xl bg-red-500/10 border border-red-500/20 px-3 py-2">
               {error}
             </p>
+          )}
+          {mode === "login" && (error?.includes("not confirmed") || message?.includes("confirmation")) && (
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={resendLoading || loading}
+              className="w-full rounded-xl border border-purple-500/30 bg-slate-900/60 py-2.5 text-sm text-fuchsia-300 hover:border-fuchsia-500/40 disabled:opacity-50 transition"
+            >
+              {resendLoading ? "Sending…" : "Resend confirmation email"}
+            </button>
           )}
           <button
             type="submit"
