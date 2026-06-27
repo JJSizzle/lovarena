@@ -17,41 +17,6 @@ type Star = {
 const STAR_COUNT = 90;
 const LINK_DISTANCE = 110;
 
-function drawFourPointStar(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  outerR: number,
-  innerR: number,
-  alpha: number,
-  hue: number,
-  rotation: number
-) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rotation);
-
-  ctx.beginPath();
-  for (let i = 0; i < 8; i++) {
-    const angle = (i * Math.PI) / 4 - Math.PI / 2;
-    const r = i % 2 === 0 ? outerR : innerR;
-    const px = Math.cos(angle) * r;
-    const py = Math.sin(angle) * r;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-
-  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, outerR * 1.4);
-  glow.addColorStop(0, `hsla(${hue}, 95%, 92%, ${alpha * 0.95})`);
-  glow.addColorStop(0.25, `hsla(${hue}, 88%, 75%, ${alpha * 0.65})`);
-  glow.addColorStop(1, `hsla(${hue}, 80%, 60%, 0)`);
-  ctx.fillStyle = glow;
-  ctx.fill();
-
-  ctx.restore();
-}
-
 export function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -126,11 +91,18 @@ export function ParticleBackground() {
         const a = s.alpha * tw;
         const px = s.x * w;
         const py = s.y * h;
-        const outer = s.r * 2;
-        const inner = outer * 0.32;
-        const rot = s.twinkle * 0.15;
 
-        drawFourPointStar(ctx!, px, py, outer, inner, a, s.hue, rot);
+        ctx!.beginPath();
+        ctx!.fillStyle = `hsla(${s.hue}, 85%, 72%, ${a})`;
+        ctx!.arc(px, py, s.r, 0, Math.PI * 2);
+        ctx!.fill();
+
+        if (s.r > 1.8) {
+          ctx!.beginPath();
+          ctx!.fillStyle = `hsla(${s.hue}, 90%, 85%, ${a * 0.35})`;
+          ctx!.arc(px, py, s.r * 2.5, 0, Math.PI * 2);
+          ctx!.fill();
+        }
       }
 
       raf = requestAnimationFrame(draw);
@@ -148,18 +120,10 @@ export function ParticleBackground() {
       className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       aria-hidden
     >
-      <div className="arena-galaxy-star-wrap arena-galaxy-star-wrap-pink">
-        <div className="arena-galaxy-star arena-galaxy-star-pink" />
-      </div>
-      <div className="arena-galaxy-star-wrap arena-galaxy-star-wrap-purple">
-        <div className="arena-galaxy-star arena-galaxy-star-purple" />
-      </div>
-      <div className="arena-galaxy-star-wrap arena-galaxy-star-wrap-cyan">
-        <div className="arena-galaxy-star arena-galaxy-star-cyan" />
-      </div>
-      <div className="arena-galaxy-star-wrap arena-galaxy-star-wrap-fuchsia">
-        <div className="arena-galaxy-star arena-galaxy-star-fuchsia" />
-      </div>
+      <div className="arena-mesh-blob arena-mesh-blob-pink" />
+      <div className="arena-mesh-blob arena-mesh-blob-purple" />
+      <div className="arena-mesh-blob arena-mesh-blob-cyan" />
+      <div className="arena-mesh-blob arena-mesh-blob-fuchsia" />
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full opacity-75" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(2,6,23,0.55)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(15,23,42,0.15),transparent_40%,rgba(15,23,42,0.35))]" />
