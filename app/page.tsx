@@ -31,67 +31,61 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col bg-[#070b14] text-white overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.07]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 50% 40%, #38bdf8 0%, transparent 55%), linear-gradient(rgba(255,255,255,.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.15) 1px, transparent 1px)",
-          backgroundSize: "100% 100%, 48px 48px, 48px 48px",
-        }}
-      />
-      <div className="pointer-events-none absolute top-20 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full bg-sky-500/10 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-0 w-[360px] h-[360px] rounded-full bg-indigo-600/10 blur-3xl" />
+    <main className="relative min-h-screen flex flex-col bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white overflow-hidden">
+      <div className="pointer-events-none absolute top-16 left-1/4 w-[420px] h-[420px] rounded-full bg-pink-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-10 right-1/4 w-[380px] h-[380px] rounded-full bg-purple-600/15 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full bg-cyan-500/5 blur-3xl" />
 
-      <header className="relative z-10 flex items-center justify-between px-6 py-6 max-w-5xl mx-auto w-full">
-        <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-400/30 bg-sky-500/10 text-sky-300 text-sm font-bold">
-            L
-          </span>
-          <span className="text-lg font-semibold tracking-tight">Lovarena</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <Link
-            href={user ? "/chat" : "/login?next=/chat"}
-            className="text-sky-400 hover:text-sky-300"
-          >
-            {user ? "Account" : "Sign in"}
-          </Link>
-        </div>
+      <header className="relative z-10 flex items-center justify-between px-6 py-6 max-w-4xl mx-auto w-full">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]">
+          LOVARENA
+        </h1>
+        <Link
+          href={user ? "/chat" : "/login?next=/chat"}
+          className="bg-purple-500/10 border border-purple-500/30 rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide text-purple-300 hover:bg-purple-500/20 transition shadow-[0_0_10px_rgba(168,85,247,0.1)]"
+        >
+          {user ? "⚡ Enter arena" : "Sign in"}
+        </Link>
       </header>
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-16">
         <div className="max-w-2xl w-full text-center space-y-6">
-          <p className="text-sky-400/90 text-sm font-medium tracking-widest uppercase">
+          <p className="text-fuchsia-400/90 text-sm font-semibold tracking-widest uppercase">
             Connect across borders
           </p>
-          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-tight">
-            Welcome to{" "}
-            <span className="text-sky-300">Lovarena</span>
-          </h1>
+          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight text-slate-100">
+            Welcome to the{" "}
+            <span className="bg-gradient-to-r from-pink-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+              arena
+            </span>
+          </h2>
           <p className="text-slate-400 text-lg max-w-lg mx-auto leading-relaxed">
-            Anonymous text chat with real people. Choose your arena — nearby
-            neighbors or the whole world.
+            Video + text chat with real people. Pick your match — nearby or
+            worldwide.
           </p>
         </div>
 
         <div className="relative z-10 mt-10 w-full max-w-md space-y-5">
-          <p className="text-center text-sm text-slate-500">Matchmaking mode</p>
+          <p className="text-center text-sm text-purple-300/70 font-medium tracking-wide">
+            Matchmaking mode
+          </p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <button
               type="button"
               onClick={() => setMode("regional")}
-              className={`rounded-2xl border p-4 text-left transition ${
+              className={`rounded-3xl border-2 p-4 text-left transition-all duration-300 ${
                 mode === "regional"
-                  ? "border-sky-400/60 bg-sky-500/15 ring-1 ring-sky-400/40"
-                  : "border-white/10 bg-white/5 hover:border-white/20"
+                  ? "border-pink-500 bg-pink-500/10 shadow-[0_0_20px_rgba(236,72,153,0.2)]"
+                  : "border-slate-700/80 bg-slate-900/60 hover:border-pink-500/40"
               }`}
             >
-              <span className="text-xs text-sky-300/80 uppercase tracking-wide">
+              <span className="text-xs text-pink-300 font-bold uppercase tracking-wide">
                 Regional
               </span>
-              <p className="mt-1 font-semibold text-sm">Regional Matchmaking</p>
+              <p className="mt-1 font-semibold text-sm text-slate-100">
+                Regional Matchmaking
+              </p>
               <p className="mt-1 text-xs text-slate-400">
                 Match with people in your country
               </p>
@@ -99,16 +93,18 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setMode("worldwide")}
-              className={`rounded-2xl border p-4 text-left transition ${
+              className={`rounded-3xl border-2 p-4 text-left transition-all duration-300 ${
                 mode === "worldwide"
-                  ? "border-sky-400/60 bg-sky-500/15 ring-1 ring-sky-400/40"
-                  : "border-white/10 bg-white/5 hover:border-white/20"
+                  ? "border-cyan-400 bg-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.2)]"
+                  : "border-slate-700/80 bg-slate-900/60 hover:border-cyan-400/40"
               }`}
             >
-              <span className="text-xs text-sky-300/80 uppercase tracking-wide">
+              <span className="text-xs text-cyan-300 font-bold uppercase tracking-wide">
                 Global
               </span>
-              <p className="mt-1 font-semibold text-sm">Worldwide Arena</p>
+              <p className="mt-1 font-semibold text-sm text-slate-100">
+                Worldwide Arena
+              </p>
               <p className="mt-1 text-xs text-slate-400">
                 Match with anyone, anywhere
               </p>
@@ -116,10 +112,10 @@ export default function HomePage() {
           </div>
 
           {mode === "regional" && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-4 shadow-[0_0_30px_rgba(168,85,247,0.1)]">
               <label
                 htmlFor="country"
-                className="block text-sm text-slate-400 mb-2"
+                className="block text-sm text-purple-300/80 mb-2 font-medium"
               >
                 Your country / region
               </label>
@@ -127,7 +123,7 @@ export default function HomePage() {
                 id="country"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                className="w-full rounded-xl bg-[#0c1220] border border-white/10 px-4 py-3 text-sm outline-none focus:border-sky-500/50 text-white"
+                className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 text-white"
               >
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code}>
@@ -141,18 +137,18 @@ export default function HomePage() {
           <button
             type="button"
             onClick={handleStart}
-            className="w-full rounded-2xl bg-sky-500 hover:bg-sky-400 text-[#070b14] font-semibold py-4 text-lg transition shadow-lg shadow-sky-500/20"
+            className="w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-slate-950 font-extrabold py-4 text-lg transition transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-emerald-400/30"
           >
             Enter Lovarena
           </button>
 
           <p className="text-center text-xs text-slate-500">
             Sign in required. By entering you agree to our{" "}
-            <Link href="/terms" className="text-sky-400 underline">
+            <Link href="/terms" className="text-fuchsia-400 underline hover:text-fuchsia-300">
               Terms
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="text-sky-400 underline">
+            <Link href="/privacy" className="text-fuchsia-400 underline hover:text-fuchsia-300">
               Privacy Policy
             </Link>
             .
