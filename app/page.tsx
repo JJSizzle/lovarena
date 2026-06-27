@@ -10,12 +10,17 @@ import {
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
 import { useAuth } from "@/components/AuthProvider";
 import { isOrientationProfileComplete } from "@/lib/profile-orientation";
+import { ParticleBackground } from "@/components/ParticleBackground";
+import { OnlineStatsBanner } from "@/components/OnlineStatsBanner";
+import { ShareInviteButton } from "@/components/ShareInviteButton";
+import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 export default function HomePage() {
   const router = useRouter();
   const { user, profile } = useAuth();
   const [mode, setMode] = useState<MatchMode>("worldwide");
   const [country, setCountry] = useState("US");
+  const seasonal = getSeasonalTheme();
 
   useEffect(() => {
     setCountry(guessCountryCode());
@@ -31,15 +36,24 @@ export default function HomePage() {
   }
 
   return (
-    <main className="relative min-h-screen flex flex-col bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white overflow-hidden">
+    <main className={`relative min-h-screen flex flex-col bg-gradient-to-br ${seasonal.gradient} text-white overflow-hidden`}>
+      <ParticleBackground />
       <div className="pointer-events-none absolute top-16 left-1/4 w-[420px] h-[420px] rounded-full bg-pink-500/10 blur-3xl" />
       <div className="pointer-events-none absolute bottom-10 right-1/4 w-[380px] h-[380px] rounded-full bg-purple-600/15 blur-3xl" />
       <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full bg-cyan-500/5 blur-3xl" />
 
       <header className="relative z-10 flex items-center justify-between px-6 py-6 max-w-4xl mx-auto w-full">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]">
-          LOVARENA
-        </h1>
+        <div>
+          <Link
+            href="/"
+            className="inline-block hover:opacity-90 transition"
+          >
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]">
+              LOVARENA
+            </h1>
+          </Link>
+          <p className="text-[10px] text-purple-300/60 mt-1">{seasonal.label}</p>
+        </div>
         <div className="flex items-center gap-3">
           {user && (
             <Link
@@ -73,6 +87,9 @@ export default function HomePage() {
             Video + text chat with real people. Pick your match — nearby or
             worldwide.
           </p>
+          <div className="pt-2">
+            <OnlineStatsBanner />
+          </div>
         </div>
 
         <div className="relative z-10 mt-10 w-full max-w-md space-y-5">
@@ -133,7 +150,7 @@ export default function HomePage() {
                 id="country"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 text-white"
+                className="select-dark w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 text-slate-100"
               >
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code}>
@@ -164,6 +181,9 @@ export default function HomePage() {
             .
           </p>
           <p className="text-center text-xs text-slate-600">lovarena.app</p>
+          <div className="flex justify-center pt-2">
+            <ShareInviteButton referralCode={profile?.referral_code} />
+          </div>
         </div>
       </div>
     </main>

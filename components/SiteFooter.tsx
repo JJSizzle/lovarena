@@ -12,6 +12,12 @@ export function SiteFooter() {
           <Link href="/talk-to-strangers" className="hover:text-fuchsia-300 transition">
             Talk to strangers
           </Link>
+          <Link href="/blog/stay-safe" className="hover:text-fuchsia-300 transition">
+            Safety tips
+          </Link>
+          <Link href="/blog/ice-breaker-questions" className="hover:text-fuchsia-300 transition">
+            Ice breakers
+          </Link>
           <Link href="/friends" className="hover:text-fuchsia-300 transition">
             Friends
           </Link>

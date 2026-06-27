@@ -12,6 +12,8 @@ import {
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
+import { ParticleBackground } from "@/components/ParticleBackground";
+import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 function OnboardingForm() {
   const router = useRouter();
@@ -27,6 +29,7 @@ function OnboardingForm() {
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const seasonal = getSeasonalTheme();
 
   useEffect(() => {
     if (profile?.gender_identity) {
@@ -85,20 +88,31 @@ function OnboardingForm() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#070b14] flex items-center justify-center text-slate-400">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex items-center justify-center text-slate-400">
         Loading…
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#070b14] px-6 text-white">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900/80 p-8">
-        <Link href="/" className="text-sm text-slate-400 hover:text-white">
+    <main
+      className={`relative min-h-screen flex items-center justify-center bg-gradient-to-br ${seasonal.gradient} px-6 py-10 text-white overflow-hidden`}
+    >
+      <ParticleBackground />
+      <div className="pointer-events-none absolute top-16 left-1/4 w-[320px] h-[320px] rounded-full bg-pink-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-10 right-1/4 w-[280px] h-[280px] rounded-full bg-purple-600/15 blur-3xl" />
+
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-8 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+        <Link
+          href="/"
+          className="text-sm text-fuchsia-400 hover:text-fuchsia-300 transition"
+        >
           ← Lovarena
         </Link>
-        <h1 className="mt-4 text-2xl font-bold">Complete your profile</h1>
-        <p className="mt-2 text-sm text-slate-400">
+        <h1 className="mt-4 text-2xl font-bold bg-gradient-to-r from-pink-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+          Complete your profile
+        </h1>
+        <p className="mt-2 text-sm text-purple-300/70">
           Tell us how you identify and who you want to meet. These preferences
           are used for matchmaking.
         </p>
@@ -113,7 +127,7 @@ function OnboardingForm() {
           />
 
           {error && (
-            <p className="text-sm text-red-400 rounded-xl bg-red-500/10 px-3 py-2">
+            <p className="text-sm text-red-400 rounded-xl bg-red-500/10 border border-red-500/20 px-3 py-2">
               {error}
             </p>
           )}
@@ -121,7 +135,7 @@ function OnboardingForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl bg-sky-500 hover:bg-sky-400 text-[#070b14] font-semibold py-3 disabled:opacity-50"
+            className="w-full rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 hover:from-purple-600 hover:via-fuchsia-600 hover:to-pink-600 text-white font-extrabold py-3 disabled:opacity-50 shadow-lg shadow-fuchsia-500/25 transition"
           >
             {submitting ? "Saving…" : "Continue"}
           </button>
@@ -135,7 +149,7 @@ export default function OnboardingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#070b14] flex items-center justify-center text-slate-400">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex items-center justify-center text-slate-400">
           Loading…
         </div>
       }

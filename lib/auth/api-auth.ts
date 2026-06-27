@@ -10,6 +10,12 @@ export type AuthProfile = {
   is_admin: boolean;
   gender_identity: string | null;
   looking_for: string | null;
+  interests: string[];
+  avatar_emoji: string | null;
+  voice_only_default: boolean;
+  chat_streak: number;
+  reputation_score: number;
+  created_at: string;
 };
 
 export async function requireAuthProfile(): Promise<
@@ -29,7 +35,9 @@ export async function requireAuthProfile(): Promise<
   const supabase = createAdminClient();
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, username, age_verified, is_admin, gender_identity, looking_for")
+    .select(
+      "id, username, age_verified, is_admin, gender_identity, looking_for, interests, avatar_emoji, voice_only_default, chat_streak, reputation_score, created_at"
+    )
     .eq("id", user.id)
     .maybeSingle();
 

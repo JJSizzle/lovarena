@@ -22,12 +22,15 @@ export function ProfileOrientationFields({
   onLookingForChange,
   idPrefix = "profile",
 }: Props) {
+  const selectClass =
+    "select-dark w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm text-slate-100 outline-none focus:border-fuchsia-500/50";
+
   return (
     <>
       <div>
         <label
           htmlFor={`${idPrefix}-gender`}
-          className="block text-sm text-slate-400 mb-2"
+          className="block text-sm text-purple-300/80 mb-2"
         >
           I identify as
         </label>
@@ -37,7 +40,7 @@ export function ProfileOrientationFields({
           onChange={(e) =>
             onGenderIdentityChange(e.target.value as GenderIdentity)
           }
-          className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-sky-500/50 text-white"
+          className={selectClass}
           required
         >
           <option value="" disabled>
@@ -54,7 +57,7 @@ export function ProfileOrientationFields({
       <div>
         <label
           htmlFor={`${idPrefix}-looking-for`}
-          className="block text-sm text-slate-400 mb-2"
+          className="block text-sm text-purple-300/80 mb-2"
         >
           I want to meet
         </label>
@@ -62,7 +65,7 @@ export function ProfileOrientationFields({
           id={`${idPrefix}-looking-for`}
           value={lookingFor}
           onChange={(e) => onLookingForChange(e.target.value as LookingFor)}
-          className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm outline-none focus:border-sky-500/50 text-white"
+          className={selectClass}
           required
         >
           <option value="" disabled>

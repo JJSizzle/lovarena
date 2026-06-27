@@ -3,9 +3,10 @@ import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isGenderIdentity, isLookingFor, isValidUsername } from "@/lib/profile-orientation";
 import { sanitizeInterests, sanitizeLanguages } from "@/lib/profile-tags";
+import { isAvatarEmoji } from "@/lib/avatars";
 
 const PROFILE_FIELDS =
-  "id, username, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, reputation_score, referral_code, notifications_enabled, face_blur_default";
+  "id, username, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, created_at";
 
 export async function GET() {
   try {
@@ -88,6 +89,16 @@ export async function PATCH(req: NextRequest) {
     }
     if ("face_blur_default" in body) {
       updates.face_blur_default = Boolean(body.face_blur_default);
+    }
+    if ("voice_only_default" in body) {
+      updates.voice_only_default = Boolean(body.voice_only_default);
+    }
+    if ("avatar_emoji" in body) {
+      const emoji = String(body.avatar_emoji ?? "");
+      if (!isAvatarEmoji(emoji)) {
+        return NextResponse.json({ error: "Invalid avatar" }, { status: 400 });
+      }
+      updates.avatar_emoji = emoji;
     }
 
     if (Object.keys(updates).length === 0) {

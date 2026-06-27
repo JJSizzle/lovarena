@@ -14,7 +14,8 @@ const ICE_SERVERS = getIceServers();
 export function useWebRTC(
   roomId: string | null,
   userId: string,
-  active: boolean
+  active: boolean,
+  voiceOnly = false
 ) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -97,7 +98,7 @@ export function useWebRTC(
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: !voiceOnly,
           audio: true,
         });
         if (cancelled) {
@@ -106,7 +107,7 @@ export function useWebRTC(
         }
 
         localStreamRef.current = stream;
-        setVideoEnabled(true);
+        setVideoEnabled(!voiceOnly);
         setAudioEnabled(true);
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
@@ -224,7 +225,7 @@ export function useWebRTC(
       iceQueueRef.current = [];
       setConnectionState("closed");
     };
-  }, [active, roomId, userId]);
+  }, [active, roomId, userId, voiceOnly]);
 
   return {
     localVideoRef,

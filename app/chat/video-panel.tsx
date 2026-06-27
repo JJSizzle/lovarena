@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { RefObject } from "react";
 
 type VideoPanelProps = {
@@ -22,6 +23,9 @@ type VideoPanelProps = {
   videoBlurred?: boolean;
   bothRevealed?: boolean;
   onRevealVideo?: () => void;
+  strangerFlag?: string;
+  sharedTags?: string[];
+  voiceOnly?: boolean;
 };
 
 export function VideoPanel({
@@ -44,6 +48,9 @@ export function VideoPanel({
   videoBlurred = false,
   bothRevealed = false,
   onRevealVideo,
+  strangerFlag,
+  sharedTags = [],
+  voiceOnly = false,
 }: VideoPanelProps) {
   const isMuted = !audioEnabled;
   const isCameraOn = videoEnabled;
@@ -52,9 +59,12 @@ export function VideoPanel({
   return (
     <div className="flex flex-col items-center w-full px-4 pt-6 pb-2">
       <div className="flex items-center justify-between w-full max-w-4xl mb-6 px-2">
-        <h1 className="text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]">
+        <Link
+          href="/"
+          className="text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:opacity-90 transition"
+        >
           LOVARENA
-        </h1>
+        </Link>
         <div className="bg-purple-500/10 border border-purple-500/30 rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.1)]">
           ⚡ {matchBadge}
         </div>
@@ -69,8 +79,20 @@ export function VideoPanel({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl aspect-video mb-6">
         <div className="relative bg-slate-900 rounded-3xl flex items-center justify-center border-2 border-pink-500 shadow-[0_0_20px_rgba(236,72,153,0.2)] overflow-hidden transition-all duration-300 min-h-[200px]">
           <span className="text-pink-300 text-xs font-bold absolute top-4 left-4 z-10 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-pink-500/20 shadow-md">
-            🛸 Stranger
+            {strangerFlag ? `${strangerFlag} ` : ""}🛸 Stranger
           </span>
+          {sharedTags.length > 0 && (
+            <div className="absolute bottom-4 left-4 right-4 z-10 flex flex-wrap gap-1 justify-center">
+              {sharedTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] rounded-full bg-fuchsia-500/25 border border-fuchsia-400/30 text-fuchsia-100 px-2 py-0.5"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
           {videoActive ? (
             <>
               <video
@@ -91,9 +113,11 @@ export function VideoPanel({
             <>
               <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 animate-pulse blur-xl opacity-40" />
               <p className="absolute text-slate-400 font-medium text-sm z-[1]">
-                {status === "matching"
-                  ? "Waiting for connection..."
-                  : "Stranger disconnected"}
+                {voiceOnly
+                  ? "Voice-only mode"
+                  : status === "matching"
+                    ? "Waiting for connection..."
+                    : "Stranger disconnected"}
               </p>
             </>
           )}
@@ -129,11 +153,13 @@ export function VideoPanel({
             <>
               <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-400 to-indigo-600 animate-pulse blur-xl opacity-40" />
               <p className="absolute text-slate-400 font-medium text-sm z-[1]">
-                {videoActive
-                  ? "Camera off"
-                  : status === "matching"
-                    ? "Camera preview loading..."
-                    : "Camera stopped"}
+                {voiceOnly
+                  ? "🎙️ Voice chat active"
+                  : videoActive
+                    ? "Camera off"
+                    : status === "matching"
+                      ? "Camera preview loading..."
+                      : "Camera stopped"}
               </p>
             </>
           )}

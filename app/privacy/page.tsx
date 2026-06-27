@@ -32,9 +32,50 @@ export default function PrivacyPage() {
           possible and are not stored on our servers by default.
         </li>
         <li>
+          <strong>Profile & match preferences:</strong> username, how you
+          identify, who you want to meet, interests, languages, and related
+          matchmaking settings.
+        </li>
+        <li>
           <strong>Age confirmation:</strong> we record that you confirmed you are
           18+; we do not verify government ID unless we add a separate service
           later.
+        </li>
+      </ul>
+
+      <h2 className="text-xl font-semibold text-white mt-8">
+        Cookies & local storage
+      </h2>
+      <p className="mt-3 text-slate-400 leading-relaxed">
+        {SITE_NAME} uses cookies and browser local storage for features that need
+        to work without asking every visit. You can use the service without
+        optional analytics.
+      </p>
+      <ul className="list-disc pl-6 space-y-2 mt-4">
+        <li>
+          <strong>Authentication (cookies):</strong> Supabase session cookies so
+          you stay signed in securely.
+        </li>
+        <li>
+          <strong>Age confirmation (local storage):</strong> remembers that you
+          confirmed you are 18+ on this device.
+        </li>
+        <li>
+          <strong>Cookie consent (local storage):</strong> stores your choice on
+          this banner, including whether optional analytics are allowed.
+        </li>
+        <li>
+          <strong>Match preferences (local storage):</strong> regional or
+          worldwide mode and country selection before you enter chat.
+        </li>
+        <li>
+          <strong>Onboarding & referral (local storage):</strong> first-visit tour
+          completion and referral codes during sign-up, where applicable.
+        </li>
+        <li>
+          <strong>Optional analytics (local storage, opt-in only):</strong> we do
+          not load third-party analytics scripts unless you opt in. If we enable
+          them later, they will respect your saved choice.
         </li>
       </ul>
 
@@ -49,9 +90,11 @@ export default function PrivacyPage() {
 
       <h2 className="text-xl font-semibold text-white mt-8">Sharing</h2>
       <p>
-        We use Supabase and Vercel to host the service. We do not sell your
-        personal information. We may disclose data if required by law or to
-        protect rights, safety, and security.
+        We use Supabase (database, authentication) and Vercel (hosting) to run
+        the service. These providers process data on our behalf under their own
+        terms and security practices. We do not sell your personal information.
+        We may disclose data if required by law or to protect rights, safety,
+        and security.
       </p>
 
       <h2 className="text-xl font-semibold text-white mt-8">Retention</h2>
@@ -63,7 +106,12 @@ export default function PrivacyPage() {
 
       <h2 className="text-xl font-semibold text-white mt-8">Your choices</h2>
       <ul className="list-disc pl-6 space-y-2">
-        <li>Delete your account by contacting us (see Contact page)</li>
+        <li>
+          Use {SITE_NAME} with essential cookies and storage only (decline
+          optional analytics on the cookie banner)
+        </li>
+        <li>Update profile and match preferences from your Profile page</li>
+        <li>Delete your account from Profile → Delete account</li>
         <li>Block users you do not wish to interact with</li>
         <li>Report users who violate our rules</li>
       </ul>

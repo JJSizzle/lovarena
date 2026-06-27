@@ -38,6 +38,16 @@ body {
   animation: fade-in 0.2s ease-out;
 }
 
+/* Native select dropdowns: dark popup + readable options on Windows/macOS */
+select.select-dark {
+  color-scheme: dark;
+}
+
+select.select-dark option {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
 .mirror {
   transform: scaleX(-1);
 }

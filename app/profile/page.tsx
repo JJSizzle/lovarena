@@ -17,7 +17,12 @@ import {
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
-import { referralLink } from "@/lib/referral";
+import { AVATAR_EMOJIS } from "@/lib/avatars";
+import {
+  soundsEnabled,
+  setSoundsEnabled,
+} from "@/lib/sounds";
+import { ShareInviteButton } from "@/components/ShareInviteButton";
 
 type BlockRow = {
   id: string;
@@ -44,6 +49,9 @@ export default function ProfilePage() {
   const [languages, setLanguages] = useState<string[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [faceBlurDefault, setFaceBlurDefault] = useState(true);
+  const [voiceOnlyDefault, setVoiceOnlyDefault] = useState(false);
+  const [avatarEmoji, setAvatarEmoji] = useState("😎");
+  const [soundEffects, setSoundEffects] = useState(true);
   const [referralCode, setReferralCode] = useState("");
   const [blocks, setBlocks] = useState<BlockRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
@@ -69,8 +77,14 @@ export default function ProfilePage() {
     setLanguages(profile.languages ?? []);
     setNotificationsEnabled(profile.notifications_enabled ?? true);
     setFaceBlurDefault(profile.face_blur_default ?? true);
+    setVoiceOnlyDefault(profile.voice_only_default ?? false);
+    setAvatarEmoji(profile.avatar_emoji ?? "😎");
     setReferralCode(profile.referral_code ?? "");
   }, [profile]);
+
+  useEffect(() => {
+    setSoundEffects(soundsEnabled());
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -113,6 +127,8 @@ export default function ProfilePage() {
           languages,
           notifications_enabled: notificationsEnabled,
           face_blur_default: faceBlurDefault,
+          voice_only_default: voiceOnlyDefault,
+          avatar_emoji: avatarEmoji,
         }),
       });
       const data = await res.json();
@@ -158,12 +174,6 @@ export default function ProfilePage() {
     }
   }
 
-  async function copyReferral() {
-    if (!referralCode) return;
-    await navigator.clipboard.writeText(referralLink(referralCode));
-    setMessage("Referral link copied!");
-  }
-
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-slate-400">
@@ -191,8 +201,8 @@ export default function ProfilePage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatarUrl} alt="" className="h-16 w-16 rounded-2xl object-cover border border-purple-500/30" />
             ) : (
-              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-2xl font-bold">
-                {username.slice(0, 1).toUpperCase()}
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-3xl">
+                {avatarEmoji}
               </div>
             )}
             <div>
@@ -200,6 +210,9 @@ export default function ProfilePage() {
               <p className="text-xs text-slate-400 truncate">{user.email}</p>
               <p className="text-xs text-amber-300 mt-1">
                 Reputation: {profile?.reputation_score ?? 100}/100
+              </p>
+              <p className="text-xs text-fuchsia-300 mt-0.5">
+                🔥 {profile?.chat_streak ?? 0}-day streak · 👍 {profile?.positive_ratings ?? 0} kudos
               </p>
             </div>
           </div>
@@ -214,7 +227,26 @@ export default function ProfilePage() {
               <textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} rows={3} className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 resize-none" placeholder="Say something about yourself…" />
             </div>
             <div>
-              <label htmlFor="avatar" className="block text-sm text-purple-300/80 mb-2 font-medium">Avatar URL</label>
+              <label className="block text-sm text-purple-300/80 mb-2 font-medium">Avatar emoji</label>
+              <div className="flex flex-wrap gap-2">
+                {AVATAR_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setAvatarEmoji(emoji)}
+                    className={`text-xl rounded-xl px-2 py-1 border ${
+                      avatarEmoji === emoji
+                        ? "border-fuchsia-400 bg-fuchsia-500/20"
+                        : "border-purple-500/20 bg-slate-900"
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="avatar" className="block text-sm text-purple-300/80 mb-2 font-medium">Avatar URL (optional)</label>
               <input id="avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50" />
             </div>
             <ProfileOrientationFields idPrefix="profile-edit" genderIdentity={genderIdentity} lookingFor={lookingFor} onGenderIdentityChange={setGenderIdentity} onLookingForChange={setLookingFor} />
@@ -223,6 +255,21 @@ export default function ProfilePage() {
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input type="checkbox" checked={faceBlurDefault} onChange={(e) => setFaceBlurDefault(e.target.checked)} />
               Blur video until both agree to reveal
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" checked={voiceOnlyDefault} onChange={(e) => setVoiceOnlyDefault(e.target.checked)} />
+              Voice-only mode by default (no camera)
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={soundEffects}
+                onChange={(e) => {
+                  setSoundEffects(e.target.checked);
+                  setSoundsEnabled(e.target.checked);
+                }}
+              />
+              Sound effects (connect, messages, Next)
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} />
@@ -239,9 +286,7 @@ export default function ProfilePage() {
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
           <h2 className="font-bold text-fuchsia-300 mb-2">Invite friends</h2>
           <p className="text-xs text-slate-400 mb-3">Share your referral link. Friends sign up and join the arena.</p>
-          <button type="button" onClick={copyReferral} className="w-full rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-sm py-2.5 hover:bg-cyan-500/15">
-            Copy referral link
-          </button>
+          <ShareInviteButton referralCode={referralCode} className="w-full" />
         </div>
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">

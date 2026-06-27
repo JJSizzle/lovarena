@@ -15,7 +15,16 @@ import { FriendsPanel } from "@/components/FriendsPanel";
 import { SafetyActions } from "@/components/SafetyActions";
 import { MatchingWaitScreen } from "@/components/MatchingWaitScreen";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { ParticleBackground } from "@/components/ParticleBackground";
+import { MatchCountdown } from "@/components/MatchCountdown";
+import { ConnectionCardOverlay } from "@/components/ConnectionCardOverlay";
+import { PostChatFeedback } from "@/components/PostChatFeedback";
+import { RulesReminder } from "@/components/RulesReminder";
 import { isOrientationProfileComplete } from "@/lib/profile-orientation";
+import { useTypingIndicator } from "@/lib/hooks/useTypingIndicator";
+import { useMatchCelebration } from "@/lib/hooks/useMatchCelebration";
+import { countryCodeToFlag } from "@/lib/flags";
+import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 type Message = {
   id: string;
@@ -51,9 +60,35 @@ export default function ChatPage() {
   const [youClickedConnect, setYouClickedConnect] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
   const [bothRevealed, setBothRevealed] = useState(false);
+  const [partnerId, setPartnerId] = useState<string | null>(null);
+  const [sharedTags, setSharedTags] = useState<string[]>([]);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackRoomId, setFeedbackRoomId] = useState<string | null>(null);
+  const [feedbackPartnerId, setFeedbackPartnerId] = useState<string | null>(null);
+  const [pendingNext, setPendingNext] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const videoBlurred = profile?.face_blur_default ?? true;
+  const voiceOnly = profile?.voice_only_default ?? false;
+  const seasonal = getSeasonalTheme();
+
+  const {
+    countdown,
+    showCard,
+    cardData,
+    dismissCard,
+    celebrate,
+    resetCelebration,
+    playMessageSound,
+    playNextSound,
+  } = useMatchCelebration();
+
+  const partnerTyping = useTypingIndicator(
+    roomId,
+    userId,
+    input,
+    status === "connected"
+  );
 
   const webrtcActive = status === "connected" && !!roomId;
   const {
@@ -66,7 +101,28 @@ export default function ChatPage() {
     toggleAudio,
     stopMedia,
     connectionState,
-  } = useWebRTC(roomId, userId, webrtcActive);
+  } = useWebRTC(roomId, userId, webrtcActive, voiceOnly);
+
+  useEffect(() => {
+    if (status === "connected" && roomId) {
+      celebrate(roomId);
+      fetch(`/api/room/partner?roomId=${encodeURIComponent(roomId)}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.partnerId) setPartnerId(d.partnerId);
+          if (d.sharedTags) setSharedTags(d.sharedTags);
+        })
+        .catch(() => {});
+    }
+  }, [status, roomId, celebrate]);
+
+  useEffect(() => {
+    if (status === "matching") {
+      resetCelebration();
+      setPartnerId(null);
+      setSharedTags([]);
+    }
+  }, [status, resetCelebration]);
 
   const matchPrefs = getMatchPrefs();
   const roomBadge =
@@ -296,7 +352,9 @@ export default function ChatPage() {
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
-          setMessages((prev) => appendMessage(prev, payload.new as Message));
+          const msg = payload.new as Message;
+          setMessages((prev) => appendMessage(prev, msg));
+          if (msg.sender_id !== userId) playMessageSound();
         }
       )
       .subscribe();
@@ -363,6 +421,7 @@ export default function ChatPage() {
 
       if (data.message) {
         setMessages((prev) => appendMessage(prev, data.message as Message));
+        if (data.message.sender_id !== userId) playMessageSound();
       }
     } catch {
       setError("Failed to send message. Check npm run dev.");
@@ -370,13 +429,39 @@ export default function ChatPage() {
     }
   }
 
+  function promptFeedback(prevRoomId: string | null, prevPartnerId: string | null) {
+    if (prevRoomId && prevPartnerId) {
+      setFeedbackRoomId(prevRoomId);
+      setFeedbackPartnerId(prevPartnerId);
+      setShowFeedback(true);
+      setPendingNext(true);
+      return true;
+    }
+    return false;
+  }
+
   async function handleNext() {
     if (!userId || loadingNext) return;
+    if (showFeedback) return;
+
+    if (roomId && partnerId && promptFeedback(roomId, partnerId)) {
+      return;
+    }
+
+    await doNext();
+  }
+
+  async function doNext() {
+    if (!userId || loadingNext) return;
+    playNextSound();
     stopMedia();
     setLoadingNext(true);
     setMessages([]);
     const previousRoomId = roomId;
     setRoomId(null);
+    setPartnerId(null);
+    setSharedTags([]);
+    resetCelebration();
     setStatus("matching");
 
     const res = await fetch("/api/next", {
@@ -483,8 +568,9 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row w-full bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white">
-    <main className="flex-1 flex flex-col min-w-0 w-full max-w-4xl mx-auto lg:mx-0">
+    <div className={`min-h-screen flex flex-col lg:flex-row w-full bg-gradient-to-br ${seasonal.gradient} text-white relative`}>
+    <ParticleBackground />
+    <main className="flex-1 flex flex-col min-w-0 w-full max-w-4xl mx-auto lg:mx-0 relative z-[1]">
       <header className="flex items-center justify-between px-4 py-3 gap-2 text-sm">
         <Link href="/" className="text-slate-400 hover:text-white shrink-0 text-xs">
           ← Home
@@ -536,6 +622,13 @@ export default function ChatPage() {
           videoBlurred={videoBlurred}
           bothRevealed={bothRevealed}
           onRevealVideo={handleRevealVideo}
+          strangerFlag={
+            matchPrefs.matchMode === "regional"
+              ? countryCodeToFlag(matchPrefs.countryCode)
+              : undefined
+          }
+          sharedTags={sharedTags}
+          voiceOnly={voiceOnly}
           connectSlot={
             <>
               <button
@@ -568,6 +661,25 @@ export default function ChatPage() {
       )}
 
       <OnboardingTour />
+
+      <MatchCountdown countdown={countdown} visible={countdown !== null} />
+      <ConnectionCardOverlay
+        data={cardData}
+        visible={showCard}
+        onDone={dismissCard}
+      />
+      <PostChatFeedback
+        roomId={feedbackRoomId ?? ""}
+        partnerId={feedbackPartnerId ?? ""}
+        visible={showFeedback}
+        onClose={() => {
+          setShowFeedback(false);
+          if (pendingNext) {
+            setPendingNext(false);
+            void doNext();
+          }
+        }}
+      />
 
       {connectNotice && (
         <div className="mx-4 mb-3 rounded-xl border border-pink-500/40 bg-pink-500/15 px-4 py-3 text-sm text-pink-200 text-center animate-fade-in">
@@ -639,6 +751,14 @@ export default function ChatPage() {
         onSubmit={sendMessage}
         className="p-4 border-t border-purple-500/20 space-y-3 max-w-4xl w-full mx-auto"
       >
+        {partnerTyping && (
+          <p className="text-center text-xs text-fuchsia-300/80 pb-2 animate-pulse">
+            Stranger is typing…
+          </p>
+        )}
+
+        <RulesReminder />
+
         <div className="flex gap-2">
         <input
           value={input}
