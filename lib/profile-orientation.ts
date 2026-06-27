@@ -35,3 +35,17 @@ export function isOrientationProfileComplete(profile: {
     isLookingFor(profile.looking_for)
   );
 }
+
+export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,32}$/;
+
+export function isValidUsername(value: string): boolean {
+  return USERNAME_PATTERN.test(value);
+}
+
+export function genderLabel(value: GenderIdentity | null | undefined): string {
+  return GENDER_IDENTITIES.find((o) => o.value === value)?.label ?? "—";
+}
+
+export function lookingForLabel(value: LookingFor | null | undefined): string {
+  return LOOKING_FOR_OPTIONS.find((o) => o.value === value)?.label ?? "—";
+}

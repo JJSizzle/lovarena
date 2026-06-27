@@ -13,6 +13,8 @@ import { VideoPanel } from "./video-panel";
 import { useAuth } from "@/components/AuthProvider";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { SafetyActions } from "@/components/SafetyActions";
+import { MatchingWaitScreen } from "@/components/MatchingWaitScreen";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import { isOrientationProfileComplete } from "@/lib/profile-orientation";
 
 type Message = {
@@ -48,7 +50,10 @@ export default function ChatPage() {
   const [connectNotice, setConnectNotice] = useState<string | null>(null);
   const [youClickedConnect, setYouClickedConnect] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
+  const [bothRevealed, setBothRevealed] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const videoBlurred = profile?.face_blur_default ?? true;
 
   const webrtcActive = status === "connected" && !!roomId;
   const {
@@ -85,6 +90,64 @@ export default function ChatPage() {
       );
     }
   }, [authLoading, user, profile, router]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    async function pingPresence() {
+      try {
+        await fetch("/api/presence", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            inQueue: status === "matching",
+            inChat: status === "connected",
+          }),
+        });
+      } catch {
+        // ignore
+      }
+    }
+
+    pingPresence();
+    const interval = setInterval(pingPresence, 30000);
+    return () => clearInterval(interval);
+  }, [userId, status]);
+
+  useEffect(() => {
+    if (!roomId || status !== "connected" || !videoBlurred) {
+      setBothRevealed(false);
+      return;
+    }
+
+    async function checkConsent() {
+      try {
+        const res = await fetch(
+          `/api/video-consent?roomId=${encodeURIComponent(roomId!)}`,
+          { cache: "no-store" }
+        );
+        const data = await res.json();
+        if (res.ok) setBothRevealed(Boolean(data.bothRevealed));
+      } catch {
+        // ignore
+      }
+    }
+
+    checkConsent();
+    const interval = setInterval(checkConsent, 3000);
+    return () => clearInterval(interval);
+  }, [roomId, status, videoBlurred]);
+
+  async function handleRevealVideo() {
+    if (!roomId) return;
+    const res = await fetch("/api/video-consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId }),
+    });
+    const data = await res.json();
+    if (res.ok) setBothRevealed(Boolean(data.bothRevealed));
+  }
 
   const refreshConnectStatus = useCallback(async () => {
     if (!roomId || !userId) return;
@@ -442,13 +505,18 @@ export default function ChatPage() {
           {status === "restricted" && "Restricted"}
         </div>
         {profile && (
-          <span className="text-[10px] text-slate-500 truncate hidden sm:block">
+          <Link
+            href="/profile"
+            className="text-[10px] text-purple-300 hover:text-fuchsia-300 truncate hidden sm:block transition"
+          >
             {profile.username}
-          </span>
+          </Link>
         )}
       </header>
 
       {status !== "restricted" && (
+        <>
+        <MatchingWaitScreen visible={status === "matching"} />
         <VideoPanel
           localVideoRef={localVideoRef}
           remoteVideoRef={remoteVideoRef}
@@ -465,6 +533,9 @@ export default function ChatPage() {
           onIceBreaker={generateIceBreaker}
           loadingNext={loadingNext}
           showConnect={status === "connected"}
+          videoBlurred={videoBlurred}
+          bothRevealed={bothRevealed}
+          onRevealVideo={handleRevealVideo}
           connectSlot={
             <>
               <button
@@ -493,7 +564,10 @@ export default function ChatPage() {
             </>
           }
         />
+        </>
       )}
+
+      <OnboardingTour />
 
       {connectNotice && (
         <div className="mx-4 mb-3 rounded-xl border border-pink-500/40 bg-pink-500/15 px-4 py-3 text-sm text-pink-200 text-center animate-fade-in">

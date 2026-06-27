@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getIceServers } from "@/lib/webrtc/ice-servers";
 
 type SignalOut =
   | { type: "offer"; sdp: string }
@@ -8,10 +9,7 @@ type SignalOut =
 
 type SignalMessage = SignalOut & { from: string };
 
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-];
+const ICE_SERVERS = getIceServers();
 
 export function useWebRTC(
   roomId: string | null,

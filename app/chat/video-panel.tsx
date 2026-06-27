@@ -19,6 +19,9 @@ type VideoPanelProps = {
   loadingNext: boolean;
   showConnect?: boolean;
   connectSlot?: React.ReactNode;
+  videoBlurred?: boolean;
+  bothRevealed?: boolean;
+  onRevealVideo?: () => void;
 };
 
 export function VideoPanel({
@@ -38,6 +41,9 @@ export function VideoPanel({
   loadingNext,
   showConnect,
   connectSlot,
+  videoBlurred = false,
+  bothRevealed = false,
+  onRevealVideo,
 }: VideoPanelProps) {
   const isMuted = !audioEnabled;
   const isCameraOn = videoEnabled;
@@ -71,7 +77,9 @@ export function VideoPanel({
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="absolute inset-0 w-full h-full object-cover"
+                className={`absolute inset-0 w-full h-full object-cover transition ${
+                  videoBlurred && !bothRevealed ? "blur-2xl scale-105" : ""
+                }`}
               />
               {connectionState !== "connected" && !mediaError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-slate-400 text-sm z-[1]">
@@ -113,7 +121,9 @@ export function VideoPanel({
               autoPlay
               playsInline
               muted
-              className="absolute inset-0 w-full h-full object-cover mirror"
+              className={`absolute inset-0 w-full h-full object-cover mirror transition ${
+                videoBlurred && !bothRevealed ? "blur-2xl scale-105" : ""
+              }`}
             />
           ) : (
             <>
@@ -130,7 +140,16 @@ export function VideoPanel({
         </div>
       </div>
 
-      <div className="flex gap-4 mb-6">
+      <div className="flex flex-wrap gap-4 mb-6 justify-center">
+        {videoActive && videoBlurred && !bothRevealed && onRevealVideo && (
+          <button
+            type="button"
+            onClick={onRevealVideo}
+            className="rounded-xl bg-amber-500/20 border border-amber-400 text-amber-200 text-xs font-bold px-4 py-2 hover:bg-amber-500/30"
+          >
+            👁 Reveal video
+          </button>
+        )}
         <button
           type="button"
           onClick={onToggleAudio}

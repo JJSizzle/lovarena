@@ -1,0 +1,11 @@
+{
+  "name": "Lovarena",
+  "short_name": "Lovarena",
+  "description": "Random video and text chat with smart matchmaking.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#a855f7",
+  "orientation": "portrait-primary",
+  "icons": []
+}

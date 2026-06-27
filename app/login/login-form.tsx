@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +14,7 @@ import {
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
+import { REFERRAL_STORAGE_KEY } from "@/lib/referral";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -30,6 +31,28 @@ export default function LoginForm() {
   const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
 
   const supabase = createClient();
+
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      localStorage.setItem(REFERRAL_STORAGE_KEY, ref.trim().toLowerCase());
+    }
+  }, [searchParams]);
+
+  async function applyReferralCode() {
+    const code = localStorage.getItem(REFERRAL_STORAGE_KEY);
+    if (!code) return;
+    try {
+      await fetch("/api/referral", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      localStorage.removeItem(REFERRAL_STORAGE_KEY);
+    } catch {
+      // non-fatal
+    }
+  }
 
   function authRedirectUrl() {
     const origin =
@@ -134,6 +157,7 @@ export default function LoginForm() {
             gender_identity: genderIdentity,
             looking_for: lookingFor,
           });
+          await applyReferralCode();
           await postAuthRedirect(data.user.id);
         } else {
           setError("Check your email to confirm your account, then log in.");
@@ -147,6 +171,7 @@ export default function LoginForm() {
 
         if (signInError) throw signInError;
         if (data.user) await ensureProfile(data.user.id);
+        if (data.user) await applyReferralCode();
         if (data.user) await postAuthRedirect(data.user.id);
       }
     } catch (err) {

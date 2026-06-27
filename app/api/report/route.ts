@@ -57,6 +57,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("reputation_score")
+      .eq("id", reportedUserId)
+      .maybeSingle();
+
+    if (profileRow) {
+      await supabase
+        .from("profiles")
+        .update({
+          reputation_score: Math.max(0, (profileRow.reputation_score ?? 100) - 10),
+        })
+        .eq("id", reportedUserId);
+    }
+
+    await supabase.rpc("auto_flag_on_reports", {
+      p_user_id: reportedUserId,
+      p_threshold: 3,
+    });
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Report failed";

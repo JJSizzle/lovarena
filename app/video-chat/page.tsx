@@ -1,0 +1,31 @@
+import Link from "next/link";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
+
+export const metadata = {
+  title: "Random Video Chat",
+  description: `Talk to strangers on ${SITE_NAME}. Free random video and text chat with regional and worldwide matchmaking.`,
+  alternates: { canonical: `${SITE_URL}/video-chat` },
+};
+
+export default function VideoChatLandingPage() {
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white px-6 py-16">
+      <div className="max-w-2xl mx-auto text-center space-y-6">
+        <h1 className="text-4xl font-extrabold bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+          Random video chat
+        </h1>
+        <p className="text-slate-400 leading-relaxed">
+          {SITE_NAME} connects you with real people for live video and text chat.
+          Pick regional or worldwide matchmaking, use ice breakers, and stay safe with
+          report and block tools.
+        </p>
+        <Link
+          href="/"
+          className="inline-block rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-extrabold px-8 py-4"
+        >
+          Start on {SITE_NAME}
+        </Link>
+      </div>
+    </main>
+  );
+}

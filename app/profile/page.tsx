@@ -1,0 +1,307 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
+import { ProfileOrientationFields } from "@/components/ProfileOrientationFields";
+import { TagPicker } from "@/components/TagPicker";
+import {
+  INTEREST_OPTIONS,
+  LANGUAGE_OPTIONS,
+} from "@/lib/profile-tags";
+import {
+  isGenderIdentity,
+  isLookingFor,
+  isValidUsername,
+  type GenderIdentity,
+  type LookingFor,
+} from "@/lib/profile-orientation";
+import { referralLink } from "@/lib/referral";
+
+type BlockRow = {
+  id: string;
+  blockedId: string;
+  username: string;
+};
+
+type HistoryRow = {
+  id: string;
+  partnerUsername: string;
+  created_at: string;
+};
+
+export default function ProfilePage() {
+  const router = useRouter();
+  const { user, profile, loading, refreshProfile, signOut } = useAuth();
+
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
+  const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
+  const [interests, setInterests] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [faceBlurDefault, setFaceBlurDefault] = useState(true);
+  const [referralCode, setReferralCode] = useState("");
+  const [blocks, setBlocks] = useState<BlockRow[]>([]);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) router.replace("/login?next=/profile");
+  }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!profile) return;
+    setUsername(profile.username);
+    setBio(profile.bio ?? "");
+    setAvatarUrl(profile.avatar_url ?? "");
+    setGenderIdentity(profile.gender_identity ?? "");
+    setLookingFor(profile.looking_for ?? "");
+    setInterests(profile.interests ?? []);
+    setLanguages(profile.languages ?? []);
+    setNotificationsEnabled(profile.notifications_enabled ?? true);
+    setFaceBlurDefault(profile.face_blur_default ?? true);
+    setReferralCode(profile.referral_code ?? "");
+  }, [profile]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/blocks")
+      .then((r) => r.json())
+      .then((d) => setBlocks(d.blocks ?? []))
+      .catch(() => {});
+    fetch("/api/match-history")
+      .then((r) => r.json())
+      .then((d) => setHistory(d.history ?? []))
+      .catch(() => {});
+  }, [user]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+
+    if (!isValidUsername(username)) {
+      setError("Username: 3–32 letters, numbers, or underscores.");
+      return;
+    }
+    if (!isGenderIdentity(genderIdentity) || !isLookingFor(lookingFor)) {
+      setError("Select how you identify and who you want to meet.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          bio,
+          avatar_url: avatarUrl,
+          gender_identity: genderIdentity,
+          looking_for: lookingFor,
+          interests,
+          languages,
+          notifications_enabled: notificationsEnabled,
+          face_blur_default: faceBlurDefault,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not save profile");
+      await refreshProfile();
+      setMessage("Profile saved.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save profile");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUnblock(blockedId: string) {
+    await fetch("/api/blocks", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blockedId }),
+    });
+    setBlocks((prev) => prev.filter((b) => b.blockedId !== blockedId));
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirm !== "DELETE") {
+      setError('Type DELETE to confirm account removal.');
+      return;
+    }
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Deletion failed");
+      await signOut();
+      router.push("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Deletion failed");
+      setDeleting(false);
+    }
+  }
+
+  async function copyReferral() {
+    if (!referralCode) return;
+    await navigator.clipboard.writeText(referralLink(referralCode));
+    setMessage("Referral link copied!");
+  }
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-slate-400">
+        Loading…
+      </div>
+    );
+  }
+
+  return (
+    <main className="relative min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white px-6 py-8 pb-24">
+      <div className="relative z-10 max-w-lg mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="text-sm text-slate-400 hover:text-white">← Home</Link>
+          <h1 className="text-xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+            Profile
+          </h1>
+          <Link href="/chat" className="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
+            Arena →
+          </Link>
+        </div>
+
+        <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-6">
+          <div className="flex items-center gap-4 mb-6">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="" className="h-16 w-16 rounded-2xl object-cover border border-purple-500/30" />
+            ) : (
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-2xl font-bold">
+                {username.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <p className="font-bold text-lg">{username}</p>
+              <p className="text-xs text-slate-400 truncate">{user.email}</p>
+              <p className="text-xs text-amber-300 mt-1">
+                Reputation: {profile?.reputation_score ?? 100}/100
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSave} className="space-y-5">
+            <div>
+              <label htmlFor="username" className="block text-sm text-purple-300/80 mb-2 font-medium">Username</label>
+              <input id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50" required />
+            </div>
+            <div>
+              <label htmlFor="bio" className="block text-sm text-purple-300/80 mb-2 font-medium">Bio</label>
+              <textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} rows={3} className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 resize-none" placeholder="Say something about yourself…" />
+            </div>
+            <div>
+              <label htmlFor="avatar" className="block text-sm text-purple-300/80 mb-2 font-medium">Avatar URL</label>
+              <input id="avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50" />
+            </div>
+            <ProfileOrientationFields idPrefix="profile-edit" genderIdentity={genderIdentity} lookingFor={lookingFor} onGenderIdentityChange={setGenderIdentity} onLookingForChange={setLookingFor} />
+            <TagPicker label="Interests" options={INTEREST_OPTIONS} selected={interests} onChange={setInterests} max={8} />
+            <TagPicker label="Languages" options={LANGUAGE_OPTIONS} selected={languages} onChange={setLanguages} max={5} />
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" checked={faceBlurDefault} onChange={(e) => setFaceBlurDefault(e.target.checked)} />
+              Blur video until both agree to reveal
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} />
+              Email notifications (when enabled)
+            </label>
+            {message && <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">{message}</p>}
+            {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
+            <button type="submit" disabled={saving} className="w-full rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 disabled:opacity-50 text-white font-extrabold py-3.5">
+              {saving ? "Saving…" : "Save profile"}
+            </button>
+          </form>
+        </div>
+
+        <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
+          <h2 className="font-bold text-fuchsia-300 mb-2">Invite friends</h2>
+          <p className="text-xs text-slate-400 mb-3">Share your referral link. Friends sign up and join the arena.</p>
+          <button type="button" onClick={copyReferral} className="w-full rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-sm py-2.5 hover:bg-cyan-500/15">
+            Copy referral link
+          </button>
+        </div>
+
+        <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-fuchsia-300">Friends</h2>
+            <Link href="/friends" className="text-xs text-emerald-400">View all →</Link>
+          </div>
+          <p className="text-xs text-slate-500">Connect with strangers in chat, then message them from Friends.</p>
+        </div>
+
+        <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
+          <h2 className="font-bold text-fuchsia-300 mb-3">Blocked users</h2>
+          {blocks.length === 0 ? (
+            <p className="text-xs text-slate-500">No blocked users.</p>
+          ) : (
+            <ul className="space-y-2">
+              {blocks.map((b) => (
+                <li key={b.id} className="flex items-center justify-between text-sm">
+                  <span>{b.username}</span>
+                  <button type="button" onClick={() => handleUnblock(b.blockedId)} className="text-xs text-slate-400 hover:text-white">Unblock</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
+          <h2 className="font-bold text-fuchsia-300 mb-3">Recent matches</h2>
+          {history.length === 0 ? (
+            <p className="text-xs text-slate-500">No match history yet.</p>
+          ) : (
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
+              {history.slice(0, 10).map((h) => (
+                <li key={h.id} className="flex justify-between text-xs text-slate-400">
+                  <span>{h.partnerUsername}</span>
+                  <span>{new Date(h.created_at).toLocaleDateString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6 flex flex-col gap-3">
+          {profile?.is_admin && (
+            <Link href="/admin" className="text-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm py-2.5">Admin dashboard</Link>
+          )}
+          <button type="button" onClick={() => signOut().then(() => router.push("/"))} className="rounded-xl border border-slate-700 text-slate-400 py-2.5 text-sm hover:text-white">
+            Sign out
+          </button>
+        </div>
+
+        <div className="rounded-3xl border border-red-500/30 bg-red-950/20 p-6">
+          <h2 className="font-bold text-red-400 mb-2">Delete account</h2>
+          <p className="text-xs text-slate-500 mb-3">Permanent. Type DELETE to confirm.</p>
+          <input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="DELETE" className="w-full rounded-xl bg-slate-900 border border-red-500/20 px-4 py-2 text-sm mb-3" />
+          <button type="button" onClick={handleDeleteAccount} disabled={deleting} className="w-full rounded-xl bg-red-600/80 hover:bg-red-600 text-white text-sm font-bold py-2.5 disabled:opacity-50">
+            {deleting ? "Deleting…" : "Delete my account"}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}

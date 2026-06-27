@@ -19,6 +19,14 @@ export type Profile = {
   is_admin: boolean;
   gender_identity: GenderIdentity | null;
   looking_for: LookingFor | null;
+  bio: string | null;
+  interests: string[];
+  languages: string[];
+  avatar_url: string | null;
+  reputation_score: number;
+  referral_code: string | null;
+  notifications_enabled: boolean;
+  face_blur_default: boolean;
 };
 
 type AuthContextValue = {
@@ -49,7 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data } = await supabase
       .from("profiles")
-      .select("id, username, age_verified, is_admin, gender_identity, looking_for")
+      .select(
+        "id, username, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, reputation_score, referral_code, notifications_enabled, face_blur_default"
+      )
       .eq("id", authUser.id)
       .maybeSingle();
 

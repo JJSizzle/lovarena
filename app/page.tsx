@@ -40,12 +40,22 @@ export default function HomePage() {
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]">
           LOVARENA
         </h1>
-        <Link
-          href={user ? "/chat" : "/login?next=/chat"}
-          className="bg-purple-500/10 border border-purple-500/30 rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide text-purple-300 hover:bg-purple-500/20 transition shadow-[0_0_10px_rgba(168,85,247,0.1)]"
-        >
-          {user ? "⚡ Enter arena" : "Sign in"}
-        </Link>
+        <div className="flex items-center gap-3">
+          {user && (
+            <Link
+              href="/friends"
+              className="text-xs text-fuchsia-400 hover:text-fuchsia-300"
+            >
+              Friends
+            </Link>
+          )}
+          <Link
+            href={user ? "/profile" : "/login?next=/profile"}
+            className="bg-purple-500/10 border border-purple-500/30 rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide text-purple-300 hover:bg-purple-500/20 transition shadow-[0_0_10px_rgba(168,85,247,0.1)]"
+          >
+            {user ? "Profile" : "Sign in"}
+          </Link>
+        </div>
       </header>
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-16">
