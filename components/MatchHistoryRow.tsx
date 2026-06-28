@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { chatBtnBlock, chatBtnGhost, chatBtnReport, chatBtnWarn } from "@/lib/chat-buttons";
+import { ReportReasonFields } from "@/components/ReportReasonFields";
 
 type MatchHistoryRowProps = {
   id: string;
@@ -107,24 +108,14 @@ export function MatchHistoryRow({
             <p className="text-xs font-bold text-amber-300 mb-2">
               Report {partnerUsername}
             </p>
-            <select
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-xs mb-2 text-white"
-            >
-              <option value="harassment">Harassment</option>
-              <option value="hate_speech">Hate speech</option>
-              <option value="nudity">Inappropriate video / nudity</option>
-              <option value="spam">Spam</option>
-              <option value="underage">Possible underage user</option>
-              <option value="other">Other</option>
-            </select>
-            <textarea
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              placeholder="Describe what happened (required for harassment, hate speech, underage, and other)"
-              rows={2}
-              className="w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-xs mb-2 text-white resize-none"
+            <ReportReasonFields
+              reason={reason}
+              onReasonChange={setReason}
+              details={details}
+              onDetailsChange={setDetails}
+              selectClassName="w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-xs mb-2 text-white"
+              textareaClassName="w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-xs mb-2 text-white resize-none"
+              textareaRows={2}
             />
             {status && <p className="text-[10px] text-slate-300 mb-2">{status}</p>}
             <div className="flex gap-2">

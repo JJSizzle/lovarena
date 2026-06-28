@@ -12,17 +12,9 @@ import {
   validateReportDetails,
   verifyRecentMatch,
 } from "@/lib/moderation/report-reputation";
+import { isReportReason, reportReasonLabel } from "@/lib/moderation/report-reasons";
 import { notifyModerators } from "@/lib/moderation/notify-admin";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-
-const VALID_REASONS = [
-  "harassment",
-  "hate_speech",
-  "nudity",
-  "spam",
-  "underage",
-  "other",
-] as const;
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,7 +33,7 @@ export async function POST(req: NextRequest) {
     const { roomId, reportedUserId: reportedUserIdInput, reason, details } =
       await req.json();
 
-    if (!reason || !VALID_REASONS.includes(reason)) {
+    if (!reason || !isReportReason(reason)) {
       return NextResponse.json({ error: "Invalid report" }, { status: 400 });
     }
 
@@ -131,7 +123,7 @@ export async function POST(req: NextRequest) {
     } else {
       void notifyModerators({
         type: "report",
-        reason,
+        reason: reportReasonLabel(reason),
         reportedUserId,
         reporterId: auth.profile.id,
         roomId: reportRoomId,

@@ -24,7 +24,18 @@ create table if not exists abuse_reports (
   status text not null default 'open',
   created_at timestamptz not null default now(),
   constraint abuse_reports_reason_check check (
-    reason in ('harassment', 'hate_speech', 'nudity', 'spam', 'underage', 'other')
+    reason in (
+      'harassment',
+      'sexual_harassment',
+      'hate_speech',
+      'nudity',
+      'inappropriate_profile',
+      'violence_threats',
+      'spam',
+      'scam',
+      'underage',
+      'other'
+    )
   ),
   constraint abuse_reports_status_check check (
     status in ('open', 'reviewed', 'actioned', 'dismissed')

@@ -7,6 +7,7 @@ import {
   chatBtnReport,
   chatBtnWarn,
 } from "@/lib/chat-buttons";
+import { ReportReasonFields } from "@/components/ReportReasonFields";
 
 type SafetyActionsProps = {
   roomId: string;
@@ -81,24 +82,13 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
             <h3 className="text-lg font-bold text-amber-300 mb-3">
               Report user
             </h3>
-            <select
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white"
-            >
-              <option value="harassment">Harassment</option>
-              <option value="hate_speech">Hate speech</option>
-              <option value="nudity">Inappropriate video / nudity</option>
-              <option value="spam">Spam</option>
-              <option value="underage">Possible underage user</option>
-              <option value="other">Other</option>
-            </select>
-            <textarea
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              placeholder="Describe what happened (required for harassment, hate speech, underage, and other)"
-              rows={3}
-              className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white resize-none"
+            <ReportReasonFields
+              reason={reason}
+              onReasonChange={setReason}
+              details={details}
+              onDetailsChange={setDetails}
+              selectClassName="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white"
+              textareaClassName="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white resize-none"
             />
             {status && (
               <p className="text-sm text-slate-300 mb-3">{status}</p>

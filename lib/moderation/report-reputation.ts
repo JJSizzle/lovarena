@@ -129,10 +129,20 @@ export function validateReportDetails(
   }
 
   if (
-    (reason === "hate_speech" || reason === "harassment") &&
+    (
+      reason === "hate_speech" ||
+      reason === "harassment" ||
+      reason === "sexual_harassment" ||
+      reason === "violence_threats" ||
+      reason === "scam"
+    ) &&
     text.length < 8
   ) {
     return "Please describe what happened (at least 8 characters).";
+  }
+
+  if (reason === "inappropriate_profile" && text.length > 0 && text.length < 8) {
+    return "Please add a bit more detail about the profile photo.";
   }
 
   return null;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
+import { reportReasonLabel } from "@/lib/moderation/report-reasons";
 
 type Report = {
   id: string;
@@ -144,7 +145,7 @@ export default function AdminPage() {
                 className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm"
               >
                 <p>
-                  <strong>{r.reason}</strong> · {r.status} ·{" "}
+                  <strong>{reportReasonLabel(r.reason)}</strong> · {r.status} ·{" "}
                   {new Date(r.created_at).toLocaleString()}
                 </p>
                 {r.details && (
