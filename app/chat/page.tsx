@@ -25,6 +25,7 @@ import { formatPartnerLine } from "@/lib/profile-age";
 import { isAgeVerified, syncProfileAgeVerified } from "@/lib/age-gate";
 import { useTypingIndicator } from "@/lib/hooks/useTypingIndicator";
 import { useMatchCelebration } from "@/lib/hooks/useMatchCelebration";
+import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
 import { countryCodeToFlag } from "@/lib/flags";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
@@ -69,7 +70,7 @@ export default function ChatPage() {
   const [feedbackRoomId, setFeedbackRoomId] = useState<string | null>(null);
   const [feedbackPartnerId, setFeedbackPartnerId] = useState<string | null>(null);
   const [pendingNext, setPendingNext] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useScrollOnNewMessage(messages, roomId);
 
   const videoBlurred = profile?.face_blur_default ?? true;
   const voiceOnly = profile?.voice_only_default ?? false;
@@ -355,7 +356,13 @@ export default function ChatPage() {
         });
         const data = await res.json();
         if (res.ok && data.messages) {
-          setMessages(data.messages);
+          setMessages((prev) => {
+            let next = prev;
+            for (const msg of data.messages as Message[]) {
+              next = appendMessage(next, msg);
+            }
+            return next === prev ? prev : next;
+          });
         }
       } catch {
         // polling will retry
@@ -410,10 +417,6 @@ export default function ChatPage() {
     const interval = setInterval(checkRoom, 2000);
     return () => clearInterval(interval);
   }, [roomId, status]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();

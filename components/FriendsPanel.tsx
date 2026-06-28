@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
 
 type PrivateMessage = {
   id: string;
@@ -33,7 +34,7 @@ export function FriendsPanel({
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useScrollOnNewMessage(messages, friendId);
 
   useEffect(() => {
     async function load() {
@@ -43,7 +44,13 @@ export function FriendsPanel({
       );
       const data = await res.json();
       if (res.ok && data.messages) {
-        setMessages(data.messages);
+        setMessages((prev) => {
+          let next = prev;
+          for (const msg of data.messages as PrivateMessage[]) {
+            next = appendPrivateMessage(next, msg);
+          }
+          return next === prev ? prev : next;
+        });
       }
     }
 
@@ -92,10 +99,6 @@ export function FriendsPanel({
       supabase.removeChannel(channel);
     };
   }, [friendId, myId]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   async function sendPrivate(e: React.FormEvent) {
     e.preventDefault();
