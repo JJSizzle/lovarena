@@ -958,10 +958,10 @@ export default function ChatPage() {
             )}
           </div>
         )}
-        {status === "restricted" && !error && (
+        {status === "restricted" && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-            Your session was restricted for violating community guidelines. You
-            cannot send messages or match again from this browser tab.
+            {error ??
+              "Your session was restricted for violating community guidelines. You cannot send messages or match again until the restriction lifts."}
           </div>
         )}
         {status === "idle" && (

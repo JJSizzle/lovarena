@@ -6,7 +6,7 @@ import {
 } from "@/lib/auth/api-auth";
 import {
   enforceSevereViolation,
-  isUserFlaggedForAbuse,
+  getRestrictionApiPayload,
 } from "@/lib/moderation/enforce-violation";
 import { scanMessageForSevereViolation } from "@/lib/moderation/scan-message";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -73,10 +73,11 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    if (await isUserFlaggedForAbuse(supabase, profile.id)) {
+    const restriction = await getRestrictionApiPayload(supabase, profile.id);
+    if (restriction) {
       return NextResponse.json(
         {
-          error: "Your account is restricted due to a community guidelines violation.",
+          ...restriction,
           violation: true,
           sessionTerminated: true,
         },

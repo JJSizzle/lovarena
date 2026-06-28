@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scanMessageForSevereViolation } from "@/lib/moderation/scan-message";
-import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
+import {
+  applyTimedRestriction,
+  getRestrictionApiPayload,
+} from "@/lib/moderation/user-restriction";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 import { notifyFriendMessageEmail } from "@/lib/notifications/friend-message-email";
@@ -78,10 +81,11 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    if (await isUserFlaggedForAbuse(supabase, user.id)) {
+    const restriction = await getRestrictionApiPayload(supabase, user.id);
+    if (restriction) {
       return NextResponse.json(
         {
-          error: "Your session is restricted due to a community guidelines violation.",
+          ...restriction,
           violation: true,
         },
         { status: 403 }
@@ -104,11 +108,11 @@ export async function POST(req: NextRequest) {
     const scan = scanMessageForSevereViolation(text);
 
     if (scan.violation) {
-      await supabase.from("flagged_users").upsert({
-        user_id: user.id,
-        flagged_for_abuse: true,
-        reason: "severe_hate_speech_or_slur",
-      });
+      await applyTimedRestriction(
+        supabase,
+        user.id,
+        "severe_hate_speech_or_slur"
+      );
       return NextResponse.json(
         {
           error: "Message blocked due to policy violation.",

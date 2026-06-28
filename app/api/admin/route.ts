@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
-import { banUserFromPlatform } from "@/lib/moderation/ban-user";
+import { banUserFromPlatform, unflagUser } from "@/lib/moderation/ban-user";
 import { notifyModerators } from "@/lib/moderation/notify-admin";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
@@ -16,6 +16,7 @@ export async function GET() {
     }
 
     const supabase = createAdminClient();
+    const now = new Date().toISOString();
 
     const [reports, flagged, openCount] = await Promise.all([
       supabase
@@ -27,8 +28,11 @@ export async function GET() {
         .limit(50),
       supabase
         .from("flagged_users")
-        .select("user_id, reason, flagged_at, source_room_id")
+        .select(
+          "user_id, reason, flagged_at, source_room_id, restricted_until, is_permanent_ban, review_status"
+        )
         .eq("flagged_for_abuse", true)
+        .or(`is_permanent_ban.eq.true,restricted_until.gt.${now}`)
         .order("flagged_at", { ascending: false })
         .limit(50),
       supabase
@@ -102,11 +106,21 @@ export async function POST(req: NextRequest) {
 
     const { action, userId, reason, reportId } = await req.json();
 
-    if (action !== "ban" || !userId) {
+    if (!userId || !action) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
     const supabase = createAdminClient();
+
+    if (action === "unflag") {
+      await unflagUser(supabase, userId);
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action !== "ban") {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
     const banReason = String(reason ?? "admin_ban").slice(0, 200);
 
     await banUserFromPlatform(supabase, userId, banReason);
@@ -127,7 +141,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Ban failed";
+    const message = err instanceof Error ? err.message : "Action failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

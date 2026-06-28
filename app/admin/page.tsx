@@ -20,10 +20,18 @@ export default function AdminPage() {
   const { user, profile, loading } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [flagged, setFlagged] = useState<
-    { user_id: string; reason: string; flagged_at: string }[]
+    {
+      user_id: string;
+      reason: string;
+      flagged_at: string;
+      restricted_until: string | null;
+      is_permanent_ban: boolean;
+      review_status: string;
+    }[]
   >([]);
   const [error, setError] = useState<string | null>(null);
   const [banning, setBanning] = useState<string | null>(null);
+  const [unflagging, setUnflagging] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !profile?.is_admin) return;
@@ -76,6 +84,29 @@ export default function AdminPage() {
     );
   }
 
+  async function unflagUser(userId: string) {
+    if (!confirm("Remove this user's restriction? They can match again.")) {
+      return;
+    }
+
+    setUnflagging(userId);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "unflag", userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Unflag failed");
+        return;
+      }
+      setFlagged((prev) => prev.filter((f) => f.user_id !== userId));
+    } finally {
+      setUnflagging(null);
+    }
+  }
+
   async function banUser(userId: string, reportId?: string) {
     if (
       !confirm(
@@ -110,14 +141,17 @@ export default function AdminPage() {
         )
       );
       setFlagged((prev) => {
-        if (prev.some((f) => f.user_id === userId)) return prev;
+        const next = prev.filter((f) => f.user_id !== userId);
         return [
           {
             user_id: userId,
             reason: "admin_ban",
             flagged_at: new Date().toISOString(),
+            restricted_until: null,
+            is_permanent_ban: true,
+            review_status: "banned",
           },
-          ...prev,
+          ...next,
         ];
       });
     } finally {
@@ -185,25 +219,43 @@ export default function AdminPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-lg font-semibold text-red-300">Flagged users</h2>
+          <h2 className="text-lg font-semibold text-red-300">Active restrictions</h2>
           <ul className="mt-4 space-y-2 text-sm">
             {flagged.map((f) => (
               <li
                 key={f.user_id}
-                className="flex flex-wrap items-center gap-2 font-mono text-slate-400"
+                className="rounded-xl border border-white/10 bg-white/5 p-3"
               >
-                <span>
-                  {f.user_id} — {f.reason} —{" "}
+                <p className="font-mono text-slate-300 text-xs">{f.user_id}</p>
+                <p className="text-slate-400 mt-1">
+                  {f.reason} · {f.review_status} · flagged{" "}
                   {new Date(f.flagged_at).toLocaleString()}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => banUser(f.user_id)}
-                  disabled={banning === f.user_id}
-                  className="text-xs bg-red-600/60 px-2 py-0.5 rounded font-sans disabled:opacity-50"
-                >
-                  Re-ban
-                </button>
+                </p>
+                <p className="text-slate-500 text-xs mt-1">
+                  {f.is_permanent_ban
+                    ? "Permanent ban"
+                    : f.restricted_until
+                      ? `Restricted until ${new Date(f.restricted_until).toLocaleString()}`
+                      : "Restricted"}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => unflagUser(f.user_id)}
+                    disabled={unflagging === f.user_id}
+                    className="text-xs bg-emerald-600/70 px-2 py-0.5 rounded font-sans disabled:opacity-50"
+                  >
+                    {unflagging === f.user_id ? "Unflagging…" : "Unflag"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => banUser(f.user_id)}
+                    disabled={banning === f.user_id}
+                    className="text-xs bg-red-600/60 px-2 py-0.5 rounded font-sans disabled:opacity-50"
+                  >
+                    {banning === f.user_id ? "Banning…" : "Permanent ban"}
+                  </button>
+                </div>
               </li>
             ))}
             {flagged.length === 0 && (

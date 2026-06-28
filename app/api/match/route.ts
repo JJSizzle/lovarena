@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
-import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
+import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -31,15 +31,9 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    if (await isUserFlaggedForAbuse(supabase, profile.id)) {
-      return NextResponse.json(
-        {
-          error:
-            "Your account is restricted due to a community guidelines violation.",
-          flagged: true,
-        },
-        { status: 403 }
-      );
+    const restriction = await getRestrictionApiPayload(supabase, profile.id);
+    if (restriction) {
+      return NextResponse.json(restriction, { status: 403 });
     }
 
     const { data: roomId, error } = await supabase.rpc("find_or_create_match", {

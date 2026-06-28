@@ -5,8 +5,8 @@ import {
   getPartnerId,
   requireAuthProfile,
 } from "@/lib/auth/api-auth";
-import { endActiveRoomsForUser } from "@/lib/moderation/ban-user";
-import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
+import { maybeAutoRestrictFromReports } from "@/lib/moderation/auto-flag-reports";
+import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
 import {
   applyReportReputationPenalty,
   validateReportDetails,
@@ -105,16 +105,18 @@ export async function POST(req: NextRequest) {
       reportedUserId
     );
 
-    await supabase.rpc("auto_flag_on_reports", {
-      p_user_id: reportedUserId,
-      p_threshold: 3,
-    });
+    const autoFlag = await maybeAutoRestrictFromReports(
+      supabase,
+      reportedUserId
+    );
 
-    if (await isUserFlaggedForAbuse(supabase, reportedUserId)) {
-      await endActiveRoomsForUser(supabase, reportedUserId);
+    if (autoFlag.restricted) {
       void notifyModerators({
         type: "auto_flag",
-        reason: "auto_flag_on_reports (3+ reports in 24h)",
+        reason:
+          autoFlag.result?.type === "ban"
+            ? "second_strike_within_30d (reports)"
+            : "3+ unique reporters in 24h (24h restrict)",
         reportedUserId,
         reporterId: auth.profile.id,
         roomId: reportRoomId,

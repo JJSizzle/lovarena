@@ -6,7 +6,11 @@ create table if not exists flagged_users (
   flagged_for_abuse boolean not null default true,
   reason text not null default 'severe_hate_speech_or_slur',
   source_room_id uuid references chat_rooms(id) on delete set null,
-  flagged_at timestamptz not null default now()
+  flagged_at timestamptz not null default now(),
+  restricted_until timestamptz,
+  review_status text not null default 'pending',
+  auto_reviewed_at timestamptz,
+  is_permanent_ban boolean not null default false
 );
 
 create index if not exists flagged_users_abuse_idx
