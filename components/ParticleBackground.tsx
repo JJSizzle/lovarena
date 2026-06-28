@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { ParticleMode } from "@/lib/visual-effects";
 
 type Star = {
   x: number;
@@ -14,21 +15,28 @@ type Star = {
   twinkleSpeed: number;
 };
 
-const STAR_COUNT = 90;
 const LINK_DISTANCE = 110;
 
-export function ParticleBackground() {
+type Props = {
+  mode?: ParticleMode;
+};
+
+export function ParticleBackground({ mode = "full" }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    if (mode === "off") return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     let raf = 0;
+    const starCount = mode === "lite" ? 36 : 90;
+    const drawLinks = mode === "full";
 
-    const stars: Star[] = Array.from({ length: STAR_COUNT }, () => ({
+    const stars: Star[] = Array.from({ length: starCount }, () => ({
       x: Math.random(),
       y: Math.random(),
       r: 0.6 + Math.random() * 2.2,
@@ -61,27 +69,29 @@ export function ParticleBackground() {
         s.twinkle += s.twinkleSpeed;
       }
 
-      for (let i = 0; i < stars.length; i++) {
-        const a = stars[i];
-        const ax = a.x * w;
-        const ay = a.y * h;
+      if (drawLinks) {
+        for (let i = 0; i < stars.length; i++) {
+          const a = stars[i];
+          const ax = a.x * w;
+          const ay = a.y * h;
 
-        for (let j = i + 1; j < stars.length; j++) {
-          const b = stars[j];
-          const bx = b.x * w;
-          const by = b.y * h;
-          const dx = ax - bx;
-          const dy = ay - by;
-          const dist = Math.hypot(dx, dy);
+          for (let j = i + 1; j < stars.length; j++) {
+            const b = stars[j];
+            const bx = b.x * w;
+            const by = b.y * h;
+            const dx = ax - bx;
+            const dy = ay - by;
+            const dist = Math.hypot(dx, dy);
 
-          if (dist < LINK_DISTANCE) {
-            const fade = 1 - dist / LINK_DISTANCE;
-            ctx!.beginPath();
-            ctx!.strokeStyle = `hsla(280, 70%, 65%, ${fade * 0.12})`;
-            ctx!.lineWidth = 0.6;
-            ctx!.moveTo(ax, ay);
-            ctx!.lineTo(bx, by);
-            ctx!.stroke();
+            if (dist < LINK_DISTANCE) {
+              const fade = 1 - dist / LINK_DISTANCE;
+              ctx!.beginPath();
+              ctx!.strokeStyle = `hsla(280, 70%, 65%, ${fade * 0.12})`;
+              ctx!.lineWidth = 0.6;
+              ctx!.moveTo(ax, ay);
+              ctx!.lineTo(bx, by);
+              ctx!.stroke();
+            }
           }
         }
       }
@@ -97,7 +107,7 @@ export function ParticleBackground() {
         ctx!.arc(px, py, s.r, 0, Math.PI * 2);
         ctx!.fill();
 
-        if (s.r > 1.8) {
+        if (s.r > 1.8 && mode === "full") {
           ctx!.beginPath();
           ctx!.fillStyle = `hsla(${s.hue}, 90%, 85%, ${a * 0.35})`;
           ctx!.arc(px, py, s.r * 2.5, 0, Math.PI * 2);
@@ -113,18 +123,38 @@ export function ParticleBackground() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [mode]);
+
+  if (mode === "off") {
+    return (
+      <div
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-slate-950"
+        aria-hidden
+      />
+    );
+  }
+
+  const liteClass = mode === "lite" ? "arena-visual-lite" : "";
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+      className={`pointer-events-none fixed inset-0 z-0 overflow-hidden ${liteClass}`}
       aria-hidden
     >
-      <div className="arena-mesh-blob arena-mesh-blob-pink" />
-      <div className="arena-mesh-blob arena-mesh-blob-purple" />
-      <div className="arena-mesh-blob arena-mesh-blob-cyan" />
-      <div className="arena-mesh-blob arena-mesh-blob-fuchsia" />
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full opacity-75" />
+      {mode === "full" && (
+        <>
+          <div className="arena-mesh-blob arena-mesh-blob-pink" />
+          <div className="arena-mesh-blob arena-mesh-blob-purple" />
+          <div className="arena-mesh-blob arena-mesh-blob-cyan" />
+          <div className="arena-mesh-blob arena-mesh-blob-fuchsia" />
+        </>
+      )}
+      <canvas
+        ref={canvasRef}
+        className={`absolute inset-0 h-full w-full ${
+          mode === "lite" ? "opacity-50" : "opacity-75"
+        }`}
+      />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(2,6,23,0.55)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(15,23,42,0.15),transparent_40%,rgba(15,23,42,0.35))]" />
     </div>

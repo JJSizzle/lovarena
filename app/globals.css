@@ -133,8 +133,15 @@ select.select-dark option {
   }
 }
 
-.mirror {
-  transform: scaleX(-1);
+.arena-visual-lite .arena-mesh-blob {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .arena-mesh-blob {
+    filter: blur(48px);
+    opacity: 0.65;
+  }
 }
 
 .pb-safe {

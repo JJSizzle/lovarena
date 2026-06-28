@@ -1,51 +1,71 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { ProfileOrientationFields } from "@/components/ProfileOrientationFields";
+import { TagPicker } from "@/components/TagPicker";
+import { UsernameInput } from "@/components/UsernameInput";
+import {
+  INTEREST_OPTIONS,
+  LANGUAGE_OPTIONS,
+} from "@/lib/profile-tags";
 import {
   isGenderIdentity,
   isLookingFor,
   isArenaProfileComplete,
+  isOnboardingComplete,
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
+import { isPlaceholderUsername, validateUsername } from "@/lib/username";
 import { parseAgeInput } from "@/lib/profile-age";
-import { ParticleBackground } from "@/components/ParticleBackground";
+import { AdaptiveParticleBackground } from "@/components/AdaptiveParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+
+type Step = "username" | "profile" | "tags";
 
 function OnboardingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/";
+  const next = searchParams.get("next") ?? "/chat";
   const { user, profile, loading, refreshProfile } = useAuth();
 
-  const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">(
-    profile?.gender_identity ?? ""
-  );
-  const [lookingFor, setLookingFor] = useState<LookingFor | "">(
-    profile?.looking_for ?? ""
-  );
-  const [age, setAge] = useState(
-    profile?.age != null ? String(profile.age) : ""
-  );
+  const [step, setStep] = useState<Step>("username");
+  const [username, setUsername] = useState("");
+  const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
+  const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
+  const [age, setAge] = useState("");
+  const [interests, setInterests] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const seasonal = getSeasonalTheme();
 
+  const stepIndex = useMemo(() => {
+    if (step === "username") return 1;
+    if (step === "profile") return 2;
+    return 3;
+  }, [step]);
+
   useEffect(() => {
-    if (profile?.gender_identity) {
-      setGenderIdentity(profile.gender_identity);
+    if (!profile) return;
+    setUsername(profile.username);
+    setGenderIdentity(profile.gender_identity ?? "");
+    setLookingFor(profile.looking_for ?? "");
+    setAge(profile.age != null ? String(profile.age) : "");
+    setInterests(profile.interests ?? []);
+    setLanguages(profile.languages ?? []);
+
+    if (isPlaceholderUsername(profile.username)) {
+      setStep("username");
+    } else if (!isArenaProfileComplete(profile)) {
+      setStep("profile");
+    } else {
+      setStep("tags");
     }
-    if (profile?.looking_for) {
-      setLookingFor(profile.looking_for);
-    }
-    if (profile?.age != null) {
-      setAge(String(profile.age));
-    }
-  }, [profile?.gender_identity, profile?.looking_for, profile?.age]);
+  }, [profile]);
 
   useEffect(() => {
     if (loading) return;
@@ -53,15 +73,55 @@ function OnboardingForm() {
       router.replace(`/login?next=${encodeURIComponent("/onboarding")}`);
       return;
     }
-    if (profile && isArenaProfileComplete(profile) && !submitting) {
-      router.replace(next);
+    if (profile && isOnboardingComplete(profile) && step === "tags" && !submitting) {
+      const hasTags =
+        (profile.interests?.length ?? 0) > 0 ||
+        (profile.languages?.length ?? 0) > 0;
+      if (hasTags) router.replace(next);
     }
-  }, [loading, user, profile, submitting, router, next]);
+  }, [loading, user, profile, submitting, router, next, step]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function saveProfile(payload: Record<string, unknown>) {
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error ?? "Could not save profile");
+    }
+    await refreshProfile();
+  }
+
+  async function handleUsernameStep(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const check = validateUsername(username);
+    if (!check.valid) {
+      setError(check.error ?? "Invalid username.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await saveProfile({ username });
+      setStep(
+        isGenderIdentity(genderIdentity) &&
+          isLookingFor(lookingFor) &&
+          parseAgeInput(age) != null
+          ? "tags"
+          : "profile"
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save username");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
+  async function handleProfileStep(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
     if (!isGenderIdentity(genderIdentity) || !isLookingFor(lookingFor)) {
       setError("Select both identity and match preferences.");
       return;
@@ -71,27 +131,29 @@ function OnboardingForm() {
       setError("Enter your age (18+).");
       return;
     }
-
     setSubmitting(true);
-
     try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gender_identity: genderIdentity,
-          looking_for: lookingFor,
-          age: parsedAge,
-          show_age: true,
-        }),
+      await saveProfile({
+        gender_identity: genderIdentity,
+        looking_for: lookingFor,
+        age: parsedAge,
+        show_age: true,
       });
+      setStep("tags");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save profile");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? "Could not save profile");
+  async function finishOnboarding(skipTags = false) {
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (!skipTags) {
+        await saveProfile({ interests, languages });
       }
-
-      await refreshProfile();
       router.push(next);
       router.refresh();
     } catch (err) {
@@ -112,7 +174,7 @@ function OnboardingForm() {
     <main
       className={`relative min-h-screen flex items-center justify-center bg-gradient-to-br ${seasonal.gradient} px-6 py-10 text-white overflow-hidden`}
     >
-      <ParticleBackground />
+      <AdaptiveParticleBackground />
 
       <div className="relative z-10 w-full max-w-md rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-8 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
         <Link
@@ -121,55 +183,123 @@ function OnboardingForm() {
         >
           ← Lovarena
         </Link>
-        <h1 className="mt-4 text-2xl font-bold bg-gradient-to-r from-pink-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
-          Complete your profile
+        <p className="mt-4 text-xs text-purple-300/70">
+          Step {stepIndex} of 3
+        </p>
+        <h1 className="mt-1 text-2xl font-bold bg-gradient-to-r from-pink-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+          {step === "username" && "Pick your username"}
+          {step === "profile" && "About you"}
+          {step === "tags" && "Your interests"}
         </h1>
         <p className="mt-2 text-sm text-purple-300/70">
-          Tell us how you identify, who you want to meet, and your age. These
-          show on your profile when you match.
+          {step === "username" &&
+            "Choose a name strangers will see in the arena."}
+          {step === "profile" &&
+            "Age and match preferences help us pair you with the right people."}
+          {step === "tags" &&
+            "Optional — tags improve match quality. You can skip and add these later."}
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="onboarding-age" className="block text-sm text-purple-300/80 mb-2 font-medium">
-              Age
-            </label>
-            <input
-              id="onboarding-age"
-              type="number"
-              min={18}
-              max={120}
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              placeholder="18+"
+        {step === "username" && (
+          <form onSubmit={handleUsernameStep} className="mt-6 space-y-4">
+            <UsernameInput
+              id="onboarding-username"
+              value={username}
+              onChange={setUsername}
+              inputClassName="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-500/50"
               required
-              className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-500/50"
+              showHint
             />
+            {error && <ErrorBox message={error} />}
+            <button type="submit" disabled={submitting} className={submitBtnClass}>
+              {submitting ? "Saving…" : "Continue"}
+            </button>
+          </form>
+        )}
+
+        {step === "profile" && (
+          <form onSubmit={handleProfileStep} className="mt-6 space-y-4">
+            <div>
+              <label
+                htmlFor="onboarding-age"
+                className="block text-sm text-purple-300/80 mb-2 font-medium"
+              >
+                Age
+              </label>
+              <input
+                id="onboarding-age"
+                type="number"
+                min={18}
+                max={120}
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="18+"
+                required
+                className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-500/50"
+              />
+            </div>
+            <ProfileOrientationFields
+              idPrefix="onboarding"
+              genderIdentity={genderIdentity}
+              lookingFor={lookingFor}
+              onGenderIdentityChange={setGenderIdentity}
+              onLookingForChange={setLookingFor}
+            />
+            {error && <ErrorBox message={error} />}
+            <button type="submit" disabled={submitting} className={submitBtnClass}>
+              {submitting ? "Saving…" : "Continue"}
+            </button>
+          </form>
+        )}
+
+        {step === "tags" && (
+          <div className="mt-6 space-y-4">
+            <TagPicker
+              label="Interests"
+              options={INTEREST_OPTIONS}
+              selected={interests}
+              onChange={setInterests}
+              max={8}
+            />
+            <TagPicker
+              label="Languages"
+              options={LANGUAGE_OPTIONS}
+              selected={languages}
+              onChange={setLanguages}
+              max={5}
+            />
+            {error && <ErrorBox message={error} />}
+            <button
+              type="button"
+              onClick={() => finishOnboarding(false)}
+              disabled={submitting}
+              className={submitBtnClass}
+            >
+              {submitting ? "Saving…" : "Enter the arena"}
+            </button>
+            <button
+              type="button"
+              onClick={() => finishOnboarding(true)}
+              disabled={submitting}
+              className="w-full rounded-2xl border border-slate-600 text-slate-400 font-semibold py-3 text-sm hover:text-white transition"
+            >
+              Skip for now
+            </button>
           </div>
-          <ProfileOrientationFields
-            idPrefix="onboarding"
-            genderIdentity={genderIdentity}
-            lookingFor={lookingFor}
-            onGenderIdentityChange={setGenderIdentity}
-            onLookingForChange={setLookingFor}
-          />
-
-          {error && (
-            <p className="text-sm text-red-400 rounded-xl bg-red-500/10 border border-red-500/20 px-3 py-2">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 hover:from-purple-600 hover:via-fuchsia-600 hover:to-pink-600 text-white font-extrabold py-3 disabled:opacity-50 shadow-lg shadow-fuchsia-500/25 transition"
-          >
-            {submitting ? "Saving…" : "Continue"}
-          </button>
-        </form>
+        )}
       </div>
     </main>
+  );
+}
+
+const submitBtnClass =
+  "w-full rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 hover:from-purple-600 hover:via-fuchsia-600 hover:to-pink-600 text-white font-extrabold py-3 disabled:opacity-50 shadow-lg shadow-fuchsia-500/25 transition";
+
+function ErrorBox({ message }: { message: string }) {
+  return (
+    <p className="text-sm text-red-400 rounded-xl bg-red-500/10 border border-red-500/20 px-3 py-2">
+      {message}
+    </p>
   );
 }
 

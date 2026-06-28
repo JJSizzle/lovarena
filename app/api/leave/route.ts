@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   assertRoomMember,
-  getPartnerId,
   requireAuthProfile,
 } from "@/lib/auth/api-auth";
-import { endRoomIfPartnerGone } from "@/lib/partner-gone";
+import { processQualifiedChat } from "@/lib/referral/process-qualified-chat";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 async function clearSession(supabase: ReturnType<typeof createAdminClient>, userId: string) {
@@ -39,10 +38,17 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    let referralReward: { rewarded: boolean; message: string } | null = null;
 
     if (roomId) {
       const membership = await assertRoomMember(roomId, auth.profile.id);
       if ("error" in membership) return membership.error;
+
+      referralReward = await processQualifiedChat(
+        supabase,
+        auth.profile.id,
+        roomId
+      );
 
       await supabase.rpc("leave_chat", {
         p_user_id: auth.profile.id,
@@ -52,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     await clearSession(supabase, auth.profile.id);
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, referralReward });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Leave chat request failed";

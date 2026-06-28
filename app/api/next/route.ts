@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
+import { processQualifiedChat } from "@/lib/referral/process-qualified-chat";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -23,6 +24,7 @@ export async function POST(req: NextRequest) {
 
     const mode = matchMode === "regional" ? "regional" : "worldwide";
     const supabase = createAdminClient();
+    let referralReward: { rewarded: boolean; message: string } | null = null;
 
     if (await isUserFlaggedForAbuse(supabase, profile.id)) {
       return NextResponse.json(
@@ -36,6 +38,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (roomId) {
+      referralReward = await processQualifiedChat(supabase, profile.id, roomId);
+
       await supabase.rpc("leave_chat", {
         p_user_id: profile.id,
         p_room_id: roomId,
@@ -57,7 +61,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ roomId: newRoomId, userId: profile.id });
+    return NextResponse.json({
+      roomId: newRoomId,
+      userId: profile.id,
+      referralReward,
+    });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Next match request failed unexpectedly";

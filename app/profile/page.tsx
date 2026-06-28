@@ -28,8 +28,10 @@ import {
 } from "@/lib/sounds";
 import { ShareInviteButton } from "@/components/ShareInviteButton";
 import { MatchHistoryRow } from "@/components/MatchHistoryRow";
+import { ReferralBadge } from "@/components/ReferralBadge";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { isInvitedNewcomer } from "@/lib/referral/badges";
 
 type BlockRow = {
   id: string;
@@ -241,9 +243,21 @@ export default function ProfilePage() {
               <p className="text-xs text-amber-300 mt-1">
                 Reputation: {profile?.reputation_score ?? 100}/100
               </p>
-              <p className="text-xs text-fuchsia-300 mt-0.5">
-                🔥 {profile?.chat_streak ?? 0}-day streak · 👍 {profile?.positive_ratings ?? 0} kudos
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <p className="text-xs text-fuchsia-300">
+                  🔥 {profile?.chat_streak ?? 0}-day streak · 👍{" "}
+                  {profile?.positive_ratings ?? 0} kudos
+                </p>
+                <ReferralBadge
+                  qualifiedReferrals={profile?.qualified_referrals ?? 0}
+                />
+                {profile &&
+                  isInvitedNewcomer(profile.referred_by, profile.created_at) && (
+                    <span className="text-[10px] rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-purple-200">
+                      Invited
+                    </span>
+                  )}
+              </div>
             </div>
           </div>
 
@@ -381,8 +395,15 @@ export default function ProfilePage() {
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
           <h2 className="font-bold text-fuchsia-300 mb-2">Invite friends</h2>
-          <p className="text-xs text-slate-400 mb-3">Share your referral link. Friends sign up and join the arena.</p>
-          <ShareInviteButton referralCode={referralCode} className="w-full" />
+          <p className="text-xs text-slate-400 mb-3">
+            Share your link — you both earn +5 reputation after their first chat.
+            Earn Connector at 1 referral, Ambassador at 5.
+          </p>
+          <ShareInviteButton
+            referralCode={referralCode}
+            qualifiedReferrals={profile?.qualified_referrals ?? 0}
+            className="w-full"
+          />
         </div>
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">

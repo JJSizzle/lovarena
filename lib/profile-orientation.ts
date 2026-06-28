@@ -1,3 +1,5 @@
+import { isPlaceholderUsername } from "@/lib/username";
+
 export const GENDER_IDENTITIES = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
@@ -36,7 +38,7 @@ export function isOrientationProfileComplete(profile: {
   );
 }
 
-export { isValidUsername, validateUsername } from "@/lib/username";
+export { isValidUsername, validateUsername, isPlaceholderUsername } from "@/lib/username";
 
 export function isArenaProfileComplete(profile: {
   gender_identity?: string | null;
@@ -47,6 +49,18 @@ export function isArenaProfileComplete(profile: {
     isOrientationProfileComplete(profile) &&
     typeof profile.age === "number" &&
     profile.age >= 18
+  );
+}
+
+export function isOnboardingComplete(profile: {
+  username: string;
+  gender_identity?: string | null;
+  looking_for?: string | null;
+  age?: number | null;
+}): boolean {
+  return (
+    isArenaProfileComplete(profile) &&
+    !isPlaceholderUsername(profile.username)
   );
 }
 

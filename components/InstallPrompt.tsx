@@ -78,7 +78,11 @@ export function InstallPrompt() {
       <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-purple-500/30 bg-slate-900/95 backdrop-blur px-4 py-3 shadow-lg">
         <p className="text-sm text-slate-200">
           <strong className="text-fuchsia-300">Add Lovarena to Home Screen:</strong>{" "}
-          tap Share → Add to Home Screen for the app-like experience.
+          tap Share → Add to Home Screen for the app-like experience on{" "}
+          <span className="text-cyan-300/90">lovarena.app</span>.
+        </p>
+        <p className="mt-1.5 text-[11px] text-slate-500">
+          Native iOS &amp; Android apps are coming in the near future.
         </p>
         <button
           type="button"
@@ -94,23 +98,33 @@ export function InstallPrompt() {
   if (!deferred) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-purple-500/30 bg-slate-900/95 backdrop-blur px-4 py-3 shadow-lg flex items-center justify-between gap-3">
-      <p className="text-sm text-slate-200">Install Lovarena for quick access</p>
-      <div className="flex gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={install}
-          className="rounded-lg bg-fuchsia-600 px-3 py-1.5 text-xs font-semibold text-white"
-        >
-          Install
-        </button>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="rounded-lg px-2 py-1.5 text-xs text-slate-500"
-        >
-          ✕
-        </button>
+    <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-purple-500/30 bg-slate-900/95 backdrop-blur px-4 py-3 shadow-lg">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-slate-200">
+            Install Lovarena for quick access — works like an app from your
+            browser.
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Native iOS &amp; Android apps are coming in the near future.
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={install}
+            className="rounded-lg bg-fuchsia-600 px-3 py-1.5 text-xs font-semibold text-white"
+          >
+            Install
+          </button>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="rounded-lg px-2 py-1.5 text-xs text-slate-500"
+          >
+            ✕
+          </button>
+        </div>
       </div>
     </div>
   );

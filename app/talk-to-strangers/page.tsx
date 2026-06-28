@@ -32,6 +32,17 @@ export default function TalkToStrangersPage() {
         >
           Join {SITE_NAME}
         </Link>
+        <nav className="pt-4 flex flex-wrap justify-center gap-4 text-xs text-slate-500">
+          <Link href="/omegle-alternative" className="hover:text-fuchsia-300">
+            Omegle alternative
+          </Link>
+          <Link href="/random-chat" className="hover:text-fuchsia-300">
+            Random chat
+          </Link>
+          <Link href="/free-video-chat" className="hover:text-fuchsia-300">
+            Free video chat
+          </Link>
+        </nav>
       </div>
     </ArenaPageLayout>
   );

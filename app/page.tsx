@@ -9,8 +9,8 @@ import {
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
 import { useAuth } from "@/components/AuthProvider";
-import { isOrientationProfileComplete } from "@/lib/profile-orientation";
-import { ParticleBackground } from "@/components/ParticleBackground";
+import { isOnboardingComplete } from "@/lib/profile-orientation";
+import { AdaptiveParticleBackground } from "@/components/AdaptiveParticleBackground";
 import { OnlineStatsBanner } from "@/components/OnlineStatsBanner";
 import { ShareInviteButton } from "@/components/ShareInviteButton";
 import { StreakBadge } from "@/components/StreakBadge";
@@ -27,9 +27,13 @@ export default function HomePage() {
     setCountry(guessCountryCode());
   }, []);
 
+  useEffect(() => {
+    if (user) router.prefetch("/chat");
+  }, [user, router]);
+
   function handleStart() {
     setMatchPrefs(mode, country);
-    if (user && profile && !isOrientationProfileComplete(profile)) {
+    if (user && profile && !isOnboardingComplete(profile)) {
       router.push("/onboarding?next=/chat");
       return;
     }
@@ -38,7 +42,7 @@ export default function HomePage() {
 
   return (
     <main className={`relative min-h-screen flex flex-col bg-gradient-to-br ${seasonal.gradient} text-white overflow-hidden`}>
-      <ParticleBackground />
+      <AdaptiveParticleBackground />
 
       <header className="relative z-10 flex items-center justify-between px-6 py-6 max-w-4xl mx-auto w-full">
         <div>
@@ -165,6 +169,7 @@ export default function HomePage() {
           <button
             type="button"
             onClick={handleStart}
+            onMouseEnter={() => router.prefetch("/chat")}
             className="w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-slate-950 font-extrabold py-4 text-lg transition transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-emerald-400/30"
           >
             Enter Lovarena
@@ -182,8 +187,22 @@ export default function HomePage() {
             .
           </p>
           <p className="text-center text-xs text-slate-600">lovarena.app</p>
+          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] text-slate-600 pt-1">
+            <Link href="/omegle-alternative" className="hover:text-fuchsia-400">
+              Omegle alternative
+            </Link>
+            <Link href="/free-video-chat" className="hover:text-fuchsia-400">
+              Free video chat
+            </Link>
+            <Link href="/random-chat" className="hover:text-fuchsia-400">
+              Random chat
+            </Link>
+          </nav>
           <div className="flex justify-center pt-2">
-            <ShareInviteButton referralCode={profile?.referral_code} />
+            <ShareInviteButton
+              referralCode={profile?.referral_code}
+              qualifiedReferrals={profile?.qualified_referrals ?? 0}
+            />
           </div>
         </div>
       </div>

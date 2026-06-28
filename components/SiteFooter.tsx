@@ -3,11 +3,25 @@ import Link from "next/link";
 export function SiteFooter() {
   return (
     <footer className="border-t border-purple-500/20 bg-slate-950/80 text-slate-500 text-xs py-8 px-6 mt-auto">
-      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row flex-wrap gap-4 sm:gap-6 justify-between items-center">
+      <div className="max-w-5xl mx-auto space-y-4">
+        <p className="text-center text-slate-400 leading-relaxed max-w-xl mx-auto">
+          Use Lovarena in your browser today — add to Home Screen for an
+          app-like experience. Native iOS &amp; Android apps are coming in the near future.
+        </p>
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 sm:gap-6 justify-between items-center">
         <p>© {new Date().getFullYear()} Lovarena · Adults 18+ only</p>
         <nav className="flex flex-wrap gap-4 justify-center">
           <Link href="/video-chat" className="hover:text-fuchsia-300 transition">
             Video chat
+          </Link>
+          <Link href="/omegle-alternative" className="hover:text-fuchsia-300 transition">
+            Omegle alternative
+          </Link>
+          <Link href="/free-video-chat" className="hover:text-fuchsia-300 transition">
+            Free video chat
+          </Link>
+          <Link href="/random-chat" className="hover:text-fuchsia-300 transition">
+            Random chat
           </Link>
           <Link href="/talk-to-strangers" className="hover:text-fuchsia-300 transition">
             Talk to strangers
@@ -37,6 +51,7 @@ export function SiteFooter() {
             Contact
           </Link>
         </nav>
+        </div>
       </div>
     </footer>
   );

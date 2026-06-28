@@ -16,12 +16,20 @@ import { SafetyActions } from "@/components/SafetyActions";
 import { MediaPermissionGate } from "@/components/MediaPermissionGate";
 import { MatchingWaitScreen } from "@/components/MatchingWaitScreen";
 import { OnboardingTour } from "@/components/OnboardingTour";
-import { ParticleBackground } from "@/components/ParticleBackground";
+import dynamic from "next/dynamic";
+
+const LazyChatParticles = dynamic(
+  () =>
+    import("@/components/AdaptiveParticleBackground").then((m) => ({
+      default: m.AdaptiveParticleBackground,
+    })),
+  { ssr: false }
+);
 import { MatchCountdown } from "@/components/MatchCountdown";
 import { ConnectionCardOverlay } from "@/components/ConnectionCardOverlay";
 import { PostChatFeedback } from "@/components/PostChatFeedback";
 import { RulesReminder } from "@/components/RulesReminder";
-import { isOrientationProfileComplete, isArenaProfileComplete } from "@/lib/profile-orientation";
+import { isOnboardingComplete } from "@/lib/profile-orientation";
 import { formatPartnerLine } from "@/lib/profile-age";
 import { isAgeVerified, syncProfileAgeVerified } from "@/lib/age-gate";
 import { useTypingIndicator } from "@/lib/hooks/useTypingIndicator";
@@ -161,7 +169,7 @@ export default function ChatPage() {
       router.replace("/login?next=/chat");
       return;
     }
-    if (profile && !isArenaProfileComplete(profile)) {
+    if (profile && !isOnboardingComplete(profile)) {
       router.replace("/onboarding?next=/chat");
       return;
     }
@@ -553,11 +561,16 @@ export default function ChatPage() {
     setStatus("disconnected");
 
     try {
-      await fetch("/api/leave", {
+      const res = await fetch("/api/leave", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomId: currentRoomId }),
       });
+      const data = await res.json();
+      if (data.referralReward?.message) {
+        setConnectNotice(data.referralReward.message);
+        void refreshProfile();
+      }
     } catch {
       // local UI already ended the chat
     }
@@ -647,6 +660,11 @@ export default function ChatPage() {
       }),
     });
     const data = await res.json();
+
+    if (data.referralReward?.message) {
+      setConnectNotice(data.referralReward.message);
+      void refreshProfile();
+    }
 
     if (data.roomId) {
       setRoomId(data.roomId);
@@ -742,7 +760,7 @@ export default function ChatPage() {
 
   return (
     <div className={`min-h-screen flex flex-col lg:flex-row w-full bg-gradient-to-br ${seasonal.gradient} text-white relative`}>
-    <ParticleBackground />
+    <LazyChatParticles />
     <main className="flex-1 flex flex-col min-w-0 w-full max-w-4xl mx-auto lg:mx-0 relative z-[1] pb-safe">
       <MediaPermissionGate
         visible={status === "connected" && !!roomId && mediaMode === "pending"}

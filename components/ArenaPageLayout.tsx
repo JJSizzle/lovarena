@@ -1,6 +1,7 @@
 "use client";
 
 import { ParticleBackground } from "@/components/ParticleBackground";
+import { AdaptiveParticleBackground } from "@/components/AdaptiveParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 export function ArenaPageLayout({
@@ -16,8 +17,10 @@ export function ArenaPageLayout({
     <main
       className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white overflow-hidden ${className}`}
     >
-      <ParticleBackground />
+      <AdaptiveParticleBackground />
       <div className="relative z-10">{children}</div>
     </main>
   );
 }
+
+export { ParticleBackground };

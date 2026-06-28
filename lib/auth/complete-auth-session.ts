@@ -6,6 +6,7 @@ import {
   isArenaProfileComplete,
   isValidUsername,
 } from "@/lib/profile-orientation";
+import { isPlaceholderUsername } from "@/lib/username";
 
 function usernameFromMeta(user: User): string {
   const meta = user.user_metadata ?? {};
@@ -81,7 +82,10 @@ export async function resolvePostAuthRedirect(
   }
 
   const merged = { ...profile, ...updates };
-  if (!isArenaProfileComplete(merged)) {
+  if (
+    !isArenaProfileComplete(merged) ||
+    isPlaceholderUsername(merged.username ?? "")
+  ) {
     return `/onboarding?next=${encodeURIComponent(nextParam)}`;
   }
 
