@@ -7,6 +7,7 @@
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text not null,
+  username_change_count int not null default 0,
   age_verified boolean not null default false,
   gender_identity text check (gender_identity in ('male', 'female', 'non_binary')),
   looking_for text check (
@@ -20,7 +21,9 @@ create table if not exists profiles (
   ),
   created_at timestamptz not null default now(),
   constraint profiles_username_length check (char_length(username) between 3 and 15),
-  constraint profiles_username_format check (username ~ '^[a-zA-Z0-9_.]+$')
+  constraint profiles_username_format check (username ~ '^[a-zA-Z0-9_.]+$'),
+  constraint profiles_username_change_count_nonneg
+    check (username_change_count >= 0 and username_change_count <= 2)
 );
 
 create unique index if not exists profiles_username_idx on profiles (lower(username));

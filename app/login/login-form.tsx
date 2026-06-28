@@ -140,7 +140,10 @@ export default function LoginForm() {
     };
 
     const { error: insertError } = await supabase.from("profiles").insert(profileRow);
-    if (insertError && insertError.code !== "23505") {
+    if (insertError) {
+      if (insertError.code === "23505") {
+        throw new Error("That username is already taken.");
+      }
       throw new Error(insertError.message);
     }
 

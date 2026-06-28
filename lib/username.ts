@@ -1,6 +1,12 @@
 export const USERNAME_MIN_LENGTH = 3;
 export const USERNAME_MAX_LENGTH = 15;
 
+/** Username picks allowed after the initial name (signup / first real name). */
+export const MAX_USERNAME_CHANGES = 2;
+
+/** Auto-generated fallback before the user picks a real name. */
+export const PLACEHOLDER_USERNAME_PATTERN = /^user_[a-f0-9]{8}$/i;
+
 /** Letters, numbers, underscores, and periods only. Length checked separately. */
 export const USERNAME_PATTERN = /^[a-zA-Z0-9_.]+$/;
 
@@ -105,6 +111,18 @@ export function validateUsername(raw: string): UsernameValidationResult {
 
 export function isValidUsername(value: string): boolean {
   return validateUsername(value).valid;
+}
+
+export function isPlaceholderUsername(username: string): boolean {
+  return PLACEHOLDER_USERNAME_PATTERN.test(username.trim());
+}
+
+export function usernamesEqual(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+export function usernameChangesRemaining(changeCount: number): number {
+  return Math.max(0, MAX_USERNAME_CHANGES - changeCount);
 }
 
 export const USERNAME_HINT =

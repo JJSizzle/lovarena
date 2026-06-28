@@ -16,7 +16,7 @@ import {
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
-import { validateUsername } from "@/lib/username";
+import { validateUsername, usernameChangesRemaining, isPlaceholderUsername, MAX_USERNAME_CHANGES } from "@/lib/username";
 import { UsernameInput } from "@/components/UsernameInput";
 import { AVATAR_EMOJIS } from "@/lib/avatars";
 import { parseAgeInput } from "@/lib/profile-age";
@@ -203,6 +203,13 @@ export default function ProfilePage() {
 
   const seasonal = getSeasonalTheme();
 
+  const usernameChangesUsed = profile?.username_change_count ?? 0;
+  const usernameChangesLeft = usernameChangesRemaining(usernameChangesUsed);
+  const usernameLocked =
+    profile != null &&
+    !isPlaceholderUsername(profile.username) &&
+    usernameChangesLeft === 0;
+
   return (
     <main className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white px-6 py-8 pb-24 overflow-hidden`}>
       <ParticleBackground />
@@ -274,9 +281,21 @@ export default function ProfilePage() {
                 id="profile-username"
                 value={username}
                 onChange={setUsername}
-                inputClassName="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50"
+                inputClassName="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 disabled:opacity-60"
                 required
+                disabled={usernameLocked}
+                readOnly={usernameLocked}
+                showHint={!usernameLocked}
               />
+              <p className="mt-2 text-xs text-slate-500">
+                {usernameLocked
+                  ? `Your username is permanent — you have used all ${MAX_USERNAME_CHANGES} changes.`
+                  : isPlaceholderUsername(profile?.username ?? "")
+                    ? "Choose your username — you can change it up to 2 times later."
+                    : usernameChangesLeft === MAX_USERNAME_CHANGES
+                      ? `You can change your username up to ${MAX_USERNAME_CHANGES} times.`
+                      : `${usernameChangesLeft} username change${usernameChangesLeft === 1 ? "" : "s"} left.`}
+              </p>
             </div>
             <div>
               <label htmlFor="age" className="block text-sm text-purple-300/80 mb-2 font-medium">Age</label>

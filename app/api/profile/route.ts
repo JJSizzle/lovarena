@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isGenderIdentity, isLookingFor } from "@/lib/profile-orientation";
-import { validateUsername } from "@/lib/username";
+import {
+  isPlaceholderUsername,
+  MAX_USERNAME_CHANGES,
+  usernamesEqual,
+  validateUsername,
+} from "@/lib/username";
 import { sanitizeInterests, sanitizeLanguages } from "@/lib/profile-tags";
 import { isAvatarEmoji } from "@/lib/avatars";
 import { isValidAge } from "@/lib/profile-age";
@@ -10,7 +15,23 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 const PROFILE_FIELDS =
-  "id, username, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, created_at";
+  "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, created_at";
+
+async function isUsernameTaken(
+  supabase: ReturnType<typeof createAdminClient>,
+  username: string,
+  excludeUserId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("username", username)
+    .neq("id", excludeUserId)
+    .limit(1)
+    .maybeSingle();
+
+  return Boolean(data);
+}
 
 export async function GET() {
   try {
@@ -150,9 +171,52 @@ export async function PATCH(req: NextRequest) {
 
     const { data: existing } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, username, username_change_count")
       .eq("id", user.id)
       .maybeSingle();
+
+    if (typeof updates.username === "string") {
+      const nextUsername = updates.username;
+
+      if (existing && usernamesEqual(nextUsername, existing.username)) {
+        delete updates.username;
+      } else if (await isUsernameTaken(supabase, nextUsername, user.id)) {
+        return NextResponse.json(
+          { error: "That username is already taken." },
+          { status: 409 }
+        );
+      } else if (existing) {
+        const changeCount = existing.username_change_count ?? 0;
+        const fromPlaceholder = isPlaceholderUsername(existing.username);
+
+        if (!fromPlaceholder && changeCount >= MAX_USERNAME_CHANGES) {
+          return NextResponse.json(
+            {
+              error: `You have used all ${MAX_USERNAME_CHANGES} username changes. Your username is permanent.`,
+            },
+            { status: 400 }
+          );
+        }
+
+        if (!fromPlaceholder) {
+          updates.username_change_count = changeCount + 1;
+        }
+      } else if (await isUsernameTaken(supabase, nextUsername, user.id)) {
+        return NextResponse.json(
+          { error: "That username is already taken." },
+          { status: 409 }
+        );
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      const { data: current } = await supabase
+        .from("profiles")
+        .select(PROFILE_FIELDS)
+        .eq("id", user.id)
+        .maybeSingle();
+      return NextResponse.json({ profile: current });
+    }
 
     if (!existing) {
       const username =
@@ -166,6 +230,7 @@ export async function PATCH(req: NextRequest) {
           id: user.id,
           username,
           age_verified: false,
+          username_change_count: 0,
           ...updates,
         })
         .select(PROFILE_FIELDS)
@@ -176,7 +241,10 @@ export async function PATCH(req: NextRequest) {
           insertError.code === "23505"
             ? "That username is already taken."
             : insertError.message;
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json(
+          { error: message },
+          { status: insertError.code === "23505" ? 409 : 500 }
+        );
       }
 
       return NextResponse.json({ profile: inserted });
@@ -194,7 +262,10 @@ export async function PATCH(req: NextRequest) {
         error.code === "23505"
           ? "That username is already taken."
           : error.message;
-      return NextResponse.json({ error: message }, { status: 500 });
+      return NextResponse.json(
+        { error: message },
+        { status: error.code === "23505" ? 409 : 500 }
+      );
     }
 
     return NextResponse.json({ profile: data });

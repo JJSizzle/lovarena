@@ -9,6 +9,8 @@ type Props = {
   inputClassName?: string;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
   id?: string;
   showHint?: boolean;
   /** Validate while typing (default true after first blur). */
@@ -21,6 +23,8 @@ export function UsernameInput({
   inputClassName = "",
   placeholder = "Username",
   required = false,
+  disabled = false,
+  readOnly = false,
   id: idProp,
   showHint = true,
   validateLive = true,
@@ -50,6 +54,8 @@ export function UsernameInput({
         onBlur={() => setTouched(true)}
         className={inputClassName}
         required={required}
+        disabled={disabled}
+        readOnly={readOnly}
         aria-invalid={showError}
         aria-describedby={showError ? errorId : undefined}
       />
