@@ -3,6 +3,7 @@ import {
   isGenderIdentity,
   isLookingFor,
   isOrientationProfileComplete,
+  isArenaProfileComplete,
   isValidUsername,
 } from "@/lib/profile-orientation";
 
@@ -33,7 +34,7 @@ export async function resolvePostAuthRedirect(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, gender_identity, looking_for, username")
+    .select("id, gender_identity, looking_for, username, age")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -57,7 +58,7 @@ export async function resolvePostAuthRedirect(
     }
 
     if (gender_identity && looking_for) {
-      return appendQuery(nextParam, "confirmed", "1");
+      return `/onboarding?next=${encodeURIComponent(nextParam)}`;
     }
     return `/onboarding?next=${encodeURIComponent(nextParam)}`;
   }
@@ -80,7 +81,7 @@ export async function resolvePostAuthRedirect(
   }
 
   const merged = { ...profile, ...updates };
-  if (!isOrientationProfileComplete(merged)) {
+  if (!isArenaProfileComplete(merged)) {
     return `/onboarding?next=${encodeURIComponent(nextParam)}`;
   }
 

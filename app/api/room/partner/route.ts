@@ -4,8 +4,8 @@ import {
   assertRoomMember,
   requireAuthProfile,
 } from "@/lib/auth/api-auth";
-import { overlapTags } from "@/lib/safety-label";
-import { getSafetyLabel } from "@/lib/safety-label";
+import { overlapTags, getSafetyLabel } from "@/lib/safety-label";
+import { genderLabel, type GenderIdentity } from "@/lib/profile-orientation";
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const { data: partner } = await supabase
       .from("profiles")
       .select(
-        "username, interests, languages, reputation_score, created_at, age_verified, avatar_emoji"
+        "username, age, show_age, gender_identity, interests, languages, reputation_score, created_at, age_verified, avatar_url, avatar_emoji, bio"
       )
       .eq("id", partnerId)
       .maybeSingle();
@@ -47,12 +47,23 @@ export async function GET(req: NextRequest) {
       age_verified: partner?.age_verified,
     });
 
+    const showAge = partner?.show_age !== false;
+    const partnerAge =
+      showAge && typeof partner?.age === "number" ? partner.age : null;
+
     return NextResponse.json({
       partnerId,
       partnerUsername: partner?.username ?? "Stranger",
+      partnerAge,
+      partnerGender: partner?.gender_identity
+        ? genderLabel(partner.gender_identity as GenderIdentity)
+        : null,
+      partnerBio: partner?.bio ? String(partner.bio).slice(0, 120) : null,
+      partnerAvatarUrl: partner?.avatar_url ?? null,
       partnerEmoji: partner?.avatar_emoji ?? "🛸",
       matchMode: roomRow?.match_mode ?? "worldwide",
       sharedTags: overlapTags(myInterests, partnerInterests),
+      partnerInterests: (partnerInterests as string[]).slice(0, 4),
       safetyLabel: safety.label,
       safetyTone: safety.tone,
     });

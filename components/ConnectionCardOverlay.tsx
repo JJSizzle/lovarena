@@ -1,6 +1,8 @@
 "use client";
 
 import { countryCodeToFlag } from "@/lib/flags";
+import { formatPartnerLine } from "@/lib/profile-age";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 export type ConnectionCardData = {
   matchMode: string;
@@ -8,7 +10,13 @@ export type ConnectionCardData = {
   sharedTags: string[];
   safetyLabel: string;
   safetyTone: "green" | "amber" | "sky";
+  partnerUsername?: string;
+  partnerAge?: number | null;
+  partnerGender?: string | null;
+  partnerBio?: string | null;
+  partnerAvatarUrl?: string | null;
   partnerEmoji?: string;
+  partnerInterests?: string[];
 };
 
 type Props = {
@@ -20,19 +28,41 @@ type Props = {
 export function ConnectionCardOverlay({ data, visible, onDone }: Props) {
   if (!visible || !data) return null;
 
+  const username = data.partnerUsername ?? "Stranger";
+  const headline = formatPartnerLine(username, data.partnerAge, true);
+
   return (
     <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4">
       <div className="max-w-sm w-full rounded-3xl border-2 border-fuchsia-500 bg-slate-900 p-8 text-center shadow-[0_0_40px_rgba(217,70,239,0.35)] animate-fade-in">
-        <div className="text-5xl mb-3">{data.partnerEmoji ?? "🛸"}</div>
-        <h3 className="text-fuchsia-400 font-extrabold text-xl tracking-wide">
-          You&apos;re connected!
+        <div className="flex justify-center mb-4">
+          <ProfileAvatar
+            url={data.partnerAvatarUrl}
+            emoji={data.partnerEmoji}
+            size="xl"
+            alt={username}
+            className="ring-2 ring-fuchsia-500/50 shadow-lg shadow-fuchsia-500/20"
+          />
+        </div>
+        <h3 className="text-white font-extrabold text-xl tracking-wide">
+          {headline}
         </h3>
-        <p className="text-slate-400 text-sm mt-2 capitalize">
+        {data.partnerGender && (
+          <p className="text-slate-400 text-sm mt-1">{data.partnerGender}</p>
+        )}
+        <p className="text-fuchsia-400 font-bold text-sm mt-2 tracking-wide uppercase">
+          You&apos;re connected!
+        </p>
+        <p className="text-slate-500 text-xs mt-1 capitalize">
           {data.matchMode} arena
           {data.countryCode && (
             <> · {countryCodeToFlag(data.countryCode)} regional</>
           )}
         </p>
+        {data.partnerBio && (
+          <p className="text-slate-400 text-sm mt-3 line-clamp-2 italic">
+            &ldquo;{data.partnerBio}&rdquo;
+          </p>
+        )}
         <span
           className={`inline-block mt-3 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
             data.safetyTone === "green"
@@ -44,9 +74,12 @@ export function ConnectionCardOverlay({ data, visible, onDone }: Props) {
         >
           🛡 {data.safetyLabel}
         </span>
-        {data.sharedTags.length > 0 && (
+        {(data.sharedTags.length > 0 || (data.partnerInterests?.length ?? 0) > 0) && (
           <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {data.sharedTags.map((tag) => (
+            {(data.sharedTags.length > 0
+              ? data.sharedTags
+              : data.partnerInterests ?? []
+            ).map((tag) => (
               <span
                 key={tag}
                 className="text-xs rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-200 px-3 py-1"

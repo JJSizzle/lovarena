@@ -20,7 +20,8 @@ import { MatchCountdown } from "@/components/MatchCountdown";
 import { ConnectionCardOverlay } from "@/components/ConnectionCardOverlay";
 import { PostChatFeedback } from "@/components/PostChatFeedback";
 import { RulesReminder } from "@/components/RulesReminder";
-import { isOrientationProfileComplete } from "@/lib/profile-orientation";
+import { isOrientationProfileComplete, isArenaProfileComplete } from "@/lib/profile-orientation";
+import { formatPartnerLine } from "@/lib/profile-age";
 import { isAgeVerified, syncProfileAgeVerified } from "@/lib/age-gate";
 import { useTypingIndicator } from "@/lib/hooks/useTypingIndicator";
 import { useMatchCelebration } from "@/lib/hooks/useMatchCelebration";
@@ -62,6 +63,7 @@ export default function ChatPage() {
   const [connectLoading, setConnectLoading] = useState(false);
   const [bothRevealed, setBothRevealed] = useState(false);
   const [partnerId, setPartnerId] = useState<string | null>(null);
+  const [partnerLabel, setPartnerLabel] = useState<string | null>(null);
   const [sharedTags, setSharedTags] = useState<string[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackRoomId, setFeedbackRoomId] = useState<string | null>(null);
@@ -112,6 +114,12 @@ export default function ChatPage() {
         .then((d) => {
           if (d.partnerId) setPartnerId(d.partnerId);
           if (d.sharedTags) setSharedTags(d.sharedTags);
+          if (d.partnerUsername) {
+            setPartnerLabel(
+              formatPartnerLine(d.partnerUsername, d.partnerAge, true)
+            );
+            setFriendUsername(d.partnerUsername);
+          }
         })
         .catch(() => {});
     }
@@ -121,6 +129,7 @@ export default function ChatPage() {
     if (status === "matching") {
       resetCelebration();
       setPartnerId(null);
+      setPartnerLabel(null);
       setSharedTags([]);
     }
   }, [status, resetCelebration]);
@@ -137,7 +146,7 @@ export default function ChatPage() {
       router.replace("/login?next=/chat");
       return;
     }
-    if (profile && !isOrientationProfileComplete(profile)) {
+    if (profile && !isArenaProfileComplete(profile)) {
       router.replace("/onboarding?next=/chat");
       return;
     }
@@ -601,7 +610,8 @@ export default function ChatPage() {
             }`}
           />
           {status === "matching" && "Looking for someone…"}
-          {status === "connected" && "Connected"}
+          {status === "connected" &&
+            (partnerLabel ? `Connected · ${partnerLabel}` : "Connected")}
           {status === "disconnected" && "Stranger left"}
           {status === "restricted" && "Restricted"}
         </div>

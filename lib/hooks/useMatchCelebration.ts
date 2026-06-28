@@ -61,7 +61,13 @@ export function useMatchCelebration() {
           sharedTags: data.sharedTags ?? [],
           safetyLabel: data.safetyLabel ?? "Verified 18+",
           safetyTone: data.safetyTone ?? "sky",
+          partnerUsername: data.partnerUsername,
+          partnerAge: data.partnerAge,
+          partnerGender: data.partnerGender,
+          partnerBio: data.partnerBio,
+          partnerAvatarUrl: data.partnerAvatarUrl,
           partnerEmoji: data.partnerEmoji,
+          partnerInterests: data.partnerInterests,
         });
         setShowCard(true);
       }

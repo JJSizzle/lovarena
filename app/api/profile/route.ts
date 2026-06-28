@@ -4,9 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isGenderIdentity, isLookingFor, isValidUsername } from "@/lib/profile-orientation";
 import { sanitizeInterests, sanitizeLanguages } from "@/lib/profile-tags";
 import { isAvatarEmoji } from "@/lib/avatars";
+import { isValidAge } from "@/lib/profile-age";
 
 const PROFILE_FIELDS =
-  "id, username, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, created_at";
+  "id, username, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, created_at";
 
 export async function GET() {
   try {
@@ -45,6 +46,24 @@ export async function PATCH(req: NextRequest) {
 
     if ("age_verified" in body) {
       updates.age_verified = Boolean(body.age_verified);
+    }
+    if ("age" in body) {
+      const age = body.age;
+      if (age === null || age === "") {
+        updates.age = null;
+      } else {
+        const parsed = Number(age);
+        if (!isValidAge(parsed)) {
+          return NextResponse.json(
+            { error: "Age must be between 18 and 120." },
+            { status: 400 }
+          );
+        }
+        updates.age = parsed;
+      }
+    }
+    if ("show_age" in body) {
+      updates.show_age = Boolean(body.show_age);
     }
     if ("username" in body) {
       const username = String(body.username).trim();

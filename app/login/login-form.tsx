@@ -10,10 +10,11 @@ import { ProfileOrientationFields } from "@/components/ProfileOrientationFields"
 import {
   isGenderIdentity,
   isLookingFor,
-  isOrientationProfileComplete,
+  isArenaProfileComplete,
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
+import { parseAgeInput } from "@/lib/profile-age";
 import { REFERRAL_STORAGE_KEY } from "@/lib/referral";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
@@ -36,6 +37,7 @@ export default function LoginForm() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
   const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
+  const [signupAge, setSignupAge] = useState("");
 
   const seasonal = getSeasonalTheme();
   const inputClass =
@@ -95,28 +97,29 @@ export default function LoginForm() {
   async function ensureProfile(
     userId: string,
     chosenUsername?: string,
-    orientation?: { gender_identity: GenderIdentity; looking_for: LookingFor }
+    orientation?: { gender_identity: GenderIdentity; looking_for: LookingFor },
+    age?: number
   ) {
     const { data: existing } = await supabase
       .from("profiles")
-      .select("id, gender_identity, looking_for")
+      .select("id, gender_identity, looking_for, age")
       .eq("id", userId)
       .maybeSingle();
 
-    if (existing && isOrientationProfileComplete(existing)) return existing;
+    if (existing && isArenaProfileComplete(existing)) return existing;
 
     const fallbackUsername =
       chosenUsername ?? `user_${userId.replace(/-/g, "").slice(0, 8)}`;
 
     if (existing) {
+      const patch: Record<string, unknown> = {};
       if (orientation) {
-        await supabase
-          .from("profiles")
-          .update({
-            gender_identity: orientation.gender_identity,
-            looking_for: orientation.looking_for,
-          })
-          .eq("id", userId);
+        patch.gender_identity = orientation.gender_identity;
+        patch.looking_for = orientation.looking_for;
+      }
+      if (age != null) patch.age = age;
+      if (Object.keys(patch).length > 0) {
+        await supabase.from("profiles").update(patch).eq("id", userId);
       }
       return existing;
     }
@@ -125,6 +128,7 @@ export default function LoginForm() {
       id: userId,
       username: fallbackUsername,
       age_verified: isAgeVerified(),
+      ...(age != null ? { age, show_age: true } : {}),
       ...(orientation
         ? {
             gender_identity: orientation.gender_identity,
@@ -142,17 +146,18 @@ export default function LoginForm() {
       id: userId,
       gender_identity: orientation?.gender_identity ?? null,
       looking_for: orientation?.looking_for ?? null,
+      age: age ?? null,
     };
   }
 
   async function postAuthRedirect(userId: string) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("gender_identity, looking_for")
+      .select("gender_identity, looking_for, age")
       .eq("id", userId)
       .maybeSingle();
 
-    if (!profile || !isOrientationProfileComplete(profile)) {
+    if (!profile || !isArenaProfileComplete(profile)) {
       router.push(`/onboarding?next=${encodeURIComponent(next)}`);
     } else {
       router.push(next);
@@ -212,6 +217,12 @@ export default function LoginForm() {
           setLoading(false);
           return;
         }
+        const parsedSignupAge = parseAgeInput(signupAge);
+        if (parsedSignupAge == null) {
+          setError("Enter your age (18+).");
+          setLoading(false);
+          return;
+        }
 
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
@@ -222,6 +233,7 @@ export default function LoginForm() {
               username: username.trim(),
               gender_identity: genderIdentity,
               looking_for: lookingFor,
+              age: parsedSignupAge,
             },
           },
         });
@@ -229,10 +241,15 @@ export default function LoginForm() {
         if (signUpError) throw signUpError;
 
         if (data.session?.user) {
-          await ensureProfile(data.session.user.id, username, {
-            gender_identity: genderIdentity,
-            looking_for: lookingFor,
-          });
+          await ensureProfile(
+            data.session.user.id,
+            username,
+            {
+              gender_identity: genderIdentity,
+              looking_for: lookingFor,
+            },
+            parsedSignupAge
+          );
           await applyReferralCode();
           await postAuthRedirect(data.session.user.id);
         } else if (data.user) {
@@ -407,6 +424,16 @@ export default function LoginForm() {
               lookingFor={lookingFor}
               onGenderIdentityChange={setGenderIdentity}
               onLookingForChange={setLookingFor}
+            />
+            <input
+              type="number"
+              min={18}
+              max={120}
+              placeholder="Age (18+)"
+              value={signupAge}
+              onChange={(e) => setSignupAge(e.target.value)}
+              className={inputClass}
+              required
             />
             <label className="flex items-start gap-2 text-xs text-slate-400">
               <input

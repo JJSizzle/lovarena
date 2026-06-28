@@ -16,6 +16,8 @@ import type { GenderIdentity, LookingFor } from "@/lib/profile-orientation";
 export type Profile = {
   id: string;
   username: string;
+  age: number | null;
+  show_age: boolean;
   age_verified: boolean;
   is_admin: boolean;
   gender_identity: GenderIdentity | null;
@@ -64,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "id, username, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, created_at"
+        "id, username, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, created_at"
       )
       .eq("id", authUser.id)
       .maybeSingle();

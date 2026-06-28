@@ -42,6 +42,18 @@ export function isValidUsername(value: string): boolean {
   return USERNAME_PATTERN.test(value);
 }
 
+export function isArenaProfileComplete(profile: {
+  gender_identity?: string | null;
+  looking_for?: string | null;
+  age?: number | null;
+}): boolean {
+  return (
+    isOrientationProfileComplete(profile) &&
+    typeof profile.age === "number" &&
+    profile.age >= 18
+  );
+}
+
 export function genderLabel(value: GenderIdentity | null | undefined): string {
   return GENDER_IDENTITIES.find((o) => o.value === value)?.label ?? "—";
 }

@@ -8,10 +8,11 @@ import { ProfileOrientationFields } from "@/components/ProfileOrientationFields"
 import {
   isGenderIdentity,
   isLookingFor,
-  isOrientationProfileComplete,
+  isArenaProfileComplete,
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
+import { parseAgeInput } from "@/lib/profile-age";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
@@ -27,6 +28,9 @@ function OnboardingForm() {
   const [lookingFor, setLookingFor] = useState<LookingFor | "">(
     profile?.looking_for ?? ""
   );
+  const [age, setAge] = useState(
+    profile?.age != null ? String(profile.age) : ""
+  );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const seasonal = getSeasonalTheme();
@@ -38,7 +42,10 @@ function OnboardingForm() {
     if (profile?.looking_for) {
       setLookingFor(profile.looking_for);
     }
-  }, [profile?.gender_identity, profile?.looking_for]);
+    if (profile?.age != null) {
+      setAge(String(profile.age));
+    }
+  }, [profile?.gender_identity, profile?.looking_for, profile?.age]);
 
   useEffect(() => {
     if (loading) return;
@@ -46,7 +53,7 @@ function OnboardingForm() {
       router.replace(`/login?next=${encodeURIComponent("/onboarding")}`);
       return;
     }
-    if (profile && isOrientationProfileComplete(profile) && !submitting) {
+    if (profile && isArenaProfileComplete(profile) && !submitting) {
       router.replace(next);
     }
   }, [loading, user, profile, submitting, router, next]);
@@ -59,6 +66,11 @@ function OnboardingForm() {
       setError("Select both identity and match preferences.");
       return;
     }
+    const parsedAge = parseAgeInput(age);
+    if (parsedAge == null) {
+      setError("Enter your age (18+).");
+      return;
+    }
 
     setSubmitting(true);
 
@@ -69,6 +81,8 @@ function OnboardingForm() {
         body: JSON.stringify({
           gender_identity: genderIdentity,
           looking_for: lookingFor,
+          age: parsedAge,
+          show_age: true,
         }),
       });
 
@@ -111,11 +125,27 @@ function OnboardingForm() {
           Complete your profile
         </h1>
         <p className="mt-2 text-sm text-purple-300/70">
-          Tell us how you identify and who you want to meet. These preferences
-          are used for matchmaking.
+          Tell us how you identify, who you want to meet, and your age. These
+          show on your profile when you match.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <div>
+            <label htmlFor="onboarding-age" className="block text-sm text-purple-300/80 mb-2 font-medium">
+              Age
+            </label>
+            <input
+              id="onboarding-age"
+              type="number"
+              min={18}
+              max={120}
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              placeholder="18+"
+              required
+              className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-500/50"
+            />
+          </div>
           <ProfileOrientationFields
             idPrefix="onboarding"
             genderIdentity={genderIdentity}

@@ -18,6 +18,9 @@ import {
   type LookingFor,
 } from "@/lib/profile-orientation";
 import { AVATAR_EMOJIS } from "@/lib/avatars";
+import { parseAgeInput } from "@/lib/profile-age";
+import { AvatarUpload } from "@/components/AvatarUpload";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import {
   soundsEnabled,
   setSoundsEnabled,
@@ -43,6 +46,8 @@ export default function ProfilePage() {
   const { user, profile, loading, refreshProfile, signOut } = useAuth();
 
   const [username, setUsername] = useState("");
+  const [age, setAge] = useState("");
+  const [showAge, setShowAge] = useState(true);
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
@@ -71,6 +76,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!profile) return;
     setUsername(profile.username);
+    setAge(profile.age != null ? String(profile.age) : "");
+    setShowAge(profile.show_age ?? true);
     setBio(profile.bio ?? "");
     setAvatarUrl(profile.avatar_url ?? "");
     setGenderIdentity(profile.gender_identity ?? "");
@@ -113,6 +120,11 @@ export default function ProfilePage() {
       setError("Select how you identify and who you want to meet.");
       return;
     }
+    const parsedAge = parseAgeInput(age);
+    if (age.trim() && parsedAge == null) {
+      setError("Age must be between 18 and 120.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -121,8 +133,10 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username,
+          age: parsedAge,
+          show_age: showAge,
           bio,
-          avatar_url: avatarUrl,
+          avatar_url: avatarUrl || null,
           gender_identity: genderIdentity,
           looking_for: lookingFor,
           interests,
@@ -203,16 +217,14 @@ export default function ProfilePage() {
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-6">
           <div className="flex items-center gap-4 mb-6">
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt="" className="h-16 w-16 rounded-2xl object-cover border border-purple-500/30" />
-            ) : (
-              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-3xl">
-                {avatarEmoji}
-              </div>
-            )}
+            <ProfileAvatar url={avatarUrl || null} emoji={avatarEmoji} size="md" />
             <div>
-              <p className="font-bold text-lg">{username}</p>
+              <p className="font-bold text-lg">
+                {username}
+                {profile?.age != null && profile.show_age && (
+                  <span className="text-slate-400 font-normal">, {profile.age}</span>
+                )}
+              </p>
               <p className="text-xs text-slate-400 truncate">{user.email}</p>
               <p className="text-xs text-amber-300 mt-1">
                 Reputation: {profile?.reputation_score ?? 100}/100
@@ -224,9 +236,59 @@ export default function ProfilePage() {
           </div>
 
           <form onSubmit={handleSave} className="space-y-5">
+            {user && (
+              <AvatarUpload
+                userId={user.id}
+                avatarUrl={avatarUrl || null}
+                avatarEmoji={avatarEmoji}
+                onUploaded={async (url) => {
+                  setAvatarUrl(url);
+                  const res = await fetch("/api/profile", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ avatar_url: url }),
+                  });
+                  if (res.ok) {
+                    await refreshProfile();
+                    setMessage("Photo updated.");
+                  }
+                }}
+                onClear={async () => {
+                  setAvatarUrl("");
+                  const res = await fetch("/api/profile", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ avatar_url: null }),
+                  });
+                  if (res.ok) await refreshProfile();
+                }}
+              />
+            )}
             <div>
               <label htmlFor="username" className="block text-sm text-purple-300/80 mb-2 font-medium">Username</label>
               <input id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50" required />
+            </div>
+            <div>
+              <label htmlFor="age" className="block text-sm text-purple-300/80 mb-2 font-medium">Age</label>
+              <input
+                id="age"
+                type="number"
+                min={18}
+                max={120}
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="18+"
+                className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50"
+              />
+              <label className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                <input
+                  type="checkbox"
+                  checked={showAge}
+                  onChange={(e) => setShowAge(e.target.checked)}
+                  className="accent-fuchsia-500"
+                />
+                Show my age when I match with someone
+              </label>
             </div>
             <div>
               <label htmlFor="bio" className="block text-sm text-purple-300/80 mb-2 font-medium">Bio</label>
@@ -250,10 +312,6 @@ export default function ProfilePage() {
                   </button>
                 ))}
               </div>
-            </div>
-            <div>
-              <label htmlFor="avatar" className="block text-sm text-purple-300/80 mb-2 font-medium">Avatar URL (optional)</label>
-              <input id="avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50" />
             </div>
             <ProfileOrientationFields idPrefix="profile-edit" genderIdentity={genderIdentity} lookingFor={lookingFor} onGenderIdentityChange={setGenderIdentity} onLookingForChange={setLookingFor} />
             <TagPicker label="Interests" options={INTEREST_OPTIONS} selected={interests} onChange={setInterests} max={8} />
