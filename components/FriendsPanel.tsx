@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
-import { chatBtnLove, chatBtnBlock } from "@/lib/chat-buttons";
+import { chatBtnLove, chatBtnBlock, chatBtnGhost } from "@/lib/chat-buttons";
 import { useAuth } from "@/components/AuthProvider";
 import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
 import { TranslateToolbar } from "@/components/TranslateToolbar";
@@ -21,6 +21,7 @@ type FriendsPanelProps = {
   friendUsername: string;
   myId: string;
   onRemoved?: () => void;
+  onViewProfile?: () => void;
 };
 
 function appendPrivateMessage(
@@ -36,6 +37,7 @@ export function FriendsPanel({
   friendUsername,
   myId,
   onRemoved,
+  onViewProfile,
 }: FriendsPanelProps) {
   const { profile, refreshProfile } = useAuth();
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
@@ -201,18 +203,39 @@ export function FriendsPanel({
             <p className="text-xs text-pink-400 font-medium uppercase tracking-wide">
               Friends chat
             </p>
-            <p className="text-sm font-semibold text-white truncate">
-              {friendUsername}
-            </p>
+            {onViewProfile ? (
+              <button
+                type="button"
+                onClick={onViewProfile}
+                className="text-sm font-semibold text-white truncate hover:text-pink-200 transition text-left max-w-full"
+              >
+                {friendUsername}
+              </button>
+            ) : (
+              <p className="text-sm font-semibold text-white truncate">
+                {friendUsername}
+              </p>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={handleRemove}
-            disabled={removing}
-            className={`${chatBtnBlock} !px-2 !py-1 !text-[10px] shrink-0`}
-          >
-            {removing ? "…" : "Remove"}
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {onViewProfile && (
+              <button
+                type="button"
+                onClick={onViewProfile}
+                className={`${chatBtnGhost} !px-2 !py-1 !text-[10px]`}
+              >
+                Profile
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleRemove}
+              disabled={removing}
+              className={`${chatBtnBlock} !px-2 !py-1 !text-[10px]`}
+            >
+              {removing ? "…" : "Remove"}
+            </button>
+          </div>
         </div>
         <p className="text-[10px] text-slate-500 mt-0.5">
           Private messages stay after you leave the room

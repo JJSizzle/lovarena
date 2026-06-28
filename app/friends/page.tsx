@@ -4,16 +4,20 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { FriendProfileSheet } from "@/components/FriendProfileSheet";
 import { FriendsPanel } from "@/components/FriendsPanel";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { chatBtnGhost, chatBtnLove, chatBtnBlock } from "@/lib/chat-buttons";
 import type { FriendConnectionType } from "@/lib/friends/connection-type";
+import type { FriendProfileView } from "@/lib/friends/friend-profile-view";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 type Friend = {
   id: string;
   username: string;
   avatar_url: string | null;
+  avatar_emoji?: string | null;
   reputation_score: number;
   connection_type: FriendConnectionType | null;
 };
@@ -22,55 +26,79 @@ type IncomingRequest = Friend & {
   requested_at: string;
 };
 
+function toFriend(profile: FriendProfileView): Friend {
+  return {
+    id: profile.id,
+    username: profile.username,
+    avatar_url: profile.avatarUrl,
+    avatar_emoji: profile.avatarEmoji,
+    reputation_score: profile.reputationScore,
+    connection_type: profile.connectionType,
+  };
+}
+
 function FriendRow({
   friend,
-  active,
-  accent,
+  chatActive,
+  profileOpen,
   removing,
-  onSelect,
+  onViewProfile,
+  onMessage,
   onRemove,
 }: {
   friend: Friend;
-  active: boolean;
-  accent: "pink" | "purple";
+  chatActive: boolean;
+  profileOpen: boolean;
   removing: boolean;
-  onSelect: () => void;
+  onViewProfile: () => void;
+  onMessage: () => void;
   onRemove: () => void;
 }) {
+  const accent = friend.connection_type === "mutual_connect" ? "pink" : "purple";
   const activeBorder =
-    accent === "pink" ? "border-pink-500 bg-pink-500/10" : "border-fuchsia-500 bg-fuchsia-500/10";
-  const avatarGradient =
     accent === "pink"
-      ? "from-pink-500 to-rose-600"
-      : "from-fuchsia-500 to-purple-600";
+      ? "border-pink-500 bg-pink-500/10"
+      : "border-fuchsia-500 bg-fuchsia-500/10";
+  const highlighted = chatActive || profileOpen;
 
   return (
     <li>
       <div
-        className={`flex items-center gap-2 rounded-2xl border p-2 pl-4 transition ${
-          active ? activeBorder : "border-purple-500/20 bg-slate-950/80"
+        className={`flex items-center gap-1.5 rounded-2xl border p-2 pl-3 transition ${
+          highlighted ? activeBorder : "border-purple-500/20 bg-slate-950/80"
         }`}
       >
         <button
           type="button"
-          onClick={onSelect}
+          onClick={onViewProfile}
           className="flex flex-1 items-center gap-3 min-w-0 text-left hover:opacity-90"
+          aria-label={`View ${friend.username}'s profile`}
         >
-          <div
-            className={`h-10 w-10 rounded-xl bg-gradient-to-br ${avatarGradient} flex items-center justify-center font-bold shrink-0`}
-          >
-            {friend.username.slice(0, 1).toUpperCase()}
-          </div>
+          <ProfileAvatar
+            url={friend.avatar_url}
+            emoji={friend.avatar_emoji}
+            alt={friend.username}
+            size="sm"
+            className="shrink-0"
+          />
           <div className="min-w-0">
-            <p className="font-semibold truncate">{friend.username}</p>
+            <p className="font-semibold truncate text-sm">{friend.username}</p>
             <p className="text-[10px] text-amber-300">Rep {friend.reputation_score}</p>
           </div>
         </button>
         <button
           type="button"
+          onClick={onMessage}
+          className={`${chatBtnLove} !px-2 !py-1.5 !text-[10px] shrink-0`}
+          title={`Message ${friend.username}`}
+        >
+          Chat
+        </button>
+        <button
+          type="button"
           onClick={onRemove}
           disabled={removing}
-          className={`${chatBtnBlock} !px-2.5 !py-1.5 !text-[10px] shrink-0`}
+          className={`${chatBtnBlock} !px-2 !py-1.5 !text-[10px] shrink-0`}
           title={`Remove ${friend.username}`}
         >
           {removing ? "…" : "Remove"}
@@ -88,6 +116,7 @@ export default function FriendsPage() {
     []
   );
   const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
+  const [profileFriendId, setProfileFriendId] = useState<string | null>(null);
   const [requestLoading, setRequestLoading] = useState<string | null>(null);
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [requestNotice, setRequestNotice] = useState<string | null>(null);
@@ -130,13 +159,7 @@ export default function FriendsPage() {
       if (action === "accept") {
         const accepted = incomingRequests.find((r) => r.id === requesterId);
         if (accepted) {
-          setActiveFriend({
-            id: accepted.id,
-            username: accepted.username,
-            avatar_url: accepted.avatar_url,
-            reputation_score: accepted.reputation_score,
-            connection_type: "request",
-          });
+          setActiveFriend(accepted);
         }
       }
     } else {
@@ -168,9 +191,8 @@ export default function FriendsPage() {
 
     if (res.ok) {
       setRequestNotice(data.message ?? "Removed.");
-      if (activeFriend?.id === friend.id) {
-        setActiveFriend(null);
-      }
+      if (activeFriend?.id === friend.id) setActiveFriend(null);
+      if (profileFriendId === friend.id) setProfileFriendId(null);
       await loadFriends();
     } else {
       setRequestNotice(data.error ?? "Remove failed");
@@ -196,6 +218,24 @@ export default function FriendsPage() {
   );
   const hasConnections = friends.length > 0;
   const hasRequests = incomingRequests.length > 0;
+
+  function renderFriendRow(friend: Friend) {
+    return (
+      <FriendRow
+        key={friend.id}
+        friend={friend}
+        chatActive={activeFriend?.id === friend.id}
+        profileOpen={profileFriendId === friend.id}
+        removing={removeLoading === friend.id}
+        onViewProfile={() => setProfileFriendId(friend.id)}
+        onMessage={() => {
+          setActiveFriend(friend);
+          setProfileFriendId(null);
+        }}
+        onRemove={() => handleRemoveFriend(friend)}
+      />
+    );
+  }
 
   return (
     <div
@@ -233,9 +273,12 @@ export default function FriendsPage() {
                   className="flex items-center justify-between gap-2 rounded-2xl border border-fuchsia-500/30 bg-slate-950/80 p-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center font-bold shrink-0 text-sm">
-                      {request.username.slice(0, 1).toUpperCase()}
-                    </div>
+                    <ProfileAvatar
+                      url={request.avatar_url}
+                      emoji={request.avatar_emoji}
+                      alt={request.username}
+                      size="sm"
+                    />
                     <div className="min-w-0">
                       <p className="font-semibold text-sm truncate">
                         {request.username}
@@ -274,15 +317,10 @@ export default function FriendsPage() {
             <p className="text-4xl mb-3">❤️</p>
             <p className="text-slate-300 font-medium">No friends yet</p>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-              <strong className="text-pink-300">Connect</strong> when you both
-              feel a spark — they&apos;ll show under{" "}
-              <strong className="text-pink-300">Mutuals</strong>. Send a
-              low-pressure <strong className="text-fuchsia-300">Add friend</strong>{" "}
-              for the Friends list, or use{" "}
-              <Link href="/profile" className="text-fuchsia-400 hover:underline">
-                Profile → Recent matches
-              </Link>
-              .
+              Tap a friend&apos;s name to view their profile.{" "}
+              <strong className="text-pink-300">Connect</strong> for Mutuals,{" "}
+              <strong className="text-fuchsia-300">Add friend</strong> for your
+              Friends list.
             </p>
             <Link
               href="/chat"
@@ -298,26 +336,14 @@ export default function FriendsPage() {
                 ✨ Mutuals
               </h2>
               <p className="text-[10px] text-slate-500 mb-2">
-                You both tapped Connect in chat
+                Tap a name for profile · Chat to message
               </p>
               {mutuals.length === 0 ? (
                 <p className="text-xs text-slate-600 rounded-2xl border border-dashed border-pink-500/20 bg-slate-950/40 px-4 py-3">
                   No mutual sparks yet — connect with someone in the arena.
                 </p>
               ) : (
-                <ul className="space-y-2">
-                  {mutuals.map((friend) => (
-                    <FriendRow
-                      key={friend.id}
-                      friend={friend}
-                      active={activeFriend?.id === friend.id}
-                      accent="pink"
-                      removing={removeLoading === friend.id}
-                      onSelect={() => setActiveFriend(friend)}
-                      onRemove={() => handleRemoveFriend(friend)}
-                    />
-                  ))}
-                </ul>
+                <ul className="space-y-2">{mutuals.map(renderFriendRow)}</ul>
               )}
             </section>
 
@@ -326,7 +352,7 @@ export default function FriendsPage() {
                 Friends
               </h2>
               <p className="text-[10px] text-slate-500 mb-2">
-                Added via friend request
+                Tap a name for profile · Chat to message
               </p>
               {requestFriends.length === 0 ? (
                 <p className="text-xs text-slate-600 rounded-2xl border border-dashed border-purple-500/20 bg-slate-950/40 px-4 py-3">
@@ -336,17 +362,7 @@ export default function FriendsPage() {
                 </p>
               ) : (
                 <ul className="space-y-2">
-                  {requestFriends.map((friend) => (
-                    <FriendRow
-                      key={friend.id}
-                      friend={friend}
-                      active={activeFriend?.id === friend.id}
-                      accent="purple"
-                      removing={removeLoading === friend.id}
-                      onSelect={() => setActiveFriend(friend)}
-                      onRemove={() => handleRemoveFriend(friend)}
-                    />
-                  ))}
+                  {requestFriends.map(renderFriendRow)}
                 </ul>
               )}
             </section>
@@ -354,14 +370,30 @@ export default function FriendsPage() {
         )}
       </main>
 
+      <FriendProfileSheet
+        friendId={profileFriendId}
+        open={profileFriendId != null}
+        onClose={() => setProfileFriendId(null)}
+        onMessage={(p) => {
+          setActiveFriend(toFriend(p));
+          setProfileFriendId(null);
+        }}
+        onRemove={(p) => {
+          setProfileFriendId(null);
+          void handleRemoveFriend(toFriend(p));
+        }}
+      />
+
       {activeFriend && (
         <div className="relative z-10">
           <FriendsPanel
             friendId={activeFriend.id}
             friendUsername={activeFriend.username}
             myId={profile.id}
+            onViewProfile={() => setProfileFriendId(activeFriend.id)}
             onRemoved={() => {
               setActiveFriend(null);
+              setProfileFriendId(null);
               void loadFriends();
             }}
           />

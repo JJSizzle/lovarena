@@ -34,7 +34,7 @@ export async function GET() {
 
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, username, avatar_url, reputation_score")
+      .select("id, username, avatar_url, avatar_emoji, reputation_score")
       .in("id", friendIds.length ? friendIds : ["00000000-0000-0000-0000-000000000000"]);
 
     const { data: pendingIncoming } = await supabase
@@ -48,7 +48,7 @@ export async function GET() {
     const { data: incomingProfiles } = incomingIds.length
       ? await supabase
           .from("profiles")
-          .select("id, username, avatar_url, reputation_score")
+          .select("id, username, avatar_url, avatar_emoji, reputation_score")
           .in("id", incomingIds)
       : { data: [] };
 
