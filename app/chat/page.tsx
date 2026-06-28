@@ -462,6 +462,13 @@ export default function ChatPage() {
     return () => clearTimeout(timer);
   }, [connectionState, status, roomId, stopMedia]);
 
+  useEffect(() => {
+    if (status !== "disconnected") return;
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    });
+  }, [status, endedBySelf, bottomRef]);
+
   async function handleStop() {
     if (!userId || status !== "connected" || !roomId) return;
 
@@ -815,21 +822,6 @@ export default function ChatPage() {
             cannot send messages or match again from this browser tab.
           </div>
         )}
-        {status === "disconnected" && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            {endedBySelf ? (
-              <>
-                You ended the chat. Press <strong>Next</strong> when you want
-                someone new.
-              </>
-            ) : (
-              <>
-                Stranger disconnected. Press <strong>Next</strong> to find
-                someone new.
-              </>
-            )}
-          </div>
-        )}
         {status === "matching" && messages.length === 0 && !error && (
           <p className="text-center text-slate-500 mt-20">
             Waiting for a stranger to join...
@@ -859,6 +851,22 @@ export default function ChatPage() {
             </div>
           );
         })}
+
+        {status === "disconnected" && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200 text-center">
+            {endedBySelf ? (
+              <>
+                You ended the chat. Press <strong>Next</strong> when you want
+                someone new.
+              </>
+            ) : (
+              <>
+                Stranger disconnected. Press <strong>Next</strong> to find
+                someone new.
+              </>
+            )}
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
