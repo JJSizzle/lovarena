@@ -37,6 +37,8 @@ export type Profile = {
   positive_ratings: number;
   qualified_referrals: number;
   referred_by: string | null;
+  primary_language: string;
+  auto_translate: boolean;
   created_at: string;
 };
 
@@ -69,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, qualified_referrals, referred_by, created_at"
+        "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, qualified_referrals, referred_by, primary_language, auto_translate, created_at"
       )
       .eq("id", authUser.id)
       .maybeSingle();

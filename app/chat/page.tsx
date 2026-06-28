@@ -29,6 +29,8 @@ import { MatchCountdown } from "@/components/MatchCountdown";
 import { ConnectionCardOverlay } from "@/components/ConnectionCardOverlay";
 import { PostChatFeedback } from "@/components/PostChatFeedback";
 import { RulesReminder } from "@/components/RulesReminder";
+import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
+import { TranslateToolbar } from "@/components/TranslateToolbar";
 import { isOnboardingComplete } from "@/lib/profile-orientation";
 import { formatPartnerLine } from "@/lib/profile-age";
 import { isAgeVerified, syncProfileAgeVerified } from "@/lib/age-gate";
@@ -86,6 +88,8 @@ export default function ChatPage() {
   const [mediaMode, setMediaMode] = useState<"pending" | "granted" | "text-only">(
     "pending"
   );
+  const [primaryLanguage, setPrimaryLanguage] = useState("English");
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const [mobileVideoExpanded, setMobileVideoExpanded] = useState(false);
   const bottomRef = useScrollOnNewMessage(messages, roomId);
   const roomIdRef = useRef(roomId);
@@ -162,6 +166,33 @@ export default function ChatPage() {
     matchPrefs.matchMode === "regional"
       ? `REGIONAL · ${matchPrefs.countryCode}`
       : "GLOBAL ROOM";
+
+  useEffect(() => {
+    if (!profile) return;
+    setPrimaryLanguage(profile.primary_language ?? "English");
+    setAutoTranslate(profile.auto_translate ?? false);
+  }, [profile?.primary_language, profile?.auto_translate, profile]);
+
+  async function saveTranslationPrefs(
+    updates: Partial<{ primary_language: string; auto_translate: boolean }>
+  ) {
+    if (updates.primary_language != null) {
+      setPrimaryLanguage(updates.primary_language);
+    }
+    if (updates.auto_translate != null) {
+      setAutoTranslate(updates.auto_translate);
+    }
+    try {
+      await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      await refreshProfile();
+    } catch {
+      // local UI still updated
+    }
+  }
 
   useEffect(() => {
     if (authLoading) return;
@@ -799,6 +830,18 @@ export default function ChatPage() {
           </Link>
         )}
       </header>
+      <div className="px-4 pb-2">
+        <TranslateToolbar
+          primaryLanguage={primaryLanguage}
+          autoTranslate={autoTranslate}
+          onPrimaryLanguageChange={(lang) => {
+            void saveTranslationPrefs({ primary_language: lang });
+          }}
+          onAutoTranslateChange={(enabled) => {
+            void saveTranslationPrefs({ auto_translate: enabled });
+          }}
+        />
+      </div>
 
       {status !== "restricted" && (
         <>
@@ -953,15 +996,18 @@ export default function ChatPage() {
               key={msg.id}
               className={`flex ${isMe ? "justify-end" : "justify-start"}`}
             >
-              <div
+              <TranslatedMessageBubble
+                messageId={msg.id}
+                content={msg.content}
+                isMe={isMe}
+                targetLanguage={primaryLanguage}
+                autoTranslate={autoTranslate}
                 className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   isMe
                     ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white"
                     : "bg-white/10 text-slate-100"
                 }`}
-              >
-                {msg.content}
-              </div>
+              />
             </div>
           );
         })}

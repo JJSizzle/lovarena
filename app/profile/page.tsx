@@ -16,6 +16,7 @@ import {
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
+import { isSupportedTranslationLanguage } from "@/lib/translation/language-codes";
 import { validateUsername, usernameChangesRemaining, isPlaceholderUsername, MAX_USERNAME_CHANGES } from "@/lib/username";
 import { UsernameInput } from "@/components/UsernameInput";
 import { AVATAR_EMOJIS } from "@/lib/avatars";
@@ -63,6 +64,8 @@ export default function ProfilePage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [faceBlurDefault, setFaceBlurDefault] = useState(true);
   const [voiceOnlyDefault, setVoiceOnlyDefault] = useState(false);
+  const [primaryLanguage, setPrimaryLanguage] = useState("English");
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const [avatarEmoji, setAvatarEmoji] = useState("😎");
   const [soundEffects, setSoundEffects] = useState(true);
   const [referralCode, setReferralCode] = useState("");
@@ -93,6 +96,8 @@ export default function ProfilePage() {
     setNotificationsEnabled(profile.notifications_enabled ?? true);
     setFaceBlurDefault(profile.face_blur_default ?? true);
     setVoiceOnlyDefault(profile.voice_only_default ?? false);
+    setPrimaryLanguage(profile.primary_language ?? "English");
+    setAutoTranslate(profile.auto_translate ?? false);
     setAvatarEmoji(profile.avatar_emoji ?? "😎");
     setReferralCode(profile.referral_code ?? "");
   }, [profile]);
@@ -151,6 +156,8 @@ export default function ProfilePage() {
           notifications_enabled: notificationsEnabled,
           face_blur_default: faceBlurDefault,
           voice_only_default: voiceOnlyDefault,
+          primary_language: primaryLanguage,
+          auto_translate: autoTranslate,
           avatar_emoji: avatarEmoji,
         }),
       });
@@ -369,6 +376,33 @@ export default function ProfilePage() {
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input type="checkbox" checked={voiceOnlyDefault} onChange={(e) => setVoiceOnlyDefault(e.target.checked)} />
               Voice-only mode by default (no camera)
+            </label>
+            <div>
+              <label htmlFor="primary-language" className="block text-sm text-purple-300/80 mb-2 font-medium">
+                Translate messages to
+              </label>
+              <select
+                id="primary-language"
+                value={primaryLanguage}
+                onChange={(e) => setPrimaryLanguage(e.target.value)}
+                className="select-dark w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 text-slate-100"
+              >
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang}
+                    {!isSupportedTranslationLanguage(lang) ? " (coming soon)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={autoTranslate}
+                disabled={!isSupportedTranslationLanguage(primaryLanguage)}
+                onChange={(e) => setAutoTranslate(e.target.checked)}
+              />
+              Auto-translate incoming chat and friend messages
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input

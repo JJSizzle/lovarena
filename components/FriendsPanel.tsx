@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
 import { chatBtnLove } from "@/lib/chat-buttons";
+import { useAuth } from "@/components/AuthProvider";
+import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
+import { TranslateToolbar } from "@/components/TranslateToolbar";
 
 type PrivateMessage = {
   id: string;
@@ -32,10 +35,40 @@ export function FriendsPanel({
   friendUsername,
   myId,
 }: FriendsPanelProps) {
+  const { profile, refreshProfile } = useAuth();
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [primaryLanguage, setPrimaryLanguage] = useState("English");
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const bottomRef = useScrollOnNewMessage(messages, friendId);
+
+  useEffect(() => {
+    if (!profile) return;
+    setPrimaryLanguage(profile.primary_language ?? "English");
+    setAutoTranslate(profile.auto_translate ?? false);
+  }, [profile?.primary_language, profile?.auto_translate, profile]);
+
+  async function saveTranslationPrefs(
+    updates: Partial<{ primary_language: string; auto_translate: boolean }>
+  ) {
+    if (updates.primary_language != null) {
+      setPrimaryLanguage(updates.primary_language);
+    }
+    if (updates.auto_translate != null) {
+      setAutoTranslate(updates.auto_translate);
+    }
+    try {
+      await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      await refreshProfile();
+    } catch {
+      // local UI still updated
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -141,6 +174,18 @@ export function FriendsPanel({
         <p className="text-[10px] text-slate-500 mt-0.5">
           Private messages stay after you leave the room
         </p>
+        <div className="mt-2">
+          <TranslateToolbar
+            primaryLanguage={primaryLanguage}
+            autoTranslate={autoTranslate}
+            onPrimaryLanguageChange={(lang) => {
+              void saveTranslationPrefs({ primary_language: lang });
+            }}
+            onAutoTranslateChange={(enabled) => {
+              void saveTranslationPrefs({ auto_translate: enabled });
+            }}
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-[160px] max-h-[40vh] lg:max-h-none">
@@ -161,15 +206,18 @@ export function FriendsPanel({
               key={msg.id}
               className={`flex ${isMe ? "justify-end" : "justify-start"}`}
             >
-              <div
+              <TranslatedMessageBubble
+                messageId={msg.id}
+                content={msg.content}
+                isMe={isMe}
+                targetLanguage={primaryLanguage}
+                autoTranslate={autoTranslate}
                 className={`max-w-[90%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
                   isMe
                     ? "bg-pink-600 text-white"
                     : "bg-white/10 text-slate-100"
                 }`}
-              >
-                {msg.content}
-              </div>
+              />
             </div>
           );
         })}

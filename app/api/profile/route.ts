@@ -9,13 +9,14 @@ import {
   validateUsername,
 } from "@/lib/username";
 import { sanitizeInterests, sanitizeLanguages } from "@/lib/profile-tags";
+import { sanitizePrimaryLanguage } from "@/lib/translation/language-codes";
 import { isAvatarEmoji } from "@/lib/avatars";
 import { isValidAge } from "@/lib/profile-age";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 const PROFILE_FIELDS =
-  "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, qualified_referrals, referred_by, created_at";
+  "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, qualified_referrals, referred_by, primary_language, auto_translate, created_at";
 
 async function isUsernameTaken(
   supabase: ReturnType<typeof createAdminClient>,
@@ -154,6 +155,12 @@ export async function PATCH(req: NextRequest) {
     }
     if ("voice_only_default" in body) {
       updates.voice_only_default = Boolean(body.voice_only_default);
+    }
+    if ("primary_language" in body) {
+      updates.primary_language = sanitizePrimaryLanguage(body.primary_language);
+    }
+    if ("auto_translate" in body) {
+      updates.auto_translate = Boolean(body.auto_translate);
     }
     if ("avatar_emoji" in body) {
       const emoji = String(body.avatar_emoji ?? "");
