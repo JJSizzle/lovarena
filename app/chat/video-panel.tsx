@@ -18,6 +18,7 @@ type VideoPanelProps = {
   onNext: () => void;
   onIceBreaker: () => void;
   loadingNext: boolean;
+  endedBySelf?: boolean;
   showConnect?: boolean;
   connectSlot?: React.ReactNode;
   videoBlurred?: boolean;
@@ -43,6 +44,7 @@ export function VideoPanel({
   onNext,
   onIceBreaker,
   loadingNext,
+  endedBySelf = false,
   showConnect,
   connectSlot,
   videoBlurred = false,
@@ -117,7 +119,9 @@ export function VideoPanel({
                   ? "Voice-only mode"
                   : status === "matching"
                     ? "Waiting for connection..."
-                    : "Stranger disconnected"}
+                    : endedBySelf
+                      ? "Chat ended"
+                      : "Stranger disconnected"}
               </p>
             </>
           )}
@@ -209,7 +213,7 @@ export function VideoPanel({
           disabled={!videoActive}
           className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 disabled:opacity-40 text-white text-sm font-bold px-6 py-3 rounded-2xl transition transform active:scale-95 shadow-lg shadow-red-500/20"
         >
-          Stop
+          End chat
         </button>
         <button
           type="button"

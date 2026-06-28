@@ -70,6 +70,7 @@ export default function ChatPage() {
   const [feedbackRoomId, setFeedbackRoomId] = useState<string | null>(null);
   const [feedbackPartnerId, setFeedbackPartnerId] = useState<string | null>(null);
   const [pendingNext, setPendingNext] = useState(false);
+  const [endedBySelf, setEndedBySelf] = useState(false);
   const bottomRef = useScrollOnNewMessage(messages, roomId);
 
   const videoBlurred = profile?.face_blur_default ?? true;
@@ -326,6 +327,7 @@ export default function ChatPage() {
 
         setError(null);
         if (data.roomId) {
+          setEndedBySelf(false);
           setRoomId(data.roomId);
           setStatus("connected");
           clearInterval(interval);
@@ -406,6 +408,7 @@ export default function ChatPage() {
         });
         const data = await res.json();
         if (res.ok && data.status === "ended") {
+          setEndedBySelf(false);
           setStatus("disconnected");
         }
       } catch {
@@ -417,6 +420,34 @@ export default function ChatPage() {
     const interval = setInterval(checkRoom, 2000);
     return () => clearInterval(interval);
   }, [roomId, status]);
+
+  async function handleStop() {
+    if (!userId || status !== "connected" || !roomId) return;
+
+    const currentRoomId = roomId;
+    stopMedia();
+    setMessages([]);
+    setRoomId(null);
+    setPartnerId(null);
+    setPartnerLabel(null);
+    setSharedTags([]);
+    setFriendsMatched(false);
+    setYouClickedConnect(false);
+    setConnectNotice(null);
+    resetCelebration();
+    setEndedBySelf(true);
+    setStatus("disconnected");
+
+    try {
+      await fetch("/api/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: currentRoomId }),
+      });
+    } catch {
+      // local UI already ended the chat
+    }
+  }
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -484,6 +515,7 @@ export default function ChatPage() {
     stopMedia();
     setLoadingNext(true);
     setMessages([]);
+    setEndedBySelf(false);
     const previousRoomId = roomId;
     setRoomId(null);
     setPartnerId(null);
@@ -615,7 +647,8 @@ export default function ChatPage() {
           {status === "matching" && "Looking for someone…"}
           {status === "connected" &&
             (partnerLabel ? `Connected · ${partnerLabel}` : "Connected")}
-          {status === "disconnected" && "Stranger left"}
+          {status === "disconnected" &&
+            (endedBySelf ? "Chat ended" : "Stranger left")}
           {status === "restricted" && "Restricted"}
         </div>
         {profile && (
@@ -642,7 +675,8 @@ export default function ChatPage() {
           audioEnabled={audioEnabled}
           onToggleVideo={toggleVideo}
           onToggleAudio={toggleAudio}
-          onStop={stopMedia}
+          onStop={handleStop}
+          endedBySelf={endedBySelf}
           onNext={handleNext}
           onIceBreaker={generateIceBreaker}
           loadingNext={loadingNext}
@@ -677,6 +711,7 @@ export default function ChatPage() {
                   onBlocked={() => {
                     stopMedia();
                     setRoomId(null);
+                    setEndedBySelf(false);
                     setStatus("disconnected");
                     setError("User blocked. Press Next for a new match.");
                   }}
@@ -741,8 +776,17 @@ export default function ChatPage() {
         )}
         {status === "disconnected" && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            Stranger disconnected. Press <strong>Next</strong> to find someone
-            new.
+            {endedBySelf ? (
+              <>
+                You ended the chat. Press <strong>Next</strong> when you want
+                someone new.
+              </>
+            ) : (
+              <>
+                Stranger disconnected. Press <strong>Next</strong> to find
+                someone new.
+              </>
+            )}
           </div>
         )}
         {status === "matching" && messages.length === 0 && !error && (
@@ -798,7 +842,9 @@ export default function ChatPage() {
             status === "connected"
               ? "Type a message..."
               : status === "disconnected"
-                ? "Stranger left — press Next"
+                ? endedBySelf
+                  ? "Chat ended — press Next for a new match"
+                  : "Stranger left — press Next"
                 : "Waiting for match..."
           }
           className="flex-1 rounded-xl bg-slate-950/60 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 disabled:opacity-50 text-white"
