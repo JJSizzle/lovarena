@@ -90,7 +90,6 @@ export default function ChatPage() {
   );
   const [primaryLanguage, setPrimaryLanguage] = useState("English");
   const [autoTranslate, setAutoTranslate] = useState(false);
-  const [mobileVideoExpanded, setMobileVideoExpanded] = useState(false);
   const bottomRef = useScrollOnNewMessage(messages, roomId);
   const roomIdRef = useRef(roomId);
   const statusRef = useRef(status);
@@ -471,7 +470,6 @@ export default function ChatPage() {
 
   useEffect(() => {
     setMediaMode("pending");
-    setMobileVideoExpanded(false);
   }, [roomId]);
 
   useEffect(() => {
@@ -878,8 +876,6 @@ export default function ChatPage() {
           }
           sharedTags={sharedTags}
           voiceOnly={voiceOnly}
-          mobileVideoExpanded={mobileVideoExpanded}
-          onToggleMobileVideo={() => setMobileVideoExpanded((v) => !v)}
           connectSlot={
             <>
               <button

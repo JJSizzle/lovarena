@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
+import {
+  friendLinkStatus,
+  type FriendLinkStatus,
+} from "@/lib/friends/friend-link-status";
 
 export async function GET() {
   try {
@@ -37,6 +41,15 @@ export async function GET() {
     const nameById = new Map((partners ?? []).map((p) => [p.id, p.username]));
     const blockedIds = new Set((blocks ?? []).map((b) => b.blocked_id));
 
+    const { data: friendRows } = partnerIds.length
+      ? await supabase
+          .from("friendships")
+          .select("user_id, friend_id, status")
+          .or(
+            `user_id.eq.${auth.profile.id},friend_id.eq.${auth.profile.id}`
+          )
+      : { data: [] };
+
     return NextResponse.json({
       history: (data ?? []).map((row) => ({
         id: row.id,
@@ -45,6 +58,11 @@ export async function GET() {
         created_at: row.created_at,
         partnerUsername: nameById.get(row.partner_id) ?? "Stranger",
         isBlocked: blockedIds.has(row.partner_id),
+        friendStatus: friendLinkStatus(
+          auth.profile.id,
+          row.partner_id,
+          friendRows ?? []
+        ) as FriendLinkStatus,
       })),
     });
   } catch (err) {

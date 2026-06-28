@@ -104,12 +104,11 @@ export function useWebRTC(
     const track = stream.getVideoTracks()[0];
     if (!track) return;
 
-    setVideoEnabled((prev) => {
-      const next = !prev;
-      track.enabled = next;
-      return next;
-    });
-  }, []);
+    const next = !track.enabled;
+    track.enabled = next;
+    setVideoEnabled(next);
+    bindLocalPreview(localVideoRef.current);
+  }, [bindLocalPreview]);
 
   const toggleAudio = useCallback(() => {
     const stream = localStreamRef.current;
@@ -272,10 +271,6 @@ export function useWebRTC(
       setConnectionState("closed");
     };
   }, [active, roomId, userId, voiceOnly, bindLocalPreview]);
-
-  useEffect(() => {
-    bindLocalPreview(localVideoRef.current);
-  }, [videoEnabled, active, bindLocalPreview]);
 
   return {
     localVideoRef,

@@ -47,6 +47,7 @@ type HistoryRow = {
   partnerUsername: string;
   created_at: string;
   isBlocked: boolean;
+  friendStatus: "none" | "friends" | "pending_sent" | "pending_received";
 };
 
 export default function ProfilePage() {
@@ -473,7 +474,8 @@ export default function ProfilePage() {
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
           <h2 className="font-bold text-fuchsia-300 mb-1">Recent matches</h2>
           <p className="text-[10px] text-slate-500 mb-3">
-            Block someone to avoid matching with them again.
+            Add friends from recent matches (within 30 days). Block to avoid
+            matching again.
           </p>
           {history.length === 0 ? (
             <p className="text-xs text-slate-500">No match history yet.</p>
@@ -487,6 +489,16 @@ export default function ProfilePage() {
                   partnerUsername={h.partnerUsername}
                   createdAt={h.created_at}
                   isBlocked={h.isBlocked}
+                  friendStatus={h.friendStatus ?? "none"}
+                  onFriendStatusChange={(partnerId, friendStatus) => {
+                    setHistory((prev) =>
+                      prev.map((row) =>
+                        row.partnerId === partnerId
+                          ? { ...row, friendStatus }
+                          : row
+                      )
+                    );
+                  }}
                   onBlocked={(partnerId) => {
                     setHistory((prev) =>
                       prev.map((row) =>

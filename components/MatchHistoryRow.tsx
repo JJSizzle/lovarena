@@ -1,8 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { chatBtnBlock, chatBtnGhost, chatBtnReport, chatBtnWarn } from "@/lib/chat-buttons";
+import {
+  chatBtnBlock,
+  chatBtnGhost,
+  chatBtnLove,
+  chatBtnReport,
+  chatBtnWarn,
+} from "@/lib/chat-buttons";
 import { ReportReasonFields } from "@/components/ReportReasonFields";
+import type { FriendLinkStatus } from "@/lib/friends/friend-link-status";
 
 type MatchHistoryRowProps = {
   id: string;
@@ -10,7 +17,9 @@ type MatchHistoryRowProps = {
   partnerUsername: string;
   createdAt: string;
   isBlocked: boolean;
+  friendStatus: FriendLinkStatus;
   onBlocked: (partnerId: string) => void;
+  onFriendStatusChange: (partnerId: string, status: FriendLinkStatus) => void;
 };
 
 export function MatchHistoryRow({
@@ -18,7 +27,9 @@ export function MatchHistoryRow({
   partnerUsername,
   createdAt,
   isBlocked,
+  friendStatus,
   onBlocked,
+  onFriendStatusChange,
 }: MatchHistoryRowProps) {
   const [reportOpen, setReportOpen] = useState(false);
   const [reason, setReason] = useState("harassment");
@@ -64,6 +75,63 @@ export function MatchHistoryRow({
     }
   }
 
+  async function handleFriendAction(accept = false) {
+    setLoading(true);
+    setStatus(null);
+    const res = await fetch("/api/friends/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        friendId: partnerId,
+        ...(accept ? { action: "accept" } : {}),
+      }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (res.ok) {
+      const nextStatus = (data.friendStatus ?? friendStatus) as FriendLinkStatus;
+      onFriendStatusChange(partnerId, nextStatus);
+      setStatus(data.message ?? "Updated.");
+    } else {
+      setStatus(data.error ?? "Friend request failed");
+    }
+  }
+
+  function friendButton() {
+    if (friendStatus === "friends") {
+      return (
+        <span className="text-[10px] text-pink-300 px-1.5 py-1">Friends</span>
+      );
+    }
+    if (friendStatus === "pending_sent") {
+      return (
+        <span className="text-[10px] text-slate-500 px-1.5 py-1">Requested</span>
+      );
+    }
+    if (friendStatus === "pending_received") {
+      return (
+        <button
+          type="button"
+          onClick={() => handleFriendAction(true)}
+          disabled={loading}
+          className={`${chatBtnLove} !px-2 !py-1 !text-[10px]`}
+        >
+          Accept
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => handleFriendAction(false)}
+        disabled={loading}
+        className={`${chatBtnLove} !px-2 !py-1 !text-[10px]`}
+      >
+        Add friend
+      </button>
+    );
+  }
+
   return (
     <>
       <li className="flex items-center justify-between gap-2 text-xs">
@@ -73,11 +141,12 @@ export function MatchHistoryRow({
             {new Date(createdAt).toLocaleDateString()}
           </span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
           {isBlocked ? (
             <span className="text-[10px] text-slate-500 px-2">Blocked</span>
           ) : (
             <>
+              {friendButton()}
               <button
                 type="button"
                 onClick={() => setReportOpen(true)}

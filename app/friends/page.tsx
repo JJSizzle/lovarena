@@ -62,7 +62,11 @@ export default function FriendsPage() {
             <p className="text-4xl mb-3">❤️</p>
             <p className="text-slate-300 font-medium">No friends yet</p>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-              In a chat, both of you tap ❤️ Connect to become friends and message here.
+              Tap ❤️ Connect during a chat, or use{" "}
+              <Link href="/profile" className="text-fuchsia-400 hover:underline">
+                Profile → Recent matches
+              </Link>{" "}
+              to add someone you matched with in the last 30 days.
             </p>
             <Link href="/chat" className="inline-block mt-6 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-bold px-6 py-3 text-sm">
               Enter arena
