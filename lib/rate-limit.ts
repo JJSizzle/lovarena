@@ -15,6 +15,9 @@ export async function rateLimit(
 
   if (error) {
     console.error("rate_limit_check_failed", bucketKey, error.message);
+    void import("@/lib/capture-error").then(({ captureServerError }) =>
+      captureServerError(error, { bucketKey, kind: "rate_limit" })
+    );
     return { allowed: false, retryAfterSeconds: windowSeconds };
   }
 
