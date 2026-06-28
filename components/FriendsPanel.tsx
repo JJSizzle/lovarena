@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
-import { chatBtnLove } from "@/lib/chat-buttons";
+import { chatBtnLove, chatBtnBlock } from "@/lib/chat-buttons";
 import { useAuth } from "@/components/AuthProvider";
 import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
 import { TranslateToolbar } from "@/components/TranslateToolbar";
@@ -20,6 +20,7 @@ type FriendsPanelProps = {
   friendId: string;
   friendUsername: string;
   myId: string;
+  onRemoved?: () => void;
 };
 
 function appendPrivateMessage(
@@ -34,11 +35,13 @@ export function FriendsPanel({
   friendId,
   friendUsername,
   myId,
+  onRemoved,
 }: FriendsPanelProps) {
   const { profile, refreshProfile } = useAuth();
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [primaryLanguage, setPrimaryLanguage] = useState("English");
   const [autoTranslate, setAutoTranslate] = useState(false);
   const bottomRef = useScrollOnNewMessage(messages, friendId);
@@ -160,17 +163,57 @@ export function FriendsPanel({
     }
   }
 
+  async function handleRemove() {
+    if (
+      !confirm(
+        `Remove ${friendUsername}? You can add them again from a future match.`
+      )
+    ) {
+      return;
+    }
+
+    setRemoving(true);
+    setError(null);
+
+    const res = await fetch("/api/friends", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ friendId }),
+    });
+    const data = await res.json();
+    setRemoving(false);
+
+    if (!res.ok) {
+      setError(data.error ?? "Could not remove");
+      return;
+    }
+
+    onRemoved?.();
+  }
+
   return (
     <aside
       className="w-full lg:w-80 shrink-0 border-l border-white/10 bg-slate-900/50 flex flex-col min-h-0"
     >
       <div className="px-4 py-3 border-b border-white/10">
-        <p className="text-xs text-pink-400 font-medium uppercase tracking-wide">
-          Friends chat
-        </p>
-        <p className="text-sm font-semibold text-white truncate">
-          {friendUsername}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs text-pink-400 font-medium uppercase tracking-wide">
+              Friends chat
+            </p>
+            <p className="text-sm font-semibold text-white truncate">
+              {friendUsername}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={removing}
+            className={`${chatBtnBlock} !px-2 !py-1 !text-[10px] shrink-0`}
+          >
+            {removing ? "…" : "Remove"}
+          </button>
+        </div>
         <p className="text-[10px] text-slate-500 mt-0.5">
           Private messages stay after you leave the room
         </p>

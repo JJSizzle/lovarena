@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
+import { removeFriendshipPair } from "@/lib/friends/friend-link-status";
 
 export async function GET() {
   try {
@@ -73,6 +74,43 @@ export async function GET() {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Friends fetch failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
+
+    const { friendId } = await req.json();
+    if (!friendId || friendId === auth.profile.id) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    const supabase = createAdminClient();
+    const { data: rows } = await supabase
+      .from("friendships")
+      .select("id")
+      .or(
+        `and(user_id.eq.${auth.profile.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${auth.profile.id})`
+      );
+
+    if (!rows?.length) {
+      return NextResponse.json(
+        { error: "Not friends with this user." },
+        { status: 404 }
+      );
+    }
+
+    await removeFriendshipPair(supabase, auth.profile.id, friendId);
+
+    return NextResponse.json({
+      ok: true,
+      message: "Removed from your list.",
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Remove failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

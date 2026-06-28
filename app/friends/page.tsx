@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { ParticleBackground } from "@/components/ParticleBackground";
-import { chatBtnGhost, chatBtnLove } from "@/lib/chat-buttons";
-import { connectionTypeLabel } from "@/lib/friends/connection-type";
+import { chatBtnGhost, chatBtnLove, chatBtnBlock } from "@/lib/chat-buttons";
 import type { FriendConnectionType } from "@/lib/friends/connection-type";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
@@ -23,6 +22,64 @@ type IncomingRequest = Friend & {
   requested_at: string;
 };
 
+function FriendRow({
+  friend,
+  active,
+  accent,
+  removing,
+  onSelect,
+  onRemove,
+}: {
+  friend: Friend;
+  active: boolean;
+  accent: "pink" | "purple";
+  removing: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+}) {
+  const activeBorder =
+    accent === "pink" ? "border-pink-500 bg-pink-500/10" : "border-fuchsia-500 bg-fuchsia-500/10";
+  const avatarGradient =
+    accent === "pink"
+      ? "from-pink-500 to-rose-600"
+      : "from-fuchsia-500 to-purple-600";
+
+  return (
+    <li>
+      <div
+        className={`flex items-center gap-2 rounded-2xl border p-2 pl-4 transition ${
+          active ? activeBorder : "border-purple-500/20 bg-slate-950/80"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex flex-1 items-center gap-3 min-w-0 text-left hover:opacity-90"
+        >
+          <div
+            className={`h-10 w-10 rounded-xl bg-gradient-to-br ${avatarGradient} flex items-center justify-center font-bold shrink-0`}
+          >
+            {friend.username.slice(0, 1).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{friend.username}</p>
+            <p className="text-[10px] text-amber-300">Rep {friend.reputation_score}</p>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={removing}
+          className={`${chatBtnBlock} !px-2.5 !py-1.5 !text-[10px] shrink-0`}
+          title={`Remove ${friend.username}`}
+        >
+          {removing ? "…" : "Remove"}
+        </button>
+      </div>
+    </li>
+  );
+}
+
 export default function FriendsPage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
@@ -32,6 +89,7 @@ export default function FriendsPage() {
   );
   const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
   const [requestLoading, setRequestLoading] = useState<string | null>(null);
+  const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [requestNotice, setRequestNotice] = useState<string | null>(null);
 
   const loadFriends = useCallback(async () => {
@@ -86,6 +144,39 @@ export default function FriendsPage() {
     }
   }
 
+  async function handleRemoveFriend(friend: Friend) {
+    const label =
+      friend.connection_type === "mutual_connect" ? "mutual" : "friend";
+    if (
+      !confirm(
+        `Remove ${friend.username} from your ${label}s? You can add them again from a future match.`
+      )
+    ) {
+      return;
+    }
+
+    setRemoveLoading(friend.id);
+    setRequestNotice(null);
+
+    const res = await fetch("/api/friends", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ friendId: friend.id }),
+    });
+    const data = await res.json();
+    setRemoveLoading(null);
+
+    if (res.ok) {
+      setRequestNotice(data.message ?? "Removed.");
+      if (activeFriend?.id === friend.id) {
+        setActiveFriend(null);
+      }
+      await loadFriends();
+    } else {
+      setRequestNotice(data.error ?? "Remove failed");
+    }
+  }
+
   const seasonal = getSeasonalTheme();
 
   if (loading || !user || !profile) {
@@ -99,7 +190,11 @@ export default function FriendsPage() {
     );
   }
 
-  const hasFriends = friends.length > 0;
+  const mutuals = friends.filter((f) => f.connection_type === "mutual_connect");
+  const requestFriends = friends.filter(
+    (f) => f.connection_type !== "mutual_connect"
+  );
+  const hasConnections = friends.length > 0;
   const hasRequests = incomingRequests.length > 0;
 
   return (
@@ -174,15 +269,16 @@ export default function FriendsPage() {
           </section>
         )}
 
-        {!hasFriends && !hasRequests ? (
+        {!hasConnections && !hasRequests ? (
           <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-8 text-center">
             <p className="text-4xl mb-3">❤️</p>
             <p className="text-slate-300 font-medium">No friends yet</p>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">
               <strong className="text-pink-300">Connect</strong> when you both
-              feel a spark, or send a low-pressure{" "}
-              <strong className="text-fuchsia-300">Add friend</strong> in chat.
-              You can also use{" "}
+              feel a spark — they&apos;ll show under{" "}
+              <strong className="text-pink-300">Mutuals</strong>. Send a
+              low-pressure <strong className="text-fuchsia-300">Add friend</strong>{" "}
+              for the Friends list, or use{" "}
               <Link href="/profile" className="text-fuchsia-400 hover:underline">
                 Profile → Recent matches
               </Link>
@@ -195,51 +291,66 @@ export default function FriendsPage() {
               Enter arena
             </Link>
           </div>
-        ) : hasFriends ? (
-          <ul className="space-y-3">
-            {friends.map((friend) => (
-              <li key={friend.id}>
-                <button
-                  type="button"
-                  onClick={() => setActiveFriend(friend)}
-                  className={`w-full flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
-                    activeFriend?.id === friend.id
-                      ? "border-fuchsia-500 bg-fuchsia-500/10"
-                      : "border-purple-500/20 bg-slate-950/80 hover:border-purple-500/40"
-                  }`}
-                >
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center font-bold shrink-0">
-                    {friend.username.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold truncate">{friend.username}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[10px] text-amber-300">
-                        Rep {friend.reputation_score}
-                      </p>
-                      {connectionTypeLabel(friend.connection_type) && (
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                            friend.connection_type === "mutual_connect"
-                              ? "bg-pink-500/20 text-pink-200"
-                              : "bg-purple-500/15 text-purple-200"
-                          }`}
-                        >
-                          {friend.connection_type === "mutual_connect"
-                            ? "✨ Mutual spark"
-                            : connectionTypeLabel(friend.connection_type)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
         ) : (
-          <p className="text-xs text-slate-500 text-center">
-            Accept a request above to start messaging.
-          </p>
+          <div className="space-y-6">
+            <section>
+              <h2 className="text-xs font-bold text-pink-300 mb-1 uppercase tracking-wide">
+                ✨ Mutuals
+              </h2>
+              <p className="text-[10px] text-slate-500 mb-2">
+                You both tapped Connect in chat
+              </p>
+              {mutuals.length === 0 ? (
+                <p className="text-xs text-slate-600 rounded-2xl border border-dashed border-pink-500/20 bg-slate-950/40 px-4 py-3">
+                  No mutual sparks yet — connect with someone in the arena.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {mutuals.map((friend) => (
+                    <FriendRow
+                      key={friend.id}
+                      friend={friend}
+                      active={activeFriend?.id === friend.id}
+                      accent="pink"
+                      removing={removeLoading === friend.id}
+                      onSelect={() => setActiveFriend(friend)}
+                      onRemove={() => handleRemoveFriend(friend)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section>
+              <h2 className="text-xs font-bold text-fuchsia-300 mb-1 uppercase tracking-wide">
+                Friends
+              </h2>
+              <p className="text-[10px] text-slate-500 mb-2">
+                Added via friend request
+              </p>
+              {requestFriends.length === 0 ? (
+                <p className="text-xs text-slate-600 rounded-2xl border border-dashed border-purple-500/20 bg-slate-950/40 px-4 py-3">
+                  {hasRequests
+                    ? "Accept a request above to add them here."
+                    : "No friends from requests yet."}
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {requestFriends.map((friend) => (
+                    <FriendRow
+                      key={friend.id}
+                      friend={friend}
+                      active={activeFriend?.id === friend.id}
+                      accent="purple"
+                      removing={removeLoading === friend.id}
+                      onSelect={() => setActiveFriend(friend)}
+                      onRemove={() => handleRemoveFriend(friend)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         )}
       </main>
 
@@ -249,6 +360,10 @@ export default function FriendsPage() {
             friendId={activeFriend.id}
             friendUsername={activeFriend.username}
             myId={profile.id}
+            onRemoved={() => {
+              setActiveFriend(null);
+              void loadFriends();
+            }}
           />
         </div>
       )}

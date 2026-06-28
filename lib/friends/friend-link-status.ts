@@ -85,3 +85,16 @@ export async function acceptFriendshipPair(
     { onConflict: "user_id,friend_id" }
   );
 }
+
+export async function removeFriendshipPair(
+  supabase: SupabaseClient,
+  userId: string,
+  partnerId: string
+): Promise<void> {
+  await supabase
+    .from("friendships")
+    .delete()
+    .or(
+      `and(user_id.eq.${userId},friend_id.eq.${partnerId}),and(user_id.eq.${partnerId},friend_id.eq.${userId})`
+    );
+}
