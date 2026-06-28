@@ -141,8 +141,31 @@ grant all on table waiting_users to service_role;
 grant all on table chat_rooms to service_role;
 grant all on table messages to service_role;
 
-create policy "Anyone can read messages"
+create or replace function public.is_chat_room_member(p_room_id uuid, p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from chat_rooms r
+    where r.id = p_room_id
+      and (r.user1_id = p_user_id or r.user2_id = p_user_id)
+  );
+$$;
+
+revoke all on function public.is_chat_room_member(uuid, uuid) from public;
+grant execute on function public.is_chat_room_member(uuid, uuid) to authenticated;
+
+create policy "Room members read messages"
   on messages for select
-  using (true);
+  to authenticated
+  using (public.is_chat_room_member(room_id, auth.uid()));
+
+revoke select on table messages from anon;
+revoke insert, update, delete on table messages from anon, authenticated;
+grant select on table messages to authenticated;
 
 alter publication supabase_realtime add table messages;

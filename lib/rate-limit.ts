@@ -14,8 +14,8 @@ export async function rateLimit(
   });
 
   if (error) {
-    // Fail open if rate limit table missing — log in production monitoring
-    return { allowed: true };
+    console.error("rate_limit_check_failed", bucketKey, error.message);
+    return { allowed: false, retryAfterSeconds: windowSeconds };
   }
 
   if (data === false) {

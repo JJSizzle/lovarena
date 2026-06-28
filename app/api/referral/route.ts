@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +12,12 @@ export async function POST(req: NextRequest) {
     const { code } = await req.json();
     if (!code || typeof code !== "string") {
       return NextResponse.json({ error: "Invalid referral code" }, { status: 400 });
+    }
+
+    const ip = clientIp(req);
+    const rl = await rateLimit(`referral:${auth.profile.id}:${ip}`, 10, 3600);
+    if (!rl.allowed) {
+      return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const supabase = createAdminClient();

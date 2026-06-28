@@ -6,6 +6,8 @@ import { validateUsername } from "@/lib/username";
 import { sanitizeInterests, sanitizeLanguages } from "@/lib/profile-tags";
 import { isAvatarEmoji } from "@/lib/avatars";
 import { isValidAge } from "@/lib/profile-age";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 const PROFILE_FIELDS =
   "id, username, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, chat_streak, positive_ratings, created_at";
@@ -45,9 +47,12 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const updates: Record<string, unknown> = {};
 
-    if ("age_verified" in body) {
-      updates.age_verified = Boolean(body.age_verified);
+    const ip = clientIp(req);
+    const rl = await rateLimit(`profile:${user.id}:${ip}`, 40, 3600);
+    if (!rl.allowed) {
+      return rateLimitResponse(rl.retryAfterSeconds);
     }
+
     if ("age" in body) {
       const age = body.age;
       if (age === null || age === "") {
@@ -100,8 +105,23 @@ export async function PATCH(req: NextRequest) {
     }
     if ("avatar_url" in body) {
       const url = String(body.avatar_url ?? "").trim();
-      if (url && !/^https?:\/\/.+/i.test(url)) {
-        return NextResponse.json({ error: "Avatar must be a valid https URL" }, { status: 400 });
+      if (url) {
+        if (!/^https?:\/\/.+/i.test(url)) {
+          return NextResponse.json(
+            { error: "Avatar must be a valid https URL" },
+            { status: 400 }
+          );
+        }
+        const supabaseBase = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+        const allowedPrefix = supabaseBase
+          ? `${supabaseBase}/storage/v1/object/public/avatars/${user.id}/`
+          : null;
+        if (allowedPrefix && !url.startsWith(allowedPrefix)) {
+          return NextResponse.json(
+            { error: "Upload your photo through the profile uploader." },
+            { status: 400 }
+          );
+        }
       }
       updates.avatar_url = url || null;
     }
@@ -145,7 +165,7 @@ export async function PATCH(req: NextRequest) {
         .insert({
           id: user.id,
           username,
-          age_verified: Boolean(updates.age_verified),
+          age_verified: false,
           ...updates,
         })
         .select(PROFILE_FIELDS)

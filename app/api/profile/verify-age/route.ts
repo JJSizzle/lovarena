@@ -1,30 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 
+/** Sets age_verified after the client 18+ gate (honor-system, rate-limited). */
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAuthProfile();
-    if ("error" in auth) return auth.error;
-
-    const { inQueue, inChat } = await req.json();
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     const ip = clientIp(req);
-    const rl = await rateLimit(`presence:${auth.profile.id}:${ip}`, 120, 60);
+    const rl = await rateLimit(`verify-age:${user.id}:${ip}`, 5, 86400);
     if (!rl.allowed) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const supabase = createAdminClient();
-
-    const { error } = await supabase.from("user_presence").upsert({
-      user_id: auth.profile.id,
-      last_seen_at: new Date().toISOString(),
-      in_queue: Boolean(inQueue),
-      in_chat: Boolean(inChat),
-    });
+    const { error } = await supabase
+      .from("profiles")
+      .update({ age_verified: true })
+      .eq("id", user.id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -32,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Presence update failed";
+    const message = err instanceof Error ? err.message : "Age verification failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

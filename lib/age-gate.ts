@@ -20,10 +20,8 @@ export async function syncProfileAgeVerified(): Promise<boolean> {
   if (typeof window === "undefined" || !isAgeVerified()) return false;
 
   try {
-    const res = await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ age_verified: true }),
+    const res = await fetch("/api/profile/verify-age", {
+      method: "POST",
     });
     return res.ok;
   } catch {

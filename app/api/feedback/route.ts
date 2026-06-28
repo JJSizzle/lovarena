@@ -1,15 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAuthProfile } from "@/lib/auth/api-auth";
+import {
+  assertRoomMember,
+  getPartnerId,
+  requireAuthProfile,
+} from "@/lib/auth/api-auth";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
+    const ip = clientIp(req);
+    const rl = await rateLimit(`feedback:${auth.profile.id}:${ip}`, 20, 3600);
+    if (!rl.allowed) {
+      return rateLimitResponse(rl.retryAfterSeconds);
+    }
+
     const { roomId, partnerId, rating } = await req.json();
     if (!roomId || !partnerId || (rating !== "up" && rating !== "down")) {
       return NextResponse.json({ error: "Invalid feedback" }, { status: 400 });
+    }
+
+    const membership = await assertRoomMember(roomId, auth.profile.id);
+    if ("error" in membership) return membership.error;
+
+    const expectedPartner = getPartnerId(membership.room, auth.profile.id);
+    if (!expectedPartner || expectedPartner !== partnerId) {
+      return NextResponse.json({ error: "Invalid partner for this room" }, { status: 403 });
     }
 
     const supabase = createAdminClient();

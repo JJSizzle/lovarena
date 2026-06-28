@@ -3,6 +3,8 @@ import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scanMessageForSevereViolation } from "@/lib/moderation/scan-message";
 import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +16,12 @@ export async function GET(req: NextRequest) {
     const friendId = req.nextUrl.searchParams.get("friendId");
     if (!friendId) {
       return NextResponse.json({ error: "Missing friendId" }, { status: 400 });
+    }
+
+    const ip = clientIp(req);
+    const rl = await rateLimit(`dm-read:${user.id}:${ip}`, 120, 60);
+    if (!rl.allowed) {
+      return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const supabase = createAdminClient();
@@ -59,6 +67,12 @@ export async function POST(req: NextRequest) {
     const { friendId, content } = await req.json();
     if (!friendId || !content?.trim()) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    const ip = clientIp(req);
+    const rl = await rateLimit(`dm-send:${user.id}:${ip}`, 40, 60);
+    if (!rl.allowed) {
+      return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const supabase = createAdminClient();

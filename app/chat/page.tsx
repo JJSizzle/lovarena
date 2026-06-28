@@ -363,7 +363,7 @@ export default function ChatPage() {
     }
 
     loadMessages();
-    const poll = setInterval(loadMessages, 3000);
+    const poll = setInterval(loadMessages, 2000);
 
     const channel = supabase
       .channel(`room:${roomId}`)

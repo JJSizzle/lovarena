@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 export async function GET() {
   try {
@@ -44,13 +46,19 @@ export async function GET() {
   }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
     if (!auth.profile.is_admin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const ip = clientIp(req);
+    const rl = await rateLimit(`admin:${auth.profile.id}:${ip}`, 60, 3600);
+    if (!rl.allowed) {
+      return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const { reportId, status } = await req.json();
