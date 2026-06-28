@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { REFERRAL_REP_BONUS } from "@/lib/referral/badges";
+import { addReputation } from "@/lib/reputation";
 
 const MIN_MESSAGES = 3;
 const MIN_DURATION_MS = 2 * 60 * 1000;
@@ -54,9 +55,9 @@ export async function processQualifiedChat(
     return null;
   }
 
-  const inviteeRep = Math.min(
-    100,
-    (profile.reputation_score ?? 100) + REFERRAL_REP_BONUS
+  const inviteeRep = addReputation(
+    profile.reputation_score ?? 100,
+    REFERRAL_REP_BONUS
   );
 
   await supabase
@@ -78,9 +79,9 @@ export async function processQualifiedChat(
       .from("profiles")
       .update({
         qualified_referrals: (referrer.qualified_referrals ?? 0) + 1,
-        reputation_score: Math.min(
-          100,
-          (referrer.reputation_score ?? 100) + REFERRAL_REP_BONUS
+        reputation_score: addReputation(
+          referrer.reputation_score ?? 100,
+          REFERRAL_REP_BONUS
         ),
       })
       .eq("id", profile.referred_by);

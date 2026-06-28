@@ -1,4 +1,4 @@
-export const REFERRAL_REP_BONUS = 5;
+export { REP_REFERRAL_BONUS as REFERRAL_REP_BONUS } from "@/lib/reputation";
 export const CONNECTOR_REFERRALS = 3;
 export const AMBASSADOR_REFERRALS = 10;
 

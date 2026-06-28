@@ -6,9 +6,12 @@ import {
   requireAuthProfile,
 } from "@/lib/auth/api-auth";
 import { endActiveRoomsForUser } from "@/lib/moderation/ban-user";
+import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
 import {
-  isUserFlaggedForAbuse,
-} from "@/lib/moderation/enforce-violation";
+  applyReportReputationPenalty,
+  validateReportDetails,
+  verifyRecentMatch,
+} from "@/lib/moderation/report-reputation";
 import { notifyModerators } from "@/lib/moderation/notify-admin";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -42,6 +45,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid report" }, { status: 400 });
     }
 
+    const trimmedDetails = details?.trim()?.slice(0, 500) ?? null;
+    const detailsError = validateReportDetails(reason, trimmedDetails);
+    if (detailsError) {
+      return NextResponse.json({ error: detailsError }, { status: 400 });
+    }
+
     let reportedUserId: string | null = null;
     let reportRoomId: string | null = roomId ?? null;
 
@@ -68,32 +77,41 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
+
+    if (!roomId) {
+      const matched = await verifyRecentMatch(
+        supabase,
+        auth.profile.id,
+        reportedUserId
+      );
+      if (!matched) {
+        return NextResponse.json(
+          {
+            error:
+              "You can only report someone from your recent match history.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const { error } = await supabase.from("abuse_reports").insert({
       reporter_id: auth.profile.id,
       reported_user_id: reportedUserId,
       room_id: reportRoomId,
       reason,
-      details: details?.trim()?.slice(0, 500) ?? null,
+      details: trimmedDetails,
     });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const { data: profileRow } = await supabase
-      .from("profiles")
-      .select("reputation_score")
-      .eq("id", reportedUserId)
-      .maybeSingle();
-
-    if (profileRow) {
-      await supabase
-        .from("profiles")
-        .update({
-          reputation_score: Math.max(0, (profileRow.reputation_score ?? 100) - 10),
-        })
-        .eq("id", reportedUserId);
-    }
+    const repResult = await applyReportReputationPenalty(
+      supabase,
+      auth.profile.id,
+      reportedUserId
+    );
 
     await supabase.rpc("auto_flag_on_reports", {
       p_user_id: reportedUserId,
@@ -108,7 +126,7 @@ export async function POST(req: NextRequest) {
         reportedUserId,
         reporterId: auth.profile.id,
         roomId: reportRoomId,
-        details: details?.trim()?.slice(0, 500) ?? null,
+        details: trimmedDetails,
       });
     } else {
       void notifyModerators({
@@ -117,11 +135,18 @@ export async function POST(req: NextRequest) {
         reportedUserId,
         reporterId: auth.profile.id,
         roomId: reportRoomId,
-        details: details?.trim()?.slice(0, 500) ?? null,
+        details: trimmedDetails,
       });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      repPenaltyApplied: repResult.applied,
+      message: repResult.applied
+        ? "Report submitted. Thank you."
+        : (repResult.skipReason ??
+          "Report submitted for moderator review."),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Report failed";
     return NextResponse.json({ error: message }, { status: 500 });

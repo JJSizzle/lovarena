@@ -56,8 +56,8 @@ export function MatchHistoryRow({
     const data = await res.json();
     setLoading(false);
     if (res.ok) {
-      setStatus("Report submitted.");
-      setTimeout(() => setReportOpen(false), 1500);
+      setStatus(data.message ?? "Report submitted.");
+      setTimeout(() => setReportOpen(false), 2000);
     } else {
       setStatus(data.error ?? "Report failed");
     }
@@ -122,7 +122,7 @@ export function MatchHistoryRow({
             <textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
-              placeholder="Optional details…"
+              placeholder="Describe what happened (required for harassment, hate speech, underage, and other)"
               rows={2}
               className="w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-xs mb-2 text-white resize-none"
             />

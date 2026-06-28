@@ -31,8 +31,8 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
     const data = await res.json();
     setLoading(false);
     if (res.ok) {
-      setStatus("Report submitted. Thank you.");
-      setTimeout(() => setOpen(false), 1500);
+      setStatus(data.message ?? "Report submitted. Thank you.");
+      setTimeout(() => setOpen(false), 2000);
     } else {
       setStatus(data.error ?? "Report failed");
     }
@@ -96,7 +96,7 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
             <textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
-              placeholder="Optional details…"
+              placeholder="Describe what happened (required for harassment, hate speech, underage, and other)"
               rows={3}
               className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white resize-none"
             />

@@ -1,3 +1,5 @@
+import { REP_TRUSTED_MIN } from "@/lib/reputation";
+
 export function getSafetyLabel(profile: {
   reputation_score?: number;
   created_at?: string;
@@ -12,7 +14,7 @@ export function getSafetyLabel(profile: {
   if (daysOld < 3) {
     return { label: "New account", tone: "amber" };
   }
-  if (rep >= 85 && profile.age_verified) {
+  if (rep >= REP_TRUSTED_MIN && profile.age_verified) {
     return { label: "Trusted member", tone: "green" };
   }
   if (profile.age_verified) {

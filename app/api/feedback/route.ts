@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth/api-auth";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { REP_THUMBS_DOWN, subtractReputation } from "@/lib/reputation";
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,9 +56,9 @@ export async function POST(req: NextRequest) {
       await supabase
         .from("profiles")
         .update({
-          reputation_score: Math.max(
-            0,
-            (partnerRow?.reputation_score ?? 100) - 3
+          reputation_score: subtractReputation(
+            partnerRow?.reputation_score ?? 100,
+            REP_THUMBS_DOWN
           ),
         })
         .eq("id", partnerId);

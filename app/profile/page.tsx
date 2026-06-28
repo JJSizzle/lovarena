@@ -33,6 +33,7 @@ import { ReferralBadge } from "@/components/ReferralBadge";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { isInvitedNewcomer, CONNECTOR_REFERRALS, AMBASSADOR_REFERRALS } from "@/lib/referral/badges";
+import { REP_MAX, reputationTier } from "@/lib/reputation";
 
 type BlockRow = {
   id: string;
@@ -248,7 +249,11 @@ export default function ProfilePage() {
               </p>
               <p className="text-xs text-slate-400 truncate">{user.email}</p>
               <p className="text-xs text-amber-300 mt-1">
-                Reputation: {profile?.reputation_score ?? 100}/100
+                Reputation: {profile?.reputation_score ?? 100}/{REP_MAX}
+                <span className="text-slate-500">
+                  {" "}
+                  · {reputationTier(profile?.reputation_score ?? 100)}
+                </span>
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <p className="text-xs text-fuchsia-300">
