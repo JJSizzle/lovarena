@@ -1,6 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import {
+  chatBtnBlock,
+  chatBtnGhost,
+  chatBtnReport,
+  chatBtnWarn,
+} from "@/lib/chat-buttons";
 
 type SafetyActionsProps = {
   roomId: string;
@@ -51,18 +57,14 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="bg-amber-600/90 hover:bg-amber-600 text-white font-medium px-4 py-2.5 rounded-xl transition text-sm"
-      >
+      <button type="button" onClick={() => setOpen(true)} className={chatBtnReport}>
         Report
       </button>
       <button
         type="button"
         onClick={blockUser}
         disabled={loading}
-        className="bg-slate-600 hover:bg-slate-500 text-white font-medium px-4 py-2.5 rounded-xl transition text-sm disabled:opacity-50"
+        className={chatBtnBlock}
       >
         Block
       </button>
@@ -82,7 +84,7 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white"
+              className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white"
             >
               <option value="harassment">Harassment</option>
               <option value="hate_speech">Hate speech</option>
@@ -96,7 +98,7 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
               onChange={(e) => setDetails(e.target.value)}
               placeholder="Optional details…"
               rows={3}
-              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white resize-none"
+              className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white resize-none"
             />
             {status && (
               <p className="text-sm text-slate-300 mb-3">{status}</p>
@@ -106,14 +108,14 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
                 type="button"
                 onClick={submitReport}
                 disabled={loading}
-                className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-semibold disabled:opacity-50"
+                className={`${chatBtnWarn} flex-1`}
               >
                 Submit report
               </button>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-xl bg-white/10 px-4 py-2.5 text-sm"
+                className={chatBtnGhost}
               >
                 Cancel
               </button>

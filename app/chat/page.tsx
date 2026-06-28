@@ -28,6 +28,7 @@ import { useMatchCelebration } from "@/lib/hooks/useMatchCelebration";
 import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
 import { countryCodeToFlag } from "@/lib/flags";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { chatBtnLove, chatBtnSend, chatBtnFun, chatBtnGhost } from "@/lib/chat-buttons";
 
 type Message = {
   id: string;
@@ -697,13 +698,13 @@ export default function ChatPage() {
                 type="button"
                 onClick={handleConnect}
                 disabled={connectLoading || friendsMatched}
-                className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-40 text-white font-bold text-sm px-5 py-3 rounded-2xl transition shadow-lg shadow-pink-500/30"
+                className={chatBtnLove}
               >
                 {friendsMatched
-                  ? "❤️ Friends"
+                  ? "Friends"
                   : youClickedConnect
-                    ? "❤️ Waiting…"
-                    : "❤️ Connect"}
+                    ? "Waiting…"
+                    : "Connect"}
               </button>
               {roomId && (
                 <SafetyActions
@@ -847,12 +848,12 @@ export default function ChatPage() {
                   : "Stranger left — press Next"
                 : "Waiting for match..."
           }
-          className="flex-1 rounded-xl bg-slate-950/60 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 disabled:opacity-50 text-white"
+          className="flex-1 rounded-lg bg-slate-950/60 border border-white/10 px-3 py-2 text-sm outline-none focus:border-fuchsia-500/40 disabled:opacity-50 text-white"
         />
         <button
           type="submit"
           disabled={status !== "connected" || !input.trim()}
-          className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 text-sm font-semibold hover:from-violet-500 hover:to-fuchsia-500 disabled:opacity-50"
+          className={chatBtnSend}
         >
           Send
         </button>
@@ -872,25 +873,25 @@ export default function ChatPage() {
             <p className="text-slate-100 text-base md:text-lg font-medium italic leading-relaxed mb-6 px-1">
               &ldquo;{iceBreakerQuestion}&rdquo;
             </p>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <button
                 type="button"
                 onClick={useIceBreakerQuestion}
-                className="bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-600 text-white font-bold py-2.5 px-4 rounded-xl text-sm tracking-wider transition"
+                className={chatBtnSend}
               >
                 Send to chat
               </button>
               <button
                 type="button"
                 onClick={generateIceBreaker}
-                className="bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-cyan-400 font-bold py-2.5 px-4 rounded-xl border border-cyan-400/20 text-xs tracking-wider transition"
+                className={chatBtnFun}
               >
-                🎲 Reroll Question
+                New question
               </button>
               <button
                 type="button"
                 onClick={() => setShowIceBreakerPopup(false)}
-                className="text-slate-400 hover:text-rose-400 transition-colors text-xs font-bold pt-2 uppercase tracking-widest"
+                className={`${chatBtnGhost} w-full`}
               >
                 Dismiss
               </button>

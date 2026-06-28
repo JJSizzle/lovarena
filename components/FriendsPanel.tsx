@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
+import { chatBtnLove } from "@/lib/chat-buttons";
 
 type PrivateMessage = {
   id: string;
@@ -188,7 +189,7 @@ export function FriendsPanel({
         <button
           type="submit"
           disabled={!input.trim()}
-          className="rounded-lg bg-pink-600 px-3 py-2 text-xs font-semibold hover:bg-pink-500 disabled:opacity-50"
+          className={chatBtnLove}
         >
           Send
         </button>
