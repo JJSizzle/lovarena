@@ -13,30 +13,35 @@ export function validateAvatarFile(file: File): string | null {
   return null;
 }
 
-export async function uploadAvatarPhoto(
-  file: File,
-  userId: string
-): Promise<string> {
+export function avatarStoragePath(userId: string, mimeType: string): string {
+  const ext =
+    mimeType === "image/png"
+      ? "png"
+      : mimeType === "image/webp"
+        ? "webp"
+        : "jpg";
+  return `${userId}/avatar.${ext}`;
+}
+
+export async function uploadAvatarPhoto(file: File): Promise<string> {
   const validationError = validateAvatarFile(file);
   if (validationError) throw new Error(validationError);
 
-  const supabase = createClient();
-  const ext =
-    file.type === "image/png"
-      ? "png"
-      : file.type === "image/webp"
-        ? "webp"
-        : "jpg";
-  const path = `${userId}/avatar.${ext}`;
+  const formData = new FormData();
+  formData.append("file", file);
 
-  const { error } = await supabase.storage.from("avatars").upload(path, file, {
-    upsert: true,
-    contentType: file.type,
-    cacheControl: "3600",
+  const res = await fetch("/api/avatar/upload", {
+    method: "POST",
+    body: formData,
   });
 
-  if (error) throw new Error(error.message);
+  const data = (await res.json()) as { url?: string; error?: string };
+  if (!res.ok) {
+    throw new Error(data.error ?? "Upload failed");
+  }
+  if (!data.url) {
+    throw new Error("Upload failed");
+  }
 
-  const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-  return `${data.publicUrl}?v=${Date.now()}`;
+  return data.url;
 }

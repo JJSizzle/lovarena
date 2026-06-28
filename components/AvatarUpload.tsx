@@ -37,7 +37,7 @@ export function AvatarUpload({
     setUploading(true);
 
     try {
-      const publicUrl = await uploadAvatarPhoto(file, userId);
+      const publicUrl = await uploadAvatarPhoto(file);
       onUploaded(publicUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -90,7 +90,8 @@ export function AvatarUpload({
         </div>
       </div>
       <p className="text-xs text-slate-500">
-        JPG, PNG, or WebP · max 2 MB. Shown on your profile and when you match.
+        JPG, PNG, or WebP · max 2 MB. Photos are scanned for safety before
+        publishing.
       </p>
       {error && (
         <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">

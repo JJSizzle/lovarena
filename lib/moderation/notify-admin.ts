@@ -1,5 +1,10 @@
 type ModerationAlert = {
-  type: "report" | "auto_flag" | "severe_violation" | "admin_ban";
+  type:
+    | "report"
+    | "auto_flag"
+    | "severe_violation"
+    | "admin_ban"
+    | "avatar_rejected";
   reason: string;
   reportedUserId?: string;
   reporterId?: string;
