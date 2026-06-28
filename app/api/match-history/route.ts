@@ -25,12 +25,26 @@ export async function GET() {
       .select("id, username")
       .in("id", partnerIds.length ? partnerIds : ["00000000-0000-0000-0000-000000000000"]);
 
+    const { data: blocks } = await supabase
+      .from("user_blocks")
+      .select("blocked_id")
+      .eq("blocker_id", auth.profile.id)
+      .in(
+        "blocked_id",
+        partnerIds.length ? partnerIds : ["00000000-0000-0000-0000-000000000000"]
+      );
+
     const nameById = new Map((partners ?? []).map((p) => [p.id, p.username]));
+    const blockedIds = new Set((blocks ?? []).map((b) => b.blocked_id));
 
     return NextResponse.json({
       history: (data ?? []).map((row) => ({
-        ...row,
+        id: row.id,
+        partnerId: row.partner_id,
+        roomId: row.room_id,
+        created_at: row.created_at,
         partnerUsername: nameById.get(row.partner_id) ?? "Stranger",
+        isBlocked: blockedIds.has(row.partner_id),
       })),
     });
   } catch (err) {

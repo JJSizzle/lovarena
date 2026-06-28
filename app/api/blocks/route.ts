@@ -40,6 +40,36 @@ export async function GET() {
   }
 }
 
+export async function POST(req: Request) {
+  try {
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
+
+    const { blockedId } = await req.json();
+    if (!blockedId) {
+      return NextResponse.json({ error: "Missing blockedId" }, { status: 400 });
+    }
+    if (blockedId === auth.profile.id) {
+      return NextResponse.json({ error: "Cannot block yourself" }, { status: 400 });
+    }
+
+    const supabase = createAdminClient();
+    const { error } = await supabase.from("user_blocks").upsert({
+      blocker_id: auth.profile.id,
+      blocked_id: blockedId,
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Block failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const auth = await requireAuthProfile();

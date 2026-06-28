@@ -51,11 +51,12 @@ export default function ChatPage() {
   const userId = profile?.id ?? "";
   const [roomId, setRoomId] = useState<string | null>(null);
   const [status, setStatus] = useState<
-    "matching" | "connected" | "disconnected" | "restricted"
+    "matching" | "connected" | "disconnected" | "restricted" | "idle"
   >("matching");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loadingNext, setLoadingNext] = useState(false);
+  const [cancellingWait, setCancellingWait] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showIceBreakerPopup, setShowIceBreakerPopup] = useState(false);
   const [iceBreakerQuestion, setIceBreakerQuestion] = useState("");
@@ -316,6 +317,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!userId || authLoading || !profile?.age_verified) return;
+    if (status !== "matching") return;
 
     let cancelled = false;
     let interval: ReturnType<typeof setInterval>;
@@ -374,7 +376,7 @@ export default function ChatPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [userId, authLoading, profile?.age_verified]);
+  }, [userId, authLoading, profile?.age_verified, status, router]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -509,6 +511,29 @@ export default function ChatPage() {
       bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     });
   }, [status, endedBySelf, bottomRef]);
+
+  async function handleCancelMatching() {
+    if (status !== "matching" || cancellingWait) return;
+    setCancellingWait(true);
+    try {
+      await fetch("/api/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      setError(null);
+      setStatus("idle");
+    } catch {
+      setError("Could not leave the queue. Try again.");
+    } finally {
+      setCancellingWait(false);
+    }
+  }
+
+  function handleResumeMatching() {
+    setError(null);
+    setStatus("matching");
+  }
 
   async function handleStop() {
     if (!userId || status !== "connected" || !roomId) return;
@@ -740,6 +765,7 @@ export default function ChatPage() {
             }`}
           />
           {status === "matching" && "Looking for someone…"}
+          {status === "idle" && "Matching paused"}
           {status === "connected" &&
             (partnerLabel ? `Connected · ${partnerLabel}` : "Connected")}
           {status === "disconnected" &&
@@ -758,7 +784,12 @@ export default function ChatPage() {
 
       {status !== "restricted" && (
         <>
-        <MatchingWaitScreen visible={status === "matching"} />
+        <MatchingWaitScreen
+          visible={status === "matching"}
+          onCancel={handleCancelMatching}
+          cancelling={cancellingWait}
+        />
+        {status !== "idle" && (
         <VideoPanel
           attachLocalVideo={attachLocalVideo}
           remoteVideoRef={remoteVideoRef}
@@ -817,6 +848,7 @@ export default function ChatPage() {
             </>
           }
         />
+        )}
         </>
       )}
 
@@ -869,6 +901,21 @@ export default function ChatPage() {
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             Your session was restricted for violating community guidelines. You
             cannot send messages or match again from this browser tab.
+          </div>
+        )}
+        {status === "idle" && (
+          <div className="mx-4 mb-4 rounded-3xl border border-slate-600/40 bg-slate-950/80 backdrop-blur-xl p-6 text-center">
+            <p className="text-slate-300 font-medium text-sm">You left the match queue</p>
+            <p className="text-xs text-slate-500 mt-2">
+              Tap below when you are ready to find someone new.
+            </p>
+            <button
+              type="button"
+              onClick={handleResumeMatching}
+              className="mt-4 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-bold px-6 py-3 text-sm"
+            >
+              Find a match
+            </button>
           </div>
         )}
         {status === "matching" && messages.length === 0 && !error && (

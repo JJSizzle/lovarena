@@ -27,6 +27,7 @@ import {
   setSoundsEnabled,
 } from "@/lib/sounds";
 import { ShareInviteButton } from "@/components/ShareInviteButton";
+import { MatchHistoryRow } from "@/components/MatchHistoryRow";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
@@ -38,8 +39,10 @@ type BlockRow = {
 
 type HistoryRow = {
   id: string;
+  partnerId: string;
   partnerUsername: string;
   created_at: string;
+  isBlocked: boolean;
 };
 
 export default function ProfilePage() {
@@ -366,7 +369,7 @@ export default function ProfilePage() {
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} />
-              Email notifications (when enabled)
+              Email me when a friend sends a message
             </label>
             {message && <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">{message}</p>}
             {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
@@ -407,16 +410,45 @@ export default function ProfilePage() {
         </div>
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
-          <h2 className="font-bold text-fuchsia-300 mb-3">Recent matches</h2>
+          <h2 className="font-bold text-fuchsia-300 mb-1">Recent matches</h2>
+          <p className="text-[10px] text-slate-500 mb-3">
+            Block someone to avoid matching with them again.
+          </p>
           {history.length === 0 ? (
             <p className="text-xs text-slate-500">No match history yet.</p>
           ) : (
-            <ul className="space-y-2 max-h-40 overflow-y-auto">
+            <ul className="space-y-2 max-h-56 overflow-y-auto">
               {history.slice(0, 10).map((h) => (
-                <li key={h.id} className="flex justify-between text-xs text-slate-400">
-                  <span>{h.partnerUsername}</span>
-                  <span>{new Date(h.created_at).toLocaleDateString()}</span>
-                </li>
+                <MatchHistoryRow
+                  key={h.id}
+                  id={h.id}
+                  partnerId={h.partnerId}
+                  partnerUsername={h.partnerUsername}
+                  createdAt={h.created_at}
+                  isBlocked={h.isBlocked}
+                  onBlocked={(partnerId) => {
+                    setHistory((prev) =>
+                      prev.map((row) =>
+                        row.partnerId === partnerId
+                          ? { ...row, isBlocked: true }
+                          : row
+                      )
+                    );
+                    setBlocks((prev) => {
+                      if (prev.some((b) => b.blockedId === partnerId)) {
+                        return prev;
+                      }
+                      return [
+                        {
+                          id: partnerId,
+                          blockedId: partnerId,
+                          username: h.partnerUsername,
+                        },
+                        ...prev,
+                      ];
+                    });
+                  }}
+                />
               ))}
             </ul>
           )}

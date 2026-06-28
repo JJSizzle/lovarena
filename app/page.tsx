@@ -13,6 +13,7 @@ import { isOrientationProfileComplete } from "@/lib/profile-orientation";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { OnlineStatsBanner } from "@/components/OnlineStatsBanner";
 import { ShareInviteButton } from "@/components/ShareInviteButton";
+import { StreakBadge } from "@/components/StreakBadge";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 export default function HomePage() {
@@ -84,8 +85,11 @@ export default function HomePage() {
             Video + text chat with real people. Pick your match — nearby or
             worldwide.
           </p>
-          <div className="pt-2">
+          <div className="pt-2 space-y-3">
             <OnlineStatsBanner />
+            <div className="flex justify-center">
+              <StreakBadge />
+            </div>
           </div>
         </div>
 

@@ -5,6 +5,7 @@ import { scanMessageForSevereViolation } from "@/lib/moderation/scan-message";
 import { isUserFlaggedForAbuse } from "@/lib/moderation/enforce-violation";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { notifyFriendMessageEmail } from "@/lib/notifications/friend-message-email";
 
 export async function GET(req: NextRequest) {
   try {
@@ -130,6 +131,19 @@ export async function POST(req: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    const { data: senderProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    void notifyFriendMessageEmail({
+      receiverId: friendId,
+      senderId: user.id,
+      senderUsername: senderProfile?.username ?? "A friend",
+      preview: text,
+    });
 
     return NextResponse.json({ message: data });
   } catch (err) {

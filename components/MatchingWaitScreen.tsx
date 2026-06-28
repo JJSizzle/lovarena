@@ -2,15 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { MATCH_WAIT_TIPS } from "@/lib/profile-tags";
+import {
+  estimateMatchWaitSeconds,
+  formatWaitEstimate,
+} from "@/lib/match-wait-estimate";
+import { chatBtnGhost } from "@/lib/chat-buttons";
 
 type Props = {
   visible: boolean;
+  onCancel?: () => void;
+  cancelling?: boolean;
 };
 
-export function MatchingWaitScreen({ visible }: Props) {
+export function MatchingWaitScreen({ visible, onCancel, cancelling }: Props) {
   const [online, setOnline] = useState<number | null>(null);
   const [inQueue, setInQueue] = useState<number | null>(null);
   const [tipIndex, setTipIndex] = useState(0);
+  const [waitSeconds, setWaitSeconds] = useState<number | null>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -22,6 +30,7 @@ export function MatchingWaitScreen({ visible }: Props) {
         if (res.ok) {
           setOnline(data.online);
           setInQueue(data.inQueue);
+          setWaitSeconds(estimateMatchWaitSeconds(data.online, data.inQueue));
         }
       } catch {
         // ignore
@@ -48,6 +57,9 @@ export function MatchingWaitScreen({ visible }: Props) {
       <p className="text-fuchsia-300 font-bold text-sm tracking-wide">
         Finding your match…
       </p>
+      <p className="mt-2 text-xs text-cyan-300/90">
+        {formatWaitEstimate(waitSeconds)}
+      </p>
       <div className="mt-3 flex justify-center gap-6 text-xs text-slate-400">
         <span>
           Online:{" "}
@@ -61,6 +73,16 @@ export function MatchingWaitScreen({ visible }: Props) {
       <p className="mt-4 text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
         {MATCH_WAIT_TIPS[tipIndex]}
       </p>
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={cancelling}
+          className={`${chatBtnGhost} mt-4 mx-auto !text-xs`}
+        >
+          {cancelling ? "Leaving queue…" : "Cancel waiting"}
+        </button>
+      )}
     </div>
   );
 }

@@ -35,16 +35,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { roomId, reason, details } = await req.json();
+    const { roomId, reportedUserId: reportedUserIdInput, reason, details } =
+      await req.json();
 
-    if (!roomId || !reason || !VALID_REASONS.includes(reason)) {
+    if (!reason || !VALID_REASONS.includes(reason)) {
       return NextResponse.json({ error: "Invalid report" }, { status: 400 });
     }
 
-    const membership = await assertRoomMember(roomId, auth.profile.id);
-    if ("error" in membership) return membership.error;
+    let reportedUserId: string | null = null;
+    let reportRoomId: string | null = roomId ?? null;
 
-    const reportedUserId = getPartnerId(membership.room, auth.profile.id);
+    if (roomId) {
+      const membership = await assertRoomMember(roomId, auth.profile.id);
+      if ("error" in membership) return membership.error;
+
+      reportedUserId = getPartnerId(membership.room, auth.profile.id);
+      if (!reportedUserId) {
+        return NextResponse.json({ error: "No user to report" }, { status: 400 });
+      }
+    } else if (reportedUserIdInput) {
+      if (reportedUserIdInput === auth.profile.id) {
+        return NextResponse.json({ error: "Invalid report" }, { status: 400 });
+      }
+      reportedUserId = reportedUserIdInput;
+      reportRoomId = null;
+    } else {
+      return NextResponse.json({ error: "Invalid report" }, { status: 400 });
+    }
+
     if (!reportedUserId) {
       return NextResponse.json({ error: "No user to report" }, { status: 400 });
     }
@@ -53,7 +71,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from("abuse_reports").insert({
       reporter_id: auth.profile.id,
       reported_user_id: reportedUserId,
-      room_id: roomId,
+      room_id: reportRoomId,
       reason,
       details: details?.trim()?.slice(0, 500) ?? null,
     });
@@ -89,7 +107,7 @@ export async function POST(req: NextRequest) {
         reason: "auto_flag_on_reports (3+ reports in 24h)",
         reportedUserId,
         reporterId: auth.profile.id,
-        roomId,
+        roomId: reportRoomId,
         details: details?.trim()?.slice(0, 500) ?? null,
       });
     } else {
@@ -98,7 +116,7 @@ export async function POST(req: NextRequest) {
         reason,
         reportedUserId,
         reporterId: auth.profile.id,
-        roomId,
+        roomId: reportRoomId,
         details: details?.trim()?.slice(0, 500) ?? null,
       });
     }
