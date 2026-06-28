@@ -36,11 +36,7 @@ export function isOrientationProfileComplete(profile: {
   );
 }
 
-export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,32}$/;
-
-export function isValidUsername(value: string): boolean {
-  return USERNAME_PATTERN.test(value);
-}
+export { isValidUsername, validateUsername } from "@/lib/username";
 
 export function isArenaProfileComplete(profile: {
   gender_identity?: string | null;

@@ -13,10 +13,11 @@ import {
 import {
   isGenderIdentity,
   isLookingFor,
-  isValidUsername,
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
+import { validateUsername } from "@/lib/username";
+import { UsernameInput } from "@/components/UsernameInput";
 import { AVATAR_EMOJIS } from "@/lib/avatars";
 import { parseAgeInput } from "@/lib/profile-age";
 import { AvatarUpload } from "@/components/AvatarUpload";
@@ -112,8 +113,9 @@ export default function ProfilePage() {
     setError(null);
     setMessage(null);
 
-    if (!isValidUsername(username)) {
-      setError("Username: 3–32 letters, numbers, or underscores.");
+    const usernameCheck = validateUsername(username);
+    if (!usernameCheck.valid) {
+      setError(usernameCheck.error ?? "Invalid username.");
       return;
     }
     if (!isGenderIdentity(genderIdentity) || !isLookingFor(lookingFor)) {
@@ -265,8 +267,16 @@ export default function ProfilePage() {
               />
             )}
             <div>
-              <label htmlFor="username" className="block text-sm text-purple-300/80 mb-2 font-medium">Username</label>
-              <input id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50" required />
+              <label htmlFor="profile-username" className="block text-sm text-purple-300/80 mb-2 font-medium">
+                Username
+              </label>
+              <UsernameInput
+                id="profile-username"
+                value={username}
+                onChange={setUsername}
+                inputClassName="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50"
+                required
+              />
             </div>
             <div>
               <label htmlFor="age" className="block text-sm text-purple-300/80 mb-2 font-medium">Age</label>

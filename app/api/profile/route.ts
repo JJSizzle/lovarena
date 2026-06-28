@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isGenderIdentity, isLookingFor, isValidUsername } from "@/lib/profile-orientation";
+import { isGenderIdentity, isLookingFor } from "@/lib/profile-orientation";
+import { validateUsername } from "@/lib/username";
 import { sanitizeInterests, sanitizeLanguages } from "@/lib/profile-tags";
 import { isAvatarEmoji } from "@/lib/avatars";
 import { isValidAge } from "@/lib/profile-age";
@@ -67,9 +68,10 @@ export async function PATCH(req: NextRequest) {
     }
     if ("username" in body) {
       const username = String(body.username).trim();
-      if (!isValidUsername(username)) {
+      const usernameCheck = validateUsername(username);
+      if (!usernameCheck.valid) {
         return NextResponse.json(
-          { error: "Username: 3–32 letters, numbers, or underscores." },
+          { error: usernameCheck.error ?? "Invalid username." },
           { status: 400 }
         );
       }

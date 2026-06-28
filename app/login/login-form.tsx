@@ -15,6 +15,8 @@ import {
   type LookingFor,
 } from "@/lib/profile-orientation";
 import { parseAgeInput } from "@/lib/profile-age";
+import { validateUsername } from "@/lib/username";
+import { UsernameInput } from "@/components/UsernameInput";
 import { REFERRAL_STORAGE_KEY } from "@/lib/referral";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
@@ -207,8 +209,9 @@ export default function LoginForm() {
           setLoading(false);
           return;
         }
-        if (!username.match(/^[a-zA-Z0-9_]{3,32}$/)) {
-          setError("Username: 3–32 letters, numbers, or underscores.");
+        const usernameCheck = validateUsername(username);
+        if (!usernameCheck.valid) {
+          setError(usernameCheck.error ?? "Invalid username.");
           setLoading(false);
           return;
         }
@@ -410,12 +413,10 @@ export default function LoginForm() {
         <form onSubmit={handleEmailAuth} className="mt-6 space-y-4">
           {mode === "signup" && (
             <>
-            <input
-              type="text"
-              placeholder="Username"
+            <UsernameInput
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className={inputClass}
+              onChange={setUsername}
+              inputClassName={inputClass}
               required
             />
             <ProfileOrientationFields

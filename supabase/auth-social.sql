@@ -19,8 +19,8 @@ create table if not exists profiles (
     )
   ),
   created_at timestamptz not null default now(),
-  constraint profiles_username_length check (char_length(username) between 3 and 32),
-  constraint profiles_username_format check (username ~ '^[a-zA-Z0-9_]+$')
+  constraint profiles_username_length check (char_length(username) between 3 and 15),
+  constraint profiles_username_format check (username ~ '^[a-zA-Z0-9_.]+$')
 );
 
 create unique index if not exists profiles_username_idx on profiles (lower(username));
