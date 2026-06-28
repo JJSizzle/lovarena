@@ -27,6 +27,7 @@ const LazyChatParticles = dynamic(
 );
 import { MatchCountdown } from "@/components/MatchCountdown";
 import { ConnectionCardOverlay } from "@/components/ConnectionCardOverlay";
+import { MutualConnectCelebration } from "@/components/MutualConnectCelebration";
 import { PostChatFeedback } from "@/components/PostChatFeedback";
 import { RulesReminder } from "@/components/RulesReminder";
 import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
@@ -40,6 +41,7 @@ import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
 import { countryCodeToFlag } from "@/lib/flags";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { chatBtnLove, chatBtnSend, chatBtnFun, chatBtnGhost } from "@/lib/chat-buttons";
+import type { FriendLinkStatus } from "@/lib/friends/friend-link-status";
 import { beaconLeaveChat } from "@/lib/chat-leave-beacon";
 
 type Message = {
@@ -76,6 +78,13 @@ export default function ChatPage() {
   const [connectNotice, setConnectNotice] = useState<string | null>(null);
   const [youClickedConnect, setYouClickedConnect] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
+  const [chatFriendStatus, setChatFriendStatus] =
+    useState<FriendLinkStatus>("none");
+  const [friendRequestLoading, setFriendRequestLoading] = useState(false);
+  const [showMutualConnectCelebration, setShowMutualConnectCelebration] =
+    useState(false);
+  const friendsMatchedRef = useRef(false);
+  const mutualConnectCelebrationShownRef = useRef<string | null>(null);
   const [bothRevealed, setBothRevealed] = useState(false);
   const [partnerId, setPartnerId] = useState<string | null>(null);
   const [partnerLabel, setPartnerLabel] = useState<string | null>(null);
@@ -95,6 +104,15 @@ export default function ChatPage() {
   const statusRef = useRef(status);
   roomIdRef.current = roomId;
   statusRef.current = status;
+  friendsMatchedRef.current = friendsMatched;
+
+  const openMutualConnectCelebration = useCallback(() => {
+    if (!roomId || mutualConnectCelebrationShownRef.current === roomId) {
+      return;
+    }
+    mutualConnectCelebrationShownRef.current = roomId;
+    setShowMutualConnectCelebration(true);
+  }, [roomId]);
 
   const videoBlurred = profile?.face_blur_default ?? true;
   const voiceOnly = profile?.voice_only_default ?? false;
@@ -140,6 +158,7 @@ export default function ChatPage() {
         .then((d) => {
           if (d.partnerId) setPartnerId(d.partnerId);
           if (d.sharedTags) setSharedTags(d.sharedTags);
+          if (d.friendStatus) setChatFriendStatus(d.friendStatus);
           if (d.partnerUsername) {
             setPartnerLabel(
               formatPartnerLine(d.partnerUsername, d.partnerAge, true)
@@ -157,6 +176,9 @@ export default function ChatPage() {
       setPartnerId(null);
       setPartnerLabel(null);
       setSharedTags([]);
+      setChatFriendStatus("none");
+      setShowMutualConnectCelebration(false);
+      mutualConnectCelebrationShownRef.current = null;
     }
   }, [status, resetCelebration]);
 
@@ -313,8 +335,12 @@ export default function ChatPage() {
 
       setYouClickedConnect(data.youClicked);
       if (data.matched && data.partnerProfileId) {
+        if (!friendsMatchedRef.current) {
+          openMutualConnectCelebration();
+        }
         setFriendsMatched(true);
         setFriendId(data.partnerProfileId);
+        setChatFriendStatus("friends");
         if (data.partnerUsername) {
           setFriendUsername(data.partnerUsername);
         }
@@ -322,7 +348,7 @@ export default function ChatPage() {
     } catch {
       // retry on next poll
     }
-  }, [roomId, userId]);
+  }, [roomId, userId, openMutualConnectCelebration]);
 
   useEffect(() => {
     if (!roomId || status !== "connected" || !userId) return;
@@ -767,16 +793,91 @@ export default function ChatPage() {
         setFriendsMatched(true);
         setFriendId(data.partnerProfileId);
         setFriendUsername(data.partnerUsername ?? "Friend");
-        setConnectNotice("Matched! Added to Friends");
-        setTimeout(() => setConnectNotice(null), 5000);
+        setChatFriendStatus("friends");
+        openMutualConnectCelebration();
       } else {
-        setConnectNotice("Waiting for them to ❤️ Connect too…");
+        setConnectNotice("Waiting for them to tap Connect too…");
       }
     } catch {
       setError("Connect failed. Try again.");
     } finally {
       setConnectLoading(false);
     }
+  }
+
+  async function handleFriendRequest(accept = false) {
+    if (!partnerId) return;
+
+    setFriendRequestLoading(true);
+    setConnectNotice(null);
+
+    try {
+      const res = await fetch("/api/friends/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          friendId: partnerId,
+          ...(accept ? { action: "accept" } : {}),
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Friend request failed");
+        return;
+      }
+
+      const nextStatus = (data.friendStatus ?? chatFriendStatus) as FriendLinkStatus;
+      setChatFriendStatus(nextStatus);
+
+      if (nextStatus === "friends") {
+        setFriendsMatched(true);
+        setFriendId(partnerId);
+        setConnectNotice(data.message ?? "You are now friends!");
+      } else {
+        setConnectNotice(data.message ?? "Friend request sent.");
+      }
+      setTimeout(() => setConnectNotice(null), 5000);
+    } catch {
+      setError("Friend request failed. Try again.");
+    } finally {
+      setFriendRequestLoading(false);
+    }
+  }
+
+  function renderAddFriendButton() {
+    if (friendsMatched || chatFriendStatus === "friends") {
+      return null;
+    }
+    if (chatFriendStatus === "pending_sent") {
+      return (
+        <span className="text-[10px] sm:text-xs text-slate-400 px-2 py-2">
+          Requested
+        </span>
+      );
+    }
+    if (chatFriendStatus === "pending_received") {
+      return (
+        <button
+          type="button"
+          onClick={() => handleFriendRequest(true)}
+          disabled={friendRequestLoading}
+          className={chatBtnLove}
+        >
+          {friendRequestLoading ? "…" : "Accept friend"}
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => handleFriendRequest(false)}
+        disabled={friendRequestLoading || !partnerId}
+        className={chatBtnLove}
+      >
+        {friendRequestLoading ? "…" : "Add friend"}
+      </button>
+    );
   }
 
   if (authLoading || !user) {
@@ -876,8 +977,21 @@ export default function ChatPage() {
           }
           sharedTags={sharedTags}
           voiceOnly={voiceOnly}
+          connectHint={
+            !friendsMatched && chatFriendStatus !== "friends" ? (
+              <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+                <span className="text-pink-300 font-semibold">Connect</span> —
+                both tap when you feel a spark ·{" "}
+                <span className="text-fuchsia-300/90 font-semibold">
+                  Add friend
+                </span>{" "}
+                — low-pressure request
+              </p>
+            ) : null
+          }
           connectSlot={
             <>
+              {renderAddFriendButton()}
               <button
                 type="button"
                 onClick={handleConnect}
@@ -885,7 +999,7 @@ export default function ChatPage() {
                 className={chatBtnLove}
               >
                 {friendsMatched
-                  ? "Friends"
+                  ? "Friends ✨"
                   : youClickedConnect
                     ? "Waiting…"
                     : "Connect"}
@@ -916,6 +1030,16 @@ export default function ChatPage() {
         data={cardData}
         visible={showCard}
         onDone={dismissCard}
+      />
+      <MutualConnectCelebration
+        visible={showMutualConnectCelebration}
+        partnerUsername={
+          cardData?.partnerUsername ?? friendUsername ?? "Stranger"
+        }
+        partnerAge={cardData?.partnerAge}
+        partnerAvatarUrl={cardData?.partnerAvatarUrl}
+        partnerEmoji={cardData?.partnerEmoji}
+        onDone={() => setShowMutualConnectCelebration(false)}
       />
       <PostChatFeedback
         roomId={feedbackRoomId ?? ""}

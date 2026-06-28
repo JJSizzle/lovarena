@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 4 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 5 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -65,6 +65,18 @@ select migration, status from (
         where schemaname = 'storage' and tablename = 'objects'
           and policyname = 'Users can upload own avatar'
       ) then '❌ client upload still allowed — run avatar-upload-moderation.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 5, 'friend-connection-type',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'friendships'
+          and column_name = 'connection_type'
+      ) then '❌ column missing — run friend-connection-type.sql'
       else '✅ applied'
     end
 ) checks

@@ -452,7 +452,10 @@ export default function ProfilePage() {
             <h2 className="font-bold text-fuchsia-300">Friends</h2>
             <Link href="/friends" className="text-xs text-emerald-400">View all →</Link>
           </div>
-          <p className="text-xs text-slate-500">Connect with strangers in chat, then message them from Friends.</p>
+          <p className="text-xs text-slate-500">
+            Tap Connect when you both feel a spark, or Add friend for a
+            low-pressure request — then message from Friends.
+          </p>
         </div>
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">

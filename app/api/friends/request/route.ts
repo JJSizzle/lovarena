@@ -88,7 +88,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         friendStatus: "friends",
+        connectionType: "request",
         message: "Friend request accepted!",
+      });
+    }
+
+    if (action === "decline") {
+      if (status !== "pending_received") {
+        return NextResponse.json(
+          { error: "No friend request to decline." },
+          { status: 400 }
+        );
+      }
+      const { error: declineError } = await supabase
+        .from("friendships")
+        .delete()
+        .eq("user_id", friendId)
+        .eq("friend_id", auth.profile.id)
+        .eq("status", "pending");
+
+      if (declineError) {
+        return NextResponse.json({ error: declineError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        friendStatus: "none",
+        message: "Friend request declined.",
       });
     }
 
@@ -105,6 +131,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         friendStatus: "friends",
+        connectionType: "request",
         message: "They already requested you — you are now friends!",
       });
     }
@@ -113,6 +140,7 @@ export async function POST(req: NextRequest) {
       user_id: auth.profile.id,
       friend_id: friendId,
       status: "pending",
+      connection_type: "request",
     });
 
     if (error) {
@@ -122,7 +150,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       friendStatus: "pending_sent",
-      message: "Friend request sent. They can accept from their profile.",
+      message: "Friend request sent. They can accept from Friends or Profile.",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Request failed";

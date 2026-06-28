@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FriendConnectionType } from "@/lib/friends/connection-type";
 
 export type FriendLinkStatus =
   | "none"
@@ -56,19 +57,30 @@ export function friendLinkStatus(
 export async function acceptFriendshipPair(
   supabase: SupabaseClient,
   userId: string,
-  partnerId: string
+  partnerId: string,
+  connectionType: FriendConnectionType = "request"
 ): Promise<void> {
   await supabase
     .from("friendships")
-    .update({ status: "accepted" })
+    .update({ status: "accepted", connection_type: connectionType })
     .eq("user_id", partnerId)
     .eq("friend_id", userId)
     .eq("status", "pending");
 
   await supabase.from("friendships").upsert(
     [
-      { user_id: userId, friend_id: partnerId, status: "accepted" },
-      { user_id: partnerId, friend_id: userId, status: "accepted" },
+      {
+        user_id: userId,
+        friend_id: partnerId,
+        status: "accepted",
+        connection_type: connectionType,
+      },
+      {
+        user_id: partnerId,
+        friend_id: userId,
+        status: "accepted",
+        connection_type: connectionType,
+      },
     ],
     { onConflict: "user_id,friend_id" }
   );

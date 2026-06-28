@@ -29,6 +29,7 @@ type VideoPanelProps = {
   endedBySelf?: boolean;
   showConnect?: boolean;
   connectSlot?: React.ReactNode;
+  connectHint?: React.ReactNode;
   videoBlurred?: boolean;
   bothRevealed?: boolean;
   onRevealVideo?: () => void;
@@ -80,6 +81,7 @@ export function VideoPanel({
   endedBySelf = false,
   showConnect,
   connectSlot,
+  connectHint,
   videoBlurred = false,
   bothRevealed = false,
   onRevealVideo,
@@ -277,6 +279,9 @@ export function VideoPanel({
       <div className="w-full max-w-4xl space-y-2 mb-2">
         <div className={`${chatToolbar} !gap-1.5 md:!gap-2`}>{mediaControls}</div>
         <div className={`${chatToolbar} !gap-1.5 md:!gap-2`}>{actionControls}</div>
+        {showConnect && connectHint && (
+          <div className="px-1">{connectHint}</div>
+        )}
       </div>
     </div>
   );

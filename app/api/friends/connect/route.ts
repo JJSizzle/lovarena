@@ -148,14 +148,16 @@ export async function POST(req: NextRequest) {
             user_id: auth.profile.id,
             friend_id: partnerId,
             status: "accepted",
+            connection_type: "mutual_connect",
           },
           {
             user_id: partnerId,
             friend_id: auth.profile.id,
             status: "accepted",
+            connection_type: "mutual_connect",
           },
         ],
-        { onConflict: "user_id,friend_id", ignoreDuplicates: true }
+        { onConflict: "user_id,friend_id" }
       );
     }
 
@@ -169,6 +171,7 @@ export async function POST(req: NextRequest) {
       youClicked: true,
       partnerClicked: true,
       matched: true,
+      connectionType: "mutual_connect",
       partnerProfileId: partnerId,
       partnerUsername: partnerProfile?.username ?? null,
     });

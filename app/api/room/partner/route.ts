@@ -4,6 +4,7 @@ import {
   assertRoomMember,
   requireAuthProfile,
 } from "@/lib/auth/api-auth";
+import { friendLinkStatus } from "@/lib/friends/friend-link-status";
 import { overlapTags, getSafetyLabel } from "@/lib/safety-label";
 import { genderLabel, type GenderIdentity } from "@/lib/profile-orientation";
 
@@ -51,6 +52,13 @@ export async function GET(req: NextRequest) {
     const partnerAge =
       showAge && typeof partner?.age === "number" ? partner.age : null;
 
+    const { data: friendRows } = await supabase
+      .from("friendships")
+      .select("user_id, friend_id, status")
+      .or(
+        `and(user_id.eq.${auth.profile.id},friend_id.eq.${partnerId}),and(user_id.eq.${partnerId},friend_id.eq.${auth.profile.id})`
+      );
+
     return NextResponse.json({
       partnerId,
       partnerUsername: partner?.username ?? "Stranger",
@@ -66,6 +74,11 @@ export async function GET(req: NextRequest) {
       partnerInterests: (partnerInterests as string[]).slice(0, 4),
       safetyLabel: safety.label,
       safetyTone: safety.tone,
+      friendStatus: friendLinkStatus(
+        auth.profile.id,
+        partnerId,
+        friendRows ?? []
+      ),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Partner info failed";
