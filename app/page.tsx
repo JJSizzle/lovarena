@@ -9,7 +9,14 @@ import {
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
 import { useAuth } from "@/components/AuthProvider";
-import { isOnboardingComplete } from "@/lib/profile-orientation";
+import {
+  isGenderIdentity,
+  isLookingFor,
+  isOnboardingComplete,
+  type GenderIdentity,
+  type LookingFor,
+} from "@/lib/profile-orientation";
+import { ProfileOrientationFields } from "@/components/ProfileOrientationFields";
 import { AdaptiveParticleBackground } from "@/components/AdaptiveParticleBackground";
 import { OnlineStatsBanner } from "@/components/OnlineStatsBanner";
 import { ShareInviteButton } from "@/components/ShareInviteButton";
@@ -18,9 +25,13 @@ import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const [mode, setMode] = useState<MatchMode>("worldwide");
   const [country, setCountry] = useState("US");
+  const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
+  const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
+  const [entering, setEntering] = useState(false);
+  const [enterError, setEnterError] = useState<string | null>(null);
   const seasonal = getSeasonalTheme();
 
   useEffect(() => {
@@ -28,16 +39,72 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (!profile) return;
+    setGenderIdentity(profile.gender_identity ?? "");
+    setLookingFor(profile.looking_for ?? "");
+  }, [profile?.gender_identity, profile?.looking_for, profile]);
+
+  useEffect(() => {
     if (user) router.prefetch("/chat");
   }, [user, router]);
 
-  function handleStart() {
+  async function handleStart() {
+    setEnterError(null);
     setMatchPrefs(mode, country);
-    if (user && profile && !isOnboardingComplete(profile)) {
-      router.push("/onboarding?next=/chat");
+
+    if (!user) {
+      router.push("/login?next=/chat");
       return;
     }
-    router.push(user ? "/chat" : "/login?next=/chat");
+
+    if (!isGenderIdentity(genderIdentity) || !isLookingFor(lookingFor)) {
+      setEnterError("Select who you are and who you want to meet.");
+      return;
+    }
+
+    setEntering(true);
+    try {
+      const orientationChanged =
+        !profile ||
+        profile.gender_identity !== genderIdentity ||
+        profile.looking_for !== lookingFor;
+
+      if (orientationChanged) {
+        const res = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            gender_identity: genderIdentity,
+            looking_for: lookingFor,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error ?? "Could not save match preferences");
+        }
+        await refreshProfile();
+      }
+
+      const mergedProfile = {
+        username: profile?.username ?? "user_pending",
+        age: profile?.age ?? null,
+        gender_identity: genderIdentity,
+        looking_for: lookingFor,
+      };
+
+      if (!isOnboardingComplete(mergedProfile)) {
+        router.push("/onboarding?next=/chat");
+        return;
+      }
+
+      router.push("/chat");
+    } catch (err) {
+      setEnterError(
+        err instanceof Error ? err.message : "Could not enter the arena"
+      );
+    } finally {
+      setEntering(false);
+    }
   }
 
   return (
@@ -166,13 +233,46 @@ export default function HomePage() {
             </div>
           )}
 
+          {user && (
+            <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-4 shadow-[0_0_30px_rgba(168,85,247,0.1)] space-y-4">
+              <div>
+                <p className="text-sm text-purple-300/80 font-medium">
+                  Who you&apos;re matching as
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Pre-filled from your profile — change anytime before you enter.
+                </p>
+              </div>
+              <ProfileOrientationFields
+                idPrefix="home"
+                genderIdentity={genderIdentity}
+                lookingFor={lookingFor}
+                onGenderIdentityChange={setGenderIdentity}
+                onLookingForChange={setLookingFor}
+              />
+              <Link
+                href="/profile"
+                className="inline-block text-xs text-fuchsia-400 hover:text-fuchsia-300"
+              >
+                Edit full profile →
+              </Link>
+            </div>
+          )}
+
+          {enterError && (
+            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2 text-center">
+              {enterError}
+            </p>
+          )}
+
           <button
             type="button"
-            onClick={handleStart}
+            onClick={() => void handleStart()}
+            disabled={entering || (Boolean(user) && loading)}
             onMouseEnter={() => router.prefetch("/chat")}
-            className="w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-slate-950 font-extrabold py-4 text-lg transition transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-emerald-400/30"
+            className="w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 disabled:opacity-60 text-slate-950 font-extrabold py-4 text-lg transition transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-emerald-400/30"
           >
-            Enter Lovarena
+            {entering ? "Entering…" : "Enter Lovarena"}
           </button>
 
           <p className="text-center text-xs text-slate-500">
