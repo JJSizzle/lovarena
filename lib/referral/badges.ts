@@ -1,8 +1,10 @@
 export const REFERRAL_REP_BONUS = 5;
+export const CONNECTOR_REFERRALS = 3;
+export const AMBASSADOR_REFERRALS = 10;
 
 export function referralBadgeLabel(qualifiedReferrals: number): string | null {
-  if (qualifiedReferrals >= 5) return "Ambassador";
-  if (qualifiedReferrals >= 1) return "Connector";
+  if (qualifiedReferrals >= AMBASSADOR_REFERRALS) return "Ambassador";
+  if (qualifiedReferrals >= CONNECTOR_REFERRALS) return "Connector";
   return null;
 }
 

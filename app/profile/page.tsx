@@ -31,7 +31,7 @@ import { MatchHistoryRow } from "@/components/MatchHistoryRow";
 import { ReferralBadge } from "@/components/ReferralBadge";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
-import { isInvitedNewcomer } from "@/lib/referral/badges";
+import { isInvitedNewcomer, CONNECTOR_REFERRALS, AMBASSADOR_REFERRALS } from "@/lib/referral/badges";
 
 type BlockRow = {
   id: string;
@@ -397,7 +397,8 @@ export default function ProfilePage() {
           <h2 className="font-bold text-fuchsia-300 mb-2">Invite friends</h2>
           <p className="text-xs text-slate-400 mb-3">
             Share your link — you both earn +5 reputation after their first chat.
-            Earn Connector at 1 referral, Ambassador at 5.
+            Earn Connector at {CONNECTOR_REFERRALS} referrals, Ambassador at{" "}
+            {AMBASSADOR_REFERRALS}.
           </p>
           <ShareInviteButton
             referralCode={referralCode}
