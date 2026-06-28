@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { isAgeVerified, setAgeVerified } from "@/lib/age-gate";
+import { isAgeVerified, setAgeVerified, syncProfileAgeVerified } from "@/lib/age-gate";
 import { createClient } from "@/lib/supabase/client";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { useAuth } from "@/components/AuthProvider";
 
 export function AgeGate({ children }: { children: React.ReactNode }) {
+  const { refreshProfile } = useAuth();
   const [verified, setVerified] = useState(false);
   const [ready, setReady] = useState(false);
   const seasonal = getSeasonalTheme();
@@ -24,11 +26,8 @@ export function AgeGate({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
     const { data } = await supabase.auth.getUser();
     if (data.user) {
-      await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ age_verified: true }),
-      });
+      await syncProfileAgeVerified();
+      await refreshProfile();
     }
   }
 

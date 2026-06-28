@@ -21,6 +21,7 @@ import { ConnectionCardOverlay } from "@/components/ConnectionCardOverlay";
 import { PostChatFeedback } from "@/components/PostChatFeedback";
 import { RulesReminder } from "@/components/RulesReminder";
 import { isOrientationProfileComplete } from "@/lib/profile-orientation";
+import { isAgeVerified, syncProfileAgeVerified } from "@/lib/age-gate";
 import { useTypingIndicator } from "@/lib/hooks/useTypingIndicator";
 import { useMatchCelebration } from "@/lib/hooks/useMatchCelebration";
 import { countryCodeToFlag } from "@/lib/flags";
@@ -41,7 +42,7 @@ function appendMessage(list: Message[], msg: Message): Message[] {
 
 export default function ChatPage() {
   const router = useRouter();
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const userId = profile?.id ?? "";
   const [roomId, setRoomId] = useState<string | null>(null);
   const [status, setStatus] = useState<
@@ -141,11 +142,25 @@ export default function ChatPage() {
       return;
     }
     if (user && profile && !profile.age_verified) {
+      if (isAgeVerified()) {
+        void (async () => {
+          const synced = await syncProfileAgeVerified();
+          if (synced) {
+            await refreshProfile();
+            setError(null);
+          } else {
+            setError(
+              "Age verification did not save. Go to the home page, confirm 18+ again, then refresh."
+            );
+          }
+        })();
+        return;
+      }
       setError(
-        "Confirm you are 18+ on the age verification screen, then refresh."
+        "Confirm you are 18+ on the age verification screen first, then return to chat."
       );
     }
-  }, [authLoading, user, profile, router]);
+  }, [authLoading, user, profile, router, refreshProfile]);
 
   useEffect(() => {
     if (!userId) return;
@@ -691,7 +706,9 @@ export default function ChatPage() {
         {error && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
-            {status !== "restricted" && (
+            {status !== "restricted" &&
+              !error.includes("18+") &&
+              !error.includes("Age verification") && (
               <p className="mt-2 text-xs text-red-400/80">
                 Local: run <code className="text-red-300">npm run dev</code> and
                 check <code className="text-red-300">.env.local</code>. Supabase:

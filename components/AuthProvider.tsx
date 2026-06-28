@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { isAgeVerified, syncProfileAgeVerified } from "@/lib/age-gate";
 import type { GenderIdentity, LookingFor } from "@/lib/profile-orientation";
 
 export type Profile = {
@@ -67,6 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       )
       .eq("id", authUser.id)
       .maybeSingle();
+
+    if (data && !data.age_verified && isAgeVerified()) {
+      const synced = await syncProfileAgeVerified();
+      if (synced) {
+        setProfile({ ...data, age_verified: true });
+        return;
+      }
+    }
 
     setProfile(data ?? null);
   }, [supabase]);
