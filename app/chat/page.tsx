@@ -109,7 +109,7 @@ export default function ChatPage() {
   const webrtcActive =
     status === "connected" && !!roomId && mediaMode === "granted";
   const {
-    localVideoRef,
+    attachLocalVideo,
     remoteVideoRef,
     mediaError,
     videoEnabled,
@@ -760,7 +760,7 @@ export default function ChatPage() {
         <>
         <MatchingWaitScreen visible={status === "matching"} />
         <VideoPanel
-          localVideoRef={localVideoRef}
+          attachLocalVideo={attachLocalVideo}
           remoteVideoRef={remoteVideoRef}
           mediaError={mediaError}
           connectionState={connectionState}

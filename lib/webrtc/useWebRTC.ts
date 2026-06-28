@@ -52,6 +52,17 @@ export function useWebRTC(
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [connectionState, setConnectionState] = useState<string>("new");
 
+  const bindLocalPreview = useCallback((el: HTMLVideoElement | null) => {
+    localVideoRef.current = el;
+    const stream = localStreamRef.current;
+    if (!el || !stream) return;
+    if (el.srcObject !== stream) {
+      el.srcObject = stream;
+    }
+    applyIosVideoAttrs(el);
+    void el.play().catch(() => {});
+  }, []);
+
   async function flushIceQueue(pc: RTCPeerConnection) {
     while (iceQueueRef.current.length > 0) {
       const candidate = iceQueueRef.current.shift();
@@ -87,25 +98,31 @@ export function useWebRTC(
     setConnectionState("closed");
   }, []);
 
-  function toggleVideo() {
+  const toggleVideo = useCallback(() => {
     const stream = localStreamRef.current;
     if (!stream) return;
-    const next = !videoEnabled;
-    stream.getVideoTracks().forEach((t) => {
-      t.enabled = next;
-    });
-    setVideoEnabled(next);
-  }
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
 
-  function toggleAudio() {
+    setVideoEnabled((prev) => {
+      const next = !prev;
+      track.enabled = next;
+      return next;
+    });
+  }, []);
+
+  const toggleAudio = useCallback(() => {
     const stream = localStreamRef.current;
     if (!stream) return;
-    const next = !audioEnabled;
-    stream.getAudioTracks().forEach((t) => {
-      t.enabled = next;
+    const track = stream.getAudioTracks()[0];
+    if (!track) return;
+
+    setAudioEnabled((prev) => {
+      const next = !prev;
+      track.enabled = next;
+      return next;
     });
-    setAudioEnabled(next);
-  }
+  }, []);
 
   useEffect(() => {
     if (!active || !roomId || !userId) return;
@@ -138,10 +155,7 @@ export function useWebRTC(
         localStreamRef.current = stream;
         setVideoEnabled(!voiceOnly);
         setAudioEnabled(true);
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-          applyIosVideoAttrs(localVideoRef.current);
-        }
+        bindLocalPreview(localVideoRef.current);
 
         const roomRes = await fetch(`/api/room?roomId=${roomId}`, {
           cache: "no-store",
@@ -257,10 +271,15 @@ export function useWebRTC(
       iceQueueRef.current = [];
       setConnectionState("closed");
     };
-  }, [active, roomId, userId, voiceOnly]);
+  }, [active, roomId, userId, voiceOnly, bindLocalPreview]);
+
+  useEffect(() => {
+    bindLocalPreview(localVideoRef.current);
+  }, [videoEnabled, active, bindLocalPreview]);
 
   return {
     localVideoRef,
+    attachLocalVideo: bindLocalPreview,
     remoteVideoRef,
     mediaError,
     videoEnabled,

@@ -12,7 +12,7 @@ import {
 } from "@/lib/chat-buttons";
 
 type VideoPanelProps = {
-  localVideoRef: RefObject<HTMLVideoElement | null>;
+  attachLocalVideo: (el: HTMLVideoElement | null) => void;
   remoteVideoRef: RefObject<HTMLVideoElement | null>;
   mediaError: string | null;
   connectionState: string;
@@ -71,7 +71,7 @@ function VideoTile({
 }
 
 export function VideoPanel({
-  localVideoRef,
+  attachLocalVideo,
   remoteVideoRef,
   mediaError,
   connectionState,
@@ -134,27 +134,33 @@ export function VideoPanel({
   );
 
   const localVideo =
-    videoActive && videoEnabled ? (
-      <video
-        ref={localVideoRef}
-        autoPlay
-        playsInline
-        muted
-        className={`absolute inset-0 w-full h-full object-cover mirror transition ${
-          videoBlurred && !bothRevealed ? "blur-2xl scale-105" : ""
-        }`}
-      />
+    videoActive && !voiceOnly ? (
+      <>
+        <video
+          ref={attachLocalVideo}
+          autoPlay
+          playsInline
+          muted
+          className={`absolute inset-0 w-full h-full object-cover mirror ${
+            videoEnabled ? "opacity-100" : "opacity-0"
+          } ${videoBlurred && !bothRevealed && videoEnabled ? "blur-2xl scale-105" : ""}`}
+        />
+        {!videoEnabled && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-[1] bg-slate-900/90">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-400 to-indigo-600 blur-xl opacity-30" />
+            <p className="text-slate-400 font-medium text-xs mt-2">Camera off</p>
+          </div>
+        )}
+      </>
     ) : (
       <>
         <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-400 to-indigo-600 animate-pulse blur-xl opacity-40" />
         <p className="absolute text-slate-400 font-medium text-xs z-[1]">
           {voiceOnly
             ? "Voice active"
-            : videoActive
-              ? "Camera off"
-              : status === "matching"
-                ? "Loading…"
-                : "Camera stopped"}
+            : status === "matching"
+              ? "Loading…"
+              : "Camera stopped"}
         </p>
       </>
     );
