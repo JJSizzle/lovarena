@@ -22,6 +22,7 @@ export default function AdminPage() {
     { user_id: string; reason: string; flagged_at: string }[]
   >([]);
   const [error, setError] = useState<string | null>(null);
+  const [banning, setBanning] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !profile?.is_admin) return;
@@ -74,6 +75,55 @@ export default function AdminPage() {
     );
   }
 
+  async function banUser(userId: string, reportId?: string) {
+    if (
+      !confirm(
+        "Ban this user? They will be flagged and removed from all active chats."
+      )
+    ) {
+      return;
+    }
+
+    setBanning(userId);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "ban",
+          userId,
+          reason: "admin_ban",
+          reportId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Ban failed");
+        return;
+      }
+      setReports((prev) =>
+        prev.map((r) =>
+          r.reported_user_id === userId && r.status === "open"
+            ? { ...r, status: "actioned" }
+            : r
+        )
+      );
+      setFlagged((prev) => {
+        if (prev.some((f) => f.user_id === userId)) return prev;
+        return [
+          {
+            user_id: userId,
+            reason: "admin_ban",
+            flagged_at: new Date().toISOString(),
+          },
+          ...prev,
+        ];
+      });
+    } finally {
+      setBanning(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
       <div className="max-w-4xl mx-auto">
@@ -104,24 +154,27 @@ export default function AdminPage() {
                   reported {r.reported_user_id.slice(0, 8)} · room{" "}
                   {r.room_id?.slice(0, 8) ?? "—"}
                 </p>
-                {r.status === "open" && (
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      type="button"
-                      onClick={() => updateStatus(r.id, "reviewed")}
-                      className="text-xs bg-white/10 px-3 py-1 rounded-lg"
-                    >
-                      Mark reviewed
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateStatus(r.id, "actioned")}
-                      className="text-xs bg-red-600/80 px-3 py-1 rounded-lg"
-                    >
-                      Actioned
-                    </button>
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {r.status === "open" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => updateStatus(r.id, "reviewed")}
+                        className="text-xs bg-white/10 px-3 py-1 rounded-lg"
+                      >
+                        Mark reviewed
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => banUser(r.reported_user_id, r.id)}
+                        disabled={banning === r.reported_user_id}
+                        className="text-xs bg-red-600/80 px-3 py-1 rounded-lg disabled:opacity-50"
+                      >
+                        {banning === r.reported_user_id ? "Banning…" : "Ban user"}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
             {reports.length === 0 && (
@@ -132,14 +185,29 @@ export default function AdminPage() {
 
         <section className="mt-10">
           <h2 className="text-lg font-semibold text-red-300">Flagged users</h2>
-          <ul className="mt-4 space-y-2 text-sm font-mono text-slate-400">
+          <ul className="mt-4 space-y-2 text-sm">
             {flagged.map((f) => (
-              <li key={f.user_id}>
-                {f.user_id} — {f.reason} —{" "}
-                {new Date(f.flagged_at).toLocaleString()}
+              <li
+                key={f.user_id}
+                className="flex flex-wrap items-center gap-2 font-mono text-slate-400"
+              >
+                <span>
+                  {f.user_id} — {f.reason} —{" "}
+                  {new Date(f.flagged_at).toLocaleString()}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => banUser(f.user_id)}
+                  disabled={banning === f.user_id}
+                  className="text-xs bg-red-600/60 px-2 py-0.5 rounded font-sans disabled:opacity-50"
+                >
+                  Re-ban
+                </button>
               </li>
             ))}
-            {flagged.length === 0 && <li>None</li>}
+            {flagged.length === 0 && (
+              <li className="text-slate-500">None</li>
+            )}
           </ul>
         </section>
       </div>

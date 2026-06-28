@@ -5,6 +5,11 @@ import {
   getPartnerId,
   requireAuthProfile,
 } from "@/lib/auth/api-auth";
+import { endActiveRoomsForUser } from "@/lib/moderation/ban-user";
+import {
+  isUserFlaggedForAbuse,
+} from "@/lib/moderation/enforce-violation";
+import { notifyModerators } from "@/lib/moderation/notify-admin";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const VALID_REASONS = [
@@ -76,6 +81,27 @@ export async function POST(req: NextRequest) {
       p_user_id: reportedUserId,
       p_threshold: 3,
     });
+
+    if (await isUserFlaggedForAbuse(supabase, reportedUserId)) {
+      await endActiveRoomsForUser(supabase, reportedUserId);
+      void notifyModerators({
+        type: "auto_flag",
+        reason: "auto_flag_on_reports (3+ reports in 24h)",
+        reportedUserId,
+        reporterId: auth.profile.id,
+        roomId,
+        details: details?.trim()?.slice(0, 500) ?? null,
+      });
+    } else {
+      void notifyModerators({
+        type: "report",
+        reason,
+        reportedUserId,
+        reporterId: auth.profile.id,
+        roomId,
+        details: details?.trim()?.slice(0, 500) ?? null,
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -9,7 +9,27 @@ type SignalOut =
 
 type SignalMessage = SignalOut & { from: string };
 
-const ICE_SERVERS = getIceServers();
+function applyIosVideoAttrs(el: HTMLVideoElement | null) {
+  if (!el) return;
+  el.playsInline = true;
+  el.setAttribute("playsinline", "true");
+  el.setAttribute("webkit-playsinline", "true");
+}
+
+function mediaErrorMessage(err: unknown): string {
+  if (err instanceof DOMException) {
+    if (err.name === "NotAllowedError") {
+      return "Camera/mic permission denied. Allow access in browser settings or continue with text only.";
+    }
+    if (err.name === "NotFoundError") {
+      return "No camera or microphone found on this device.";
+    }
+    if (err.name === "NotReadableError") {
+      return "Camera is in use by another app. Close other apps and try again.";
+    }
+  }
+  return err instanceof Error ? err.message : "Camera/mic access failed";
+}
 
 export function useWebRTC(
   roomId: string | null,
@@ -98,8 +118,17 @@ export function useWebRTC(
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: !voiceOnly,
-          audio: true,
+          video: voiceOnly
+            ? false
+            : {
+                facingMode: "user",
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+              },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
         });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -111,6 +140,7 @@ export function useWebRTC(
         setAudioEnabled(true);
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
+          applyIosVideoAttrs(localVideoRef.current);
         }
 
         const roomRes = await fetch(`/api/room?roomId=${roomId}`, {
@@ -121,7 +151,10 @@ export function useWebRTC(
 
         isInitiatorRef.current = roomData.user1_id === userId;
 
-        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+        const pc = new RTCPeerConnection({
+          iceServers: getIceServers(),
+          bundlePolicy: "max-bundle",
+        });
         pcRef.current = pc;
 
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -129,6 +162,7 @@ export function useWebRTC(
         pc.ontrack = (event) => {
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
+            applyIosVideoAttrs(remoteVideoRef.current);
           }
         };
 
@@ -200,9 +234,7 @@ export function useWebRTC(
         }
       } catch (err) {
         if (!cancelled) {
-          const message =
-            err instanceof Error ? err.message : "Camera/mic access failed";
-          setMediaError(message);
+          setMediaError(mediaErrorMessage(err));
         }
       }
     }

@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { endActiveRoomsForUser } from "@/lib/moderation/ban-user";
+import { notifyModerators } from "@/lib/moderation/notify-admin";
 
 /**
  * Flags the sender, ends the active room, and removes them from the match queue.
@@ -20,13 +22,20 @@ export async function enforceSevereViolation(
     { onConflict: "user_id" }
   );
 
+  await endActiveRoomsForUser(supabase, senderId);
+
   await supabase
     .from("chat_rooms")
     .update({ status: "ended" })
     .eq("id", roomId)
     .eq("status", "active");
 
-  await supabase.from("waiting_users").delete().eq("user_id", senderId);
+  void notifyModerators({
+    type: "severe_violation",
+    reason: "severe_hate_speech_or_slur",
+    reportedUserId: senderId,
+    roomId,
+  });
 }
 
 export async function isUserFlaggedForAbuse(

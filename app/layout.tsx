@@ -4,6 +4,7 @@ import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { AgeGate } from "@/components/AgeGate";
 import { AuthProvider } from "@/components/AuthProvider";
 import { CookieConsent } from "@/components/CookieConsent";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
 
@@ -48,6 +49,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
   },
+  icons: {
+    icon: "/icons/icon.svg",
+    apple: "/icons/icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -66,6 +71,7 @@ export default function RootLayout({
             <div className="flex flex-col min-h-full flex-1">{children}</div>
             <SiteFooter />
             <CookieConsent />
+            <InstallPrompt />
           </AgeGate>
         </AuthProvider>
       </body>

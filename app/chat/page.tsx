@@ -13,6 +13,7 @@ import { VideoPanel } from "./video-panel";
 import { useAuth } from "@/components/AuthProvider";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { SafetyActions } from "@/components/SafetyActions";
+import { MediaPermissionGate } from "@/components/MediaPermissionGate";
 import { MatchingWaitScreen } from "@/components/MatchingWaitScreen";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { ParticleBackground } from "@/components/ParticleBackground";
@@ -73,6 +74,10 @@ export default function ChatPage() {
   const [feedbackPartnerId, setFeedbackPartnerId] = useState<string | null>(null);
   const [pendingNext, setPendingNext] = useState(false);
   const [endedBySelf, setEndedBySelf] = useState(false);
+  const [mediaMode, setMediaMode] = useState<"pending" | "granted" | "text-only">(
+    "pending"
+  );
+  const [mobileVideoExpanded, setMobileVideoExpanded] = useState(false);
   const bottomRef = useScrollOnNewMessage(messages, roomId);
   const roomIdRef = useRef(roomId);
   const statusRef = useRef(status);
@@ -101,7 +106,8 @@ export default function ChatPage() {
     status === "connected"
   );
 
-  const webrtcActive = status === "connected" && !!roomId;
+  const webrtcActive =
+    status === "connected" && !!roomId && mediaMode === "granted";
   const {
     localVideoRef,
     remoteVideoRef,
@@ -423,6 +429,41 @@ export default function ChatPage() {
   }, [roomId]);
 
   useEffect(() => {
+    setMediaMode("pending");
+    setMobileVideoExpanded(false);
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!roomId || status !== "connected") return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`room-status:${roomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "chat_rooms",
+          filter: `id=eq.${roomId}`,
+        },
+        (payload) => {
+          const row = payload.new as { status?: string };
+          if (row.status === "ended") {
+            stopMedia();
+            setEndedBySelf(false);
+            setStatus("disconnected");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, status, stopMedia]);
+
+  useEffect(() => {
     if (!roomId || status !== "connected") return;
 
     async function checkRoom() {
@@ -677,7 +718,13 @@ export default function ChatPage() {
   return (
     <div className={`min-h-screen flex flex-col lg:flex-row w-full bg-gradient-to-br ${seasonal.gradient} text-white relative`}>
     <ParticleBackground />
-    <main className="flex-1 flex flex-col min-w-0 w-full max-w-4xl mx-auto lg:mx-0 relative z-[1]">
+    <main className="flex-1 flex flex-col min-w-0 w-full max-w-4xl mx-auto lg:mx-0 relative z-[1] pb-safe">
+      <MediaPermissionGate
+        visible={status === "connected" && !!roomId && mediaMode === "pending"}
+        voiceOnly={voiceOnly}
+        onEnable={() => setMediaMode("granted")}
+        onTextOnly={() => setMediaMode("text-only")}
+      />
       <header className="flex items-center justify-between px-4 py-3 gap-2 text-sm">
         <Link href="/" className="text-slate-400 hover:text-white shrink-0 text-xs">
           ← Home
@@ -739,6 +786,8 @@ export default function ChatPage() {
           }
           sharedTags={sharedTags}
           voiceOnly={voiceOnly}
+          mobileVideoExpanded={mobileVideoExpanded}
+          onToggleMobileVideo={() => setMobileVideoExpanded((v) => !v)}
           connectSlot={
             <>
               <button
@@ -872,7 +921,7 @@ export default function ChatPage() {
 
       <form
         onSubmit={sendMessage}
-        className="p-4 border-t border-purple-500/20 space-y-3 max-w-4xl w-full mx-auto"
+        className="sticky bottom-0 z-10 p-3 sm:p-4 border-t border-purple-500/20 space-y-2 max-w-4xl w-full mx-auto bg-slate-950/90 backdrop-blur-md"
       >
         {partnerTyping && (
           <p className="text-center text-xs text-fuchsia-300/80 pb-2 animate-pulse">

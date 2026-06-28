@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
+import { banUserFromPlatform } from "@/lib/moderation/ban-user";
+import { notifyModerators } from "@/lib/moderation/notify-admin";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 
@@ -79,6 +81,53 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Update failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
+
+    if (!auth.profile.is_admin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const ip = clientIp(req);
+    const rl = await rateLimit(`admin-ban:${auth.profile.id}:${ip}`, 30, 3600);
+    if (!rl.allowed) {
+      return rateLimitResponse(rl.retryAfterSeconds);
+    }
+
+    const { action, userId, reason, reportId } = await req.json();
+
+    if (action !== "ban" || !userId) {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    const supabase = createAdminClient();
+    const banReason = String(reason ?? "admin_ban").slice(0, 200);
+
+    await banUserFromPlatform(supabase, userId, banReason);
+
+    if (reportId) {
+      await supabase
+        .from("abuse_reports")
+        .update({ status: "actioned" })
+        .eq("id", reportId);
+    }
+
+    void notifyModerators({
+      type: "admin_ban",
+      reason: banReason,
+      reportedUserId: userId,
+      adminId: auth.profile.id,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Ban failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
