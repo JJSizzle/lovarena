@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getIceServers } from "@/lib/webrtc/ice-servers";
 
@@ -55,7 +55,7 @@ export function useWebRTC(
     });
   }
 
-  function stopMedia() {
+  const stopMedia = useCallback(() => {
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
@@ -65,7 +65,7 @@ export function useWebRTC(
     setVideoEnabled(false);
     setAudioEnabled(false);
     setConnectionState("closed");
-  }
+  }, []);
 
   function toggleVideo() {
     const stream = localStreamRef.current;

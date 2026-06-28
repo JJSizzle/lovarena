@@ -1,23 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertRoomMember, requireAuthProfile } from "@/lib/auth/api-auth";
+import {
+  assertRoomMember,
+  getPartnerId,
+  requireAuthProfile,
+} from "@/lib/auth/api-auth";
+import { endRoomIfPartnerGone } from "@/lib/partner-gone";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+
+async function clearSession(supabase: ReturnType<typeof createAdminClient>, userId: string) {
+  await supabase.from("waiting_users").delete().eq("user_id", userId);
+  await supabase.from("user_presence").upsert({
+    user_id: userId,
+    last_seen_at: new Date().toISOString(),
+    in_queue: false,
+    in_chat: false,
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const { roomId } = await req.json();
-    if (!roomId) {
-      return NextResponse.json({ error: "Missing roomId" }, { status: 400 });
-    }
-
-    const membership = await assertRoomMember(roomId, auth.profile.id);
-    if ("error" in membership) return membership.error;
+    const body = await req.json().catch(() => ({}));
+    const roomId =
+      typeof body.roomId === "string" && body.roomId.length > 0
+        ? body.roomId
+        : null;
 
     const ip = clientIp(req);
-    const rl = await rateLimit(`leave:${auth.profile.id}:${ip}`, 20, 60);
+    const rl = await rateLimit(`leave:${auth.profile.id}:${ip}`, 30, 60);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Too many requests. Please wait." },
@@ -26,10 +39,18 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
-    await supabase.rpc("leave_chat", {
-      p_user_id: auth.profile.id,
-      p_room_id: roomId,
-    });
+
+    if (roomId) {
+      const membership = await assertRoomMember(roomId, auth.profile.id);
+      if ("error" in membership) return membership.error;
+
+      await supabase.rpc("leave_chat", {
+        p_user_id: auth.profile.id,
+        p_room_id: roomId,
+      });
+    }
+
+    await clearSession(supabase, auth.profile.id);
 
     return NextResponse.json({ ok: true });
   } catch (err) {

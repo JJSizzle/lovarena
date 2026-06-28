@@ -29,6 +29,7 @@ import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
 import { countryCodeToFlag } from "@/lib/flags";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { chatBtnLove, chatBtnSend, chatBtnFun, chatBtnGhost } from "@/lib/chat-buttons";
+import { beaconLeaveChat } from "@/lib/chat-leave-beacon";
 
 type Message = {
   id: string;
@@ -73,6 +74,10 @@ export default function ChatPage() {
   const [pendingNext, setPendingNext] = useState(false);
   const [endedBySelf, setEndedBySelf] = useState(false);
   const bottomRef = useScrollOnNewMessage(messages, roomId);
+  const roomIdRef = useRef(roomId);
+  const statusRef = useRef(status);
+  roomIdRef.current = roomId;
+  statusRef.current = status;
 
   const videoBlurred = profile?.face_blur_default ?? true;
   const voiceOnly = profile?.voice_only_default ?? false;
@@ -177,6 +182,9 @@ export default function ChatPage() {
   useEffect(() => {
     if (!userId) return;
 
+    const intervalMs =
+      status === "connected" ? 8_000 : status === "matching" ? 15_000 : 30_000;
+
     async function pingPresence() {
       try {
         await fetch("/api/presence", {
@@ -193,9 +201,24 @@ export default function ChatPage() {
     }
 
     pingPresence();
-    const interval = setInterval(pingPresence, 30000);
+    const interval = setInterval(pingPresence, intervalMs);
     return () => clearInterval(interval);
   }, [userId, status]);
+
+  useEffect(() => {
+    function leaveOnExit() {
+      const id = roomIdRef.current;
+      const currentStatus = statusRef.current;
+      if (currentStatus !== "connected" && currentStatus !== "matching") return;
+      beaconLeaveChat(id);
+    }
+
+    window.addEventListener("pagehide", leaveOnExit);
+    return () => {
+      window.removeEventListener("pagehide", leaveOnExit);
+      leaveOnExit();
+    };
+  }, []);
 
   useEffect(() => {
     if (!roomId || status !== "connected" || !videoBlurred) {
@@ -409,6 +432,7 @@ export default function ChatPage() {
         });
         const data = await res.json();
         if (res.ok && data.status === "ended") {
+          stopMedia();
           setEndedBySelf(false);
           setStatus("disconnected");
         }
@@ -420,7 +444,23 @@ export default function ChatPage() {
     checkRoom();
     const interval = setInterval(checkRoom, 2000);
     return () => clearInterval(interval);
-  }, [roomId, status]);
+  }, [roomId, status, stopMedia]);
+
+  useEffect(() => {
+    if (status !== "connected" || !roomId) return;
+    if (connectionState !== "disconnected" && connectionState !== "failed") {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (statusRef.current !== "connected") return;
+      stopMedia();
+      setEndedBySelf(false);
+      setStatus("disconnected");
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [connectionState, status, roomId, stopMedia]);
 
   async function handleStop() {
     if (!userId || status !== "connected" || !roomId) return;
