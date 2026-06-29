@@ -115,10 +115,21 @@ export function VideoPanel({
         ref={remoteVideoRef}
         autoPlay
         playsInline
-        className={`absolute inset-0 w-full h-full object-cover transition ${
-          videoBlurred && !bothRevealed ? "blur-2xl scale-105" : ""
-        }`}
+        className="absolute inset-0 w-full h-full object-cover transition"
       />
+      {videoBlurred && !bothRevealed && (
+        <div
+          className="absolute inset-0 z-[2] bg-slate-900/50 backdrop-blur-2xl pointer-events-none"
+          aria-hidden
+        />
+      )}
+      {videoBlurred && !bothRevealed && (
+        <div className="absolute inset-0 flex items-center justify-center z-[3] pointer-events-none px-4">
+          <p className="text-[11px] text-slate-300/90 text-center bg-slate-950/70 border border-white/10 rounded-xl px-3 py-2">
+            Stranger is blurred until you both tap Reveal
+          </p>
+        </div>
+      )}
       {connectionState !== "connected" && !mediaError && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-slate-400 text-xs z-[1]">
           Connecting…
@@ -146,11 +157,7 @@ export function VideoPanel({
           autoPlay
           playsInline
           muted
-          className={`absolute inset-0 w-full h-full object-cover mirror ${
-            videoBlurred && !bothRevealed && isCameraOn
-              ? "blur-2xl scale-105"
-              : ""
-          }`}
+          className="absolute inset-0 w-full h-full object-cover mirror"
         />
         {!isCameraOn && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-[1] bg-slate-900/90 pointer-events-none">

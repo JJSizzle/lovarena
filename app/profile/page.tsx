@@ -377,7 +377,7 @@ export default function ProfilePage() {
             <TagPicker label="Languages" options={LANGUAGE_OPTIONS} selected={languages} onChange={setLanguages} max={5} />
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input type="checkbox" checked={faceBlurDefault} onChange={(e) => setFaceBlurDefault(e.target.checked)} />
-              Blur video until both agree to reveal
+              Blur stranger&apos;s video until you both tap Reveal (your preview stays clear)
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input type="checkbox" checked={voiceOnlyDefault} onChange={(e) => setVoiceOnlyDefault(e.target.checked)} />
