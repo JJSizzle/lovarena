@@ -12,6 +12,7 @@ import { chatBtnGhost, chatBtnLove, chatBtnBlock } from "@/lib/chat-buttons";
 import type { FriendConnectionType } from "@/lib/friends/connection-type";
 import type { FriendProfileView } from "@/lib/friends/friend-profile-view";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { AppQuickNav } from "@/components/AppQuickNav";
 
 type Friend = {
   id: string;
@@ -310,21 +311,13 @@ export default function FriendsPage() {
           </Link>
         </div>
 
+        <AppQuickNav className="mb-5" />
+
         {requestNotice && (
           <p className="text-xs text-slate-300 mb-3 rounded-xl border border-purple-500/30 bg-slate-950/80 px-3 py-2">
             {requestNotice}
           </p>
         )}
-
-        <Link
-          href="/party"
-          className="block mb-6 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 hover:bg-cyan-500/15 transition"
-        >
-          <p className="text-sm font-semibold text-cyan-100">Start a Party</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            2–4 friends · prompt cards or trivia
-          </p>
-        </Link>
 
         {hasRequests && (
           <section className="mb-6">

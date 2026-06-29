@@ -19,6 +19,7 @@ import { US_STATES } from "@/lib/us-states";
 import { LANGUAGE_OPTIONS } from "@/lib/profile-tags";
 import { isSupportedTranslationLanguage } from "@/lib/translation/language-codes";
 import { soundsEnabled, setSoundsEnabled } from "@/lib/sounds";
+import { AppQuickNav } from "@/components/AppQuickNav";
 
 function SettingRow({
   title,
@@ -173,6 +174,8 @@ export default function SettingsPage() {
             Arena →
           </Link>
         </div>
+
+        <AppQuickNav className="mb-2" />
 
         <form
           onSubmit={handleSave}

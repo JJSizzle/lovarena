@@ -41,6 +41,7 @@ import { PostChatFeedback } from "@/components/PostChatFeedback";
 import { RulesReminder } from "@/components/RulesReminder";
 import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
 import { TranslateToolbar } from "@/components/TranslateToolbar";
+import { AppQuickNav } from "@/components/AppQuickNav";
 import { isOnboardingComplete } from "@/lib/profile-orientation";
 import { formatPartnerLine } from "@/lib/profile-age";
 import {
@@ -1207,13 +1208,18 @@ export default function ChatPage() {
           {profile && (
             <Link
               href="/settings"
-              className="text-[10px] text-slate-400 hover:text-white hidden sm:inline transition"
+              className="text-[10px] text-slate-400 hover:text-white hidden md:inline transition"
             >
               Settings
             </Link>
           )}
         </div>
       </header>
+      {profile && (
+        <div className="px-4 pb-2 md:hidden">
+          <AppQuickNav />
+        </div>
+      )}
       <div className="px-4 pb-2">
         <TranslateToolbar
           primaryLanguage={primaryLanguage}

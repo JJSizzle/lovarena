@@ -16,6 +16,7 @@ import {
 import type { PartyGameMode, PartyState } from "@/lib/party/party-types";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { usePartyWebRTC } from "@/lib/webrtc/usePartyWebRTC";
+import { AppQuickNav } from "@/components/AppQuickNav";
 
 function PartyPageContent() {
   const router = useRouter();
@@ -318,6 +319,8 @@ function PartyPageContent() {
             Friends →
           </Link>
         </div>
+
+        {!inParty && user && <AppQuickNav className="mb-6 max-w-md mx-auto" />}
 
         {!inParty && (
           <div className="max-w-md mx-auto space-y-6">

@@ -32,6 +32,7 @@ import { MatchHistoryRow } from "@/components/MatchHistoryRow";
 import { ReferralBadge } from "@/components/ReferralBadge";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { AppQuickNav } from "@/components/AppQuickNav";
 import { isInvitedNewcomer, CONNECTOR_REFERRALS, AMBASSADOR_REFERRALS } from "@/lib/referral/badges";
 import { REP_MAX, reputationTier } from "@/lib/reputation";
 import { COUNTRIES } from "@/lib/countries";
@@ -231,6 +232,8 @@ export default function ProfilePage() {
             Arena →
           </Link>
         </div>
+
+        <AppQuickNav />
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-6">
           <div className="flex items-center gap-4 mb-6">
