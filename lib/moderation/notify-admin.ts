@@ -4,7 +4,8 @@ type ModerationAlert = {
     | "auto_flag"
     | "severe_violation"
     | "admin_ban"
-    | "avatar_rejected";
+    | "avatar_rejected"
+    | "restriction_appeal";
   reason: string;
   reportedUserId?: string;
   reporterId?: string;

@@ -15,6 +15,7 @@ import { FriendsPanel } from "@/components/FriendsPanel";
 import { SafetyActions } from "@/components/SafetyActions";
 import { MediaPermissionGate } from "@/components/MediaPermissionGate";
 import { MatchingWaitScreen } from "@/components/MatchingWaitScreen";
+import { RestrictionPanel } from "@/components/RestrictionPanel";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import dynamic from "next/dynamic";
 
@@ -1082,12 +1083,7 @@ export default function ChatPage() {
             )}
           </div>
         )}
-        {status === "restricted" && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-            {error ??
-              "Your session was restricted for violating community guidelines. You cannot send messages or match again until the restriction lifts."}
-          </div>
-        )}
+        {status === "restricted" && <RestrictionPanel />}
         {status === "idle" && (
           <div className="mx-4 mb-4 rounded-3xl border border-slate-600/40 bg-slate-950/80 backdrop-blur-xl p-6 text-center">
             <p className="text-slate-300 font-medium text-sm">You left the match queue</p>

@@ -9,6 +9,10 @@ import {
   friendLinkStatus,
 } from "@/lib/friends/friend-link-status";
 import { verifyRecentMatch } from "@/lib/moderation/report-reputation";
+import {
+  notifyFriendRequestAccepted,
+  notifyFriendRequestReceived,
+} from "@/lib/notifications/friend-request-email";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 
@@ -85,6 +89,11 @@ export async function POST(req: NextRequest) {
         );
       }
       await acceptFriendshipPair(supabase, auth.profile.id, friendId);
+      void notifyFriendRequestAccepted({
+        requesterId: friendId,
+        accepterId: auth.profile.id,
+        accepterUsername: auth.profile.username,
+      }).catch(() => {});
       return NextResponse.json({
         ok: true,
         friendStatus: "friends",
@@ -128,6 +137,11 @@ export async function POST(req: NextRequest) {
 
     if (status === "pending_received") {
       await acceptFriendshipPair(supabase, auth.profile.id, friendId);
+      void notifyFriendRequestAccepted({
+        requesterId: friendId,
+        accepterId: auth.profile.id,
+        accepterUsername: auth.profile.username,
+      }).catch(() => {});
       return NextResponse.json({
         ok: true,
         friendStatus: "friends",
@@ -146,6 +160,12 @@ export async function POST(req: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    void notifyFriendRequestReceived({
+      receiverId: friendId,
+      senderId: auth.profile.id,
+      senderUsername: auth.profile.username,
+    }).catch(() => {});
 
     return NextResponse.json({
       ok: true,
