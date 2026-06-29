@@ -236,7 +236,7 @@ export function VideoPanel({
   return (
     <div className="flex flex-col items-center w-full px-3 sm:px-4 pt-3 sm:pt-6 pb-2">
       <div className="grid grid-cols-3 items-start w-full max-w-4xl mb-3 sm:mb-4 px-1 gap-2">
-        <div className="min-w-0 flex flex-col items-start gap-1.5 text-left">
+        <div className="min-w-0 text-left">
           <p
             className="text-sm sm:text-lg font-bold text-pink-300 truncate max-w-full leading-tight"
             title={partnerLabel ?? undefined}
@@ -244,17 +244,17 @@ export function VideoPanel({
             {partnerLabel?.trim() ||
               (status === "matching" ? "…" : "Stranger")}
           </p>
-          <div className="bg-purple-500/10 border border-purple-500/30 rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-purple-300 whitespace-nowrap">
-            {matchBadge}
-          </div>
         </div>
-        <div className="text-center min-w-0">
+        <div className="text-center min-w-0 flex flex-col items-center gap-1.5">
           <Link
             href="/"
             className="inline-block text-lg sm:text-2xl md:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent hover:opacity-90 transition leading-tight"
           >
             LOVARENA
           </Link>
+          <div className="bg-purple-500/10 border border-purple-500/30 rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-purple-300 whitespace-nowrap">
+            {matchBadge}
+          </div>
         </div>
         <div className="min-w-0 text-right">
           <p

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  acquireCameraTrack,
+  getVideoConstraints,
+  mediaErrorMessage,
+} from "@/lib/webrtc/media-constraints";
 import { getIceServers } from "@/lib/webrtc/ice-servers";
 
 type SignalOut =
@@ -9,41 +14,12 @@ type SignalOut =
 
 type SignalMessage = SignalOut & { from: string };
 
-const VIDEO_CONSTRAINTS: MediaTrackConstraints = {
-  facingMode: "user",
-  width: { ideal: 640 },
-  height: { ideal: 480 },
-};
-
 function applyIosVideoAttrs(el: HTMLVideoElement | null) {
   if (!el) return;
   el.playsInline = true;
   el.setAttribute("playsinline", "true");
   el.setAttribute("webkit-playsinline", "true");
   el.muted = true;
-}
-
-function mediaErrorMessage(err: unknown): string {
-  if (err instanceof DOMException) {
-    if (err.name === "NotAllowedError") {
-      return "Camera/mic permission denied. Allow access in browser settings or continue with text only.";
-    }
-    if (err.name === "NotFoundError") {
-      return "No camera or microphone found on this device.";
-    }
-    if (err.name === "NotReadableError") {
-      return "Camera is in use by another app. Close other apps and try again.";
-    }
-  }
-  return err instanceof Error ? err.message : "Camera/mic access failed";
-}
-
-function syncVideoEnabledFromStream(
-  stream: MediaStream | null,
-  setVideoEnabled: (enabled: boolean) => void
-) {
-  const track = stream?.getVideoTracks()[0];
-  setVideoEnabled(Boolean(track?.enabled && track.readyState === "live"));
 }
 
 async function refreshLocalVideoElement(
@@ -55,6 +31,10 @@ async function refreshLocalVideoElement(
     el.srcObject = stream;
   }
   applyIosVideoAttrs(el);
+  const track = stream.getVideoTracks()[0];
+  if (track && !track.enabled) {
+    return;
+  }
   try {
     await el.play();
   } catch {
@@ -78,6 +58,7 @@ export function useWebRTC(
   const iceQueueRef = useRef<RTCIceCandidateInit[]>([]);
   const isInitiatorRef = useRef(false);
   const voiceOnlyRef = useRef(voiceOnly);
+  const togglingVideoRef = useRef(false);
 
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
@@ -90,7 +71,6 @@ export function useWebRTC(
     localVideoRef.current = el;
     const stream = localStreamRef.current;
     if (!el || !stream) return;
-    syncVideoEnabledFromStream(stream, setVideoEnabled);
     void refreshLocalVideoElement(el, stream);
   }, []);
 
@@ -117,22 +97,8 @@ export function useWebRTC(
 
     newTrack.enabled = true;
     setVideoEnabled(true);
+    setMediaError(null);
     await refreshLocalVideoElement(localVideoRef.current, stream);
-  }
-
-  async function acquireVideoTrack(): Promise<MediaStreamTrack | null> {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: VIDEO_CONSTRAINTS,
-        audio: false,
-      });
-      const track = stream.getVideoTracks()[0] ?? null;
-      stream.getAudioTracks().forEach((t) => t.stop());
-      return track;
-    } catch (err) {
-      setMediaError(mediaErrorMessage(err));
-      return null;
-    }
   }
 
   async function flushIceQueue(pc: RTCPeerConnection) {
@@ -171,33 +137,46 @@ export function useWebRTC(
   }, []);
 
   const toggleVideo = useCallback(async () => {
-    if (voiceOnlyRef.current) return;
+    if (voiceOnlyRef.current || togglingVideoRef.current) return;
 
     const stream = localStreamRef.current;
     if (!stream) return;
 
-    let track = stream.getVideoTracks()[0];
-    const turningOn = !track?.enabled;
+    togglingVideoRef.current = true;
 
-    if (turningOn && (!track || track.readyState === "ended")) {
-      const newTrack = await acquireVideoTrack();
-      if (!newTrack) return;
-      await replaceVideoTrack(newTrack);
-      return;
-    }
+    try {
+      let track = stream.getVideoTracks()[0];
+      const turningOn = !track?.enabled;
 
-    if (!track) {
-      const newTrack = await acquireVideoTrack();
-      if (!newTrack) return;
-      await replaceVideoTrack(newTrack);
-      return;
-    }
+      if (turningOn && (!track || track.readyState === "ended")) {
+        const { track: newTrack, error } = await acquireCameraTrack();
+        if (!newTrack) {
+          if (error) setMediaError(error);
+          return;
+        }
+        await replaceVideoTrack(newTrack);
+        return;
+      }
 
-    track.enabled = turningOn;
-    setVideoEnabled(turningOn);
+      if (!track) {
+        const { track: newTrack, error } = await acquireCameraTrack();
+        if (!newTrack) {
+          if (error) setMediaError(error);
+          return;
+        }
+        await replaceVideoTrack(newTrack);
+        return;
+      }
 
-    if (turningOn) {
-      await refreshLocalVideoElement(localVideoRef.current, stream);
+      track.enabled = turningOn;
+      setVideoEnabled(turningOn);
+      setMediaError(null);
+
+      if (turningOn) {
+        await refreshLocalVideoElement(localVideoRef.current, stream);
+      }
+    } finally {
+      togglingVideoRef.current = false;
     }
   }, []);
 
@@ -224,20 +203,45 @@ export function useWebRTC(
       iceQueueRef.current = [];
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: voiceOnly ? false : VIDEO_CONSTRAINTS,
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        });
+        let stream: MediaStream | null = null;
+        const mediaAttempts: MediaStreamConstraints[] = voiceOnly
+          ? [{ video: false, audio: { echoCancellation: true, noiseSuppression: true } }]
+          : [
+              {
+                video: getVideoConstraints(),
+                audio: { echoCancellation: true, noiseSuppression: true },
+              },
+              {
+                video: true,
+                audio: { echoCancellation: true, noiseSuppression: true },
+              },
+            ];
+
+        for (const constraints of mediaAttempts) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+            break;
+          } catch {
+            // try simpler constraints on desktop / busy camera
+          }
+        }
+
+        if (!stream) {
+          throw new DOMException(
+            "Could not open camera or microphone.",
+            "NotReadableError"
+          );
+        }
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
 
         localStreamRef.current = stream;
-        setVideoEnabled(!voiceOnly && stream.getVideoTracks().length > 0);
+        const videoTrack = stream.getVideoTracks()[0];
+        setVideoEnabled(
+          !voiceOnly && Boolean(videoTrack?.enabled && videoTrack.readyState === "live")
+        );
         setAudioEnabled(true);
         await refreshLocalVideoElement(localVideoRef.current, stream);
 
