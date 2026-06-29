@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 
 const NAV_ITEMS = [
   {
@@ -31,12 +32,17 @@ type Props = {
   className?: string;
 };
 
+const SIGN_OUT_IDLE =
+  "border-slate-500/25 bg-slate-500/10 text-slate-300 hover:bg-slate-500/15";
+
 export function AppQuickNav({ className = "" }: Props) {
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
+  const showSignOut = Boolean(user);
 
   return (
     <nav
-      className={`grid grid-cols-3 gap-2 ${className}`}
+      className={`grid gap-2 ${showSignOut ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"} ${className}`}
       aria-label="Quick navigation"
     >
       {NAV_ITEMS.map((item) => {
@@ -54,6 +60,15 @@ export function AppQuickNav({ className = "" }: Props) {
           </Link>
         );
       })}
+      {showSignOut && (
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className={`rounded-xl border px-2 py-2.5 text-center text-xs font-bold tracking-wide transition ${SIGN_OUT_IDLE}`}
+        >
+          Sign out
+        </button>
+      )}
     </nav>
   );
 }

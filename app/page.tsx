@@ -31,7 +31,7 @@ import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, profile, loading, refreshProfile, signOut } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const [mode, setMode] = useState<MatchMode>("worldwide");
   const [country, setCountry] = useState("US");
   const [stateCode, setStateCode] = useState<string | null>(null);
@@ -142,23 +142,12 @@ export default function HomePage() {
             </Link>
             <p className="text-[10px] text-purple-300/60 mt-0.5">{seasonal.label}</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href={user ? "/profile" : "/login?next=/profile"}
-              className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1.5 text-xs font-semibold text-purple-200 hover:bg-purple-500/20 transition"
-            >
-              {user ? "Profile" : "Sign in"}
-            </Link>
-            {user && (
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                className="hidden sm:inline text-xs text-slate-500 hover:text-white transition"
-              >
-                Sign out
-              </button>
-            )}
-          </div>
+          <Link
+            href={user ? "/profile" : "/login?next=/profile"}
+            className="shrink-0 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1.5 text-xs font-semibold text-purple-200 hover:bg-purple-500/20 transition"
+          >
+            {user ? "Profile" : "Sign in"}
+          </Link>
         </div>
         {user && (
           <AppQuickNav className="mt-3 max-w-md sm:max-w-lg sm:mx-auto" />

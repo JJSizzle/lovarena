@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AppQuickNav } from "@/components/AppQuickNav";
 
 const exploreLinks = [
   { href: "/chat", label: "Enter Arena" },
@@ -25,9 +24,6 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-purple-500/20 bg-slate-950/90 text-slate-500 text-xs mt-auto">
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
-        <div className="sm:hidden">
-          <AppQuickNav />
-        </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           <div className="col-span-2 sm:col-span-1">
             <p className="text-sm font-bold bg-gradient-to-r from-pink-400 to-cyan-400 bg-clip-text text-transparent">
