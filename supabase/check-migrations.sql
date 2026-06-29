@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 5 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 7 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -77,6 +77,35 @@ select migration, status from (
         where table_schema = 'public' and table_name = 'friendships'
           and column_name = 'connection_type'
       ) then '❌ column missing — run friend-connection-type.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 6, 'restriction-appeals',
+    case
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'restriction_appeals'
+      ) then '❌ table missing — run restriction-appeals.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 7, 'prefer-shared-interests',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'waiting_users'
+          and column_name = 'prefer_shared_interests'
+      ) then '❌ column missing — run prefer-shared-interests.sql'
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'find_or_create_match'
+          and pg_get_function_identity_arguments(p.oid) like '%boolean%'
+      ) then '❌ match fn missing 4th arg — run prefer-shared-interests.sql'
       else '✅ applied'
     end
 ) checks

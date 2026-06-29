@@ -56,6 +56,25 @@ export async function GET() {
       (incomingProfiles ?? []).map((p) => [p.id, p])
     );
 
+    const { data: pendingOutgoing } = await supabase
+      .from("friendships")
+      .select("friend_id, created_at")
+      .eq("user_id", auth.profile.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    const outgoingIds = (pendingOutgoing ?? []).map((row) => row.friend_id);
+    const { data: outgoingProfiles } = outgoingIds.length
+      ? await supabase
+          .from("profiles")
+          .select("id, username, avatar_url, avatar_emoji, reputation_score")
+          .in("id", outgoingIds)
+      : { data: [] };
+
+    const outgoingById = new Map(
+      (outgoingProfiles ?? []).map((p) => [p.id, p])
+    );
+
     return NextResponse.json({
       friends: (profiles ?? []).map((profile) => ({
         ...profile,
@@ -64,6 +83,16 @@ export async function GET() {
       incomingRequests: (pendingIncoming ?? [])
         .map((row) => {
           const profile = incomingById.get(row.user_id);
+          if (!profile) return null;
+          return {
+            ...profile,
+            requested_at: row.created_at,
+          };
+        })
+        .filter(Boolean),
+      outgoingRequests: (pendingOutgoing ?? [])
+        .map((row) => {
+          const profile = outgoingById.get(row.friend_id);
           if (!profile) return null;
           return {
             ...profile,

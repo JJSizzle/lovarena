@@ -54,10 +54,12 @@ export async function GET(req: NextRequest) {
 
     const { data: friendRows } = await supabase
       .from("friendships")
-      .select("user_id, friend_id, status")
+      .select("user_id, friend_id, status, connection_type")
       .or(
         `and(user_id.eq.${auth.profile.id},friend_id.eq.${partnerId}),and(user_id.eq.${partnerId},friend_id.eq.${auth.profile.id})`
       );
+
+    const acceptedRow = (friendRows ?? []).find((row) => row.status === "accepted");
 
     return NextResponse.json({
       partnerId,
@@ -79,6 +81,7 @@ export async function GET(req: NextRequest) {
         partnerId,
         friendRows ?? []
       ),
+      connectionType: acceptedRow?.connection_type ?? null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Partner info failed";

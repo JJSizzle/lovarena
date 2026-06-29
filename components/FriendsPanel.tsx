@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
+import { useTypingIndicator } from "@/lib/hooks/useTypingIndicator";
+import { dmTypingChannelId } from "@/lib/dm-thread";
 import { chatBtnLove, chatBtnBlock, chatBtnGhost } from "@/lib/chat-buttons";
 import { useAuth } from "@/components/AuthProvider";
 import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
@@ -47,6 +49,12 @@ export function FriendsPanel({
   const [primaryLanguage, setPrimaryLanguage] = useState("English");
   const [autoTranslate, setAutoTranslate] = useState(false);
   const bottomRef = useScrollOnNewMessage(messages, friendId);
+  const friendTyping = useTypingIndicator(
+    dmTypingChannelId(myId, friendId),
+    myId,
+    input,
+    true
+  );
 
   useEffect(() => {
     if (!profile) return;
@@ -260,11 +268,6 @@ export function FriendsPanel({
             {error}
           </p>
         )}
-        {messages.length === 0 && (
-          <p className="text-center text-slate-500 text-xs py-8">
-            Say hi to your new friend!
-          </p>
-        )}
         {messages.map((msg) => {
           const isMe = msg.sender_id === myId;
           return (
@@ -287,6 +290,16 @@ export function FriendsPanel({
             </div>
           );
         })}
+        {friendTyping && (
+          <p className="text-[10px] text-pink-300/80 italic px-1">
+            {friendUsername} is typing…
+          </p>
+        )}
+        {messages.length === 0 && !friendTyping && (
+          <p className="text-center text-slate-500 text-xs py-8">
+            Say hi to your new friend!
+          </p>
+        )}
         <div ref={bottomRef} />
       </div>
 

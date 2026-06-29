@@ -44,8 +44,8 @@ export function MutualConnectCelebration({
           You both felt the spark
         </p>
         <p className="text-slate-400 text-xs mt-2 leading-relaxed">
-          Mutual Connect — you&apos;re friends now and can message anytime from
-          Friends.
+          Mutual attraction — you&apos;re connected as Mutuals and can message
+          anytime from Friends.
         </p>
         <button
           type="button"

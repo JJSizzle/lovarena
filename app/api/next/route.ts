@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     if ("error" in auth) return auth.error;
 
     const { profile } = auth;
-    const { roomId, matchMode, countryCode } = await req.json();
+    const { roomId, matchMode, countryCode, preferSharedInterests } = await req.json();
 
     const ip = clientIp(req);
     const rl = await rateLimit(`next:${profile.id}:${ip}`, 20, 60);
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
         p_user_id: profile.id,
         p_match_mode: mode,
         p_country_code: mode === "regional" ? countryCode : null,
+        p_prefer_shared_interests: Boolean(preferSharedInterests),
       }
     );
 

@@ -16,6 +16,17 @@ type Report = {
   room_id: string | null;
 };
 
+type RestrictionAppeal = {
+  id: string;
+  user_id: string;
+  username: string;
+  message: string;
+  restriction_reason: string | null;
+  status: string;
+  created_at: string;
+  reviewed_at: string | null;
+};
+
 export default function AdminPage() {
   const { user, profile, loading } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
@@ -32,6 +43,8 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [banning, setBanning] = useState<string | null>(null);
   const [unflagging, setUnflagging] = useState<string | null>(null);
+  const [appeals, setAppeals] = useState<RestrictionAppeal[]>([]);
+  const [appealLoading, setAppealLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !profile?.is_admin) return;
@@ -43,6 +56,7 @@ export default function AdminPage() {
         else {
           setReports(d.reports ?? []);
           setFlagged(d.flagged ?? []);
+          setAppeals(d.appeals ?? []);
         }
       });
   }, [user, profile]);
@@ -159,6 +173,49 @@ export default function AdminPage() {
     }
   }
 
+  async function reviewAppeal(
+    appealId: string,
+    action: "appeal_approve" | "appeal_deny"
+  ) {
+    const label = action === "appeal_approve" ? "approve and lift restriction" : "deny";
+    if (!confirm(`${label.charAt(0).toUpperCase()}${label.slice(1)} this appeal?`)) {
+      return;
+    }
+
+    setAppealLoading(appealId);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, appealId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Appeal review failed");
+        return;
+      }
+      setAppeals((prev) =>
+        prev.map((a) =>
+          a.id === appealId
+            ? {
+                ...a,
+                status: data.status ?? (action === "appeal_approve" ? "approved" : "denied"),
+                reviewed_at: new Date().toISOString(),
+              }
+            : a
+        )
+      );
+      if (action === "appeal_approve") {
+        const appeal = appeals.find((a) => a.id === appealId);
+        if (appeal) {
+          setFlagged((prev) => prev.filter((f) => f.user_id !== appeal.user_id));
+        }
+      }
+    } finally {
+      setAppealLoading(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
       <div className="max-w-4xl mx-auto">
@@ -214,6 +271,53 @@ export default function AdminPage() {
             ))}
             {reports.length === 0 && (
               <p className="text-slate-500">No reports yet.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold text-violet-300">
+            Restriction appeals ({appeals.filter((a) => a.status === "open").length} open)
+          </h2>
+          <div className="mt-4 space-y-3">
+            {appeals.map((a) => (
+              <div
+                key={a.id}
+                className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm"
+              >
+                <p>
+                  <strong>{a.username}</strong> · {a.status} ·{" "}
+                  {new Date(a.created_at).toLocaleString()}
+                </p>
+                <p className="text-slate-400 mt-1">{a.message}</p>
+                <p className="text-xs text-slate-500 mt-2">
+                  Restriction: {a.restriction_reason ?? "—"} · user{" "}
+                  <span className="font-mono">{a.user_id.slice(0, 8)}</span>
+                </p>
+                {a.status === "open" && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => reviewAppeal(a.id, "appeal_approve")}
+                      disabled={appealLoading === a.id}
+                      className="text-xs bg-emerald-600/80 px-3 py-1 rounded-lg disabled:opacity-50"
+                    >
+                      {appealLoading === a.id ? "…" : "Approve & lift"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => reviewAppeal(a.id, "appeal_deny")}
+                      disabled={appealLoading === a.id}
+                      className="text-xs bg-white/10 px-3 py-1 rounded-lg disabled:opacity-50"
+                    >
+                      Deny
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {appeals.length === 0 && (
+              <p className="text-slate-500">No appeals yet.</p>
             )}
           </div>
         </section>

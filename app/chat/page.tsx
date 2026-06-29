@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   getMatchPrefs,
+  getMatchRequestBody,
 } from "@/lib/match-prefs";
 import { randomIceBreaker } from "@/lib/ice-breakers";
 import { useWebRTC } from "@/lib/webrtc/useWebRTC";
@@ -44,6 +45,7 @@ import { countryCodeToFlag } from "@/lib/flags";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { chatBtnLove, chatBtnSend, chatBtnFun, chatBtnGhost, chatBtnFriend } from "@/lib/chat-buttons";
 import type { FriendLinkStatus } from "@/lib/friends/friend-link-status";
+import type { FriendConnectionType } from "@/lib/friends/connection-type";
 import type { FriendProfileView } from "@/lib/friends/friend-profile-view";
 import { beaconLeaveChat } from "@/lib/chat-leave-beacon";
 
@@ -77,17 +79,18 @@ export default function ChatPage() {
   const [iceBreakerQuestion, setIceBreakerQuestion] = useState("");
   const [friendId, setFriendId] = useState<string | null>(null);
   const [friendUsername, setFriendUsername] = useState("");
-  const [friendsMatched, setFriendsMatched] = useState(false);
   const [connectNotice, setConnectNotice] = useState<string | null>(null);
   const [youClickedConnect, setYouClickedConnect] = useState(false);
+  const [partnerClickedConnect, setPartnerClickedConnect] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
   const [chatFriendStatus, setChatFriendStatus] =
     useState<FriendLinkStatus>("none");
+  const [chatConnectionType, setChatConnectionType] =
+    useState<FriendConnectionType | null>(null);
   const [friendRequestLoading, setFriendRequestLoading] = useState(false);
   const [showMutualConnectCelebration, setShowMutualConnectCelebration] =
     useState(false);
-  const friendsMatchedRef = useRef(false);
-  const mutualConnectCelebrationShownRef = useRef<string | null>(null);
+  const mutualSparkCelebratedRef = useRef(false);
   const [bothRevealed, setBothRevealed] = useState(false);
   const [partnerProfileOpen, setPartnerProfileOpen] = useState(false);
   const [partnerId, setPartnerId] = useState<string | null>(null);
@@ -108,15 +111,12 @@ export default function ChatPage() {
   const statusRef = useRef(status);
   roomIdRef.current = roomId;
   statusRef.current = status;
-  friendsMatchedRef.current = friendsMatched;
 
   const openMutualConnectCelebration = useCallback(() => {
-    if (!roomId || mutualConnectCelebrationShownRef.current === roomId) {
-      return;
-    }
-    mutualConnectCelebrationShownRef.current = roomId;
+    if (mutualSparkCelebratedRef.current) return;
+    mutualSparkCelebratedRef.current = true;
     setShowMutualConnectCelebration(true);
-  }, [roomId]);
+  }, []);
 
   const videoBlurred = profile?.face_blur_default ?? true;
   const voiceOnly = profile?.voice_only_default ?? false;
@@ -134,7 +134,7 @@ export default function ChatPage() {
   } = useMatchCelebration();
 
   const partnerTyping = useTypingIndicator(
-    roomId,
+    roomId ? `typing:${roomId}` : null,
     userId,
     input,
     status === "connected"
@@ -163,6 +163,7 @@ export default function ChatPage() {
           if (d.partnerId) setPartnerId(d.partnerId);
           if (d.sharedTags) setSharedTags(d.sharedTags);
           if (d.friendStatus) setChatFriendStatus(d.friendStatus);
+          if (d.connectionType) setChatConnectionType(d.connectionType);
           if (d.partnerUsername) {
             setPartnerLabel(
               formatPartnerLine(d.partnerUsername, d.partnerAge, true)
@@ -181,8 +182,13 @@ export default function ChatPage() {
       setPartnerLabel(null);
       setSharedTags([]);
       setChatFriendStatus("none");
+      setChatConnectionType(null);
+      setYouClickedConnect(false);
+      setPartnerClickedConnect(false);
+      setConnectNotice(null);
+      resetCelebration();
+      mutualSparkCelebratedRef.current = false;
       setShowMutualConnectCelebration(false);
-      mutualConnectCelebrationShownRef.current = null;
     }
   }, [status, resetCelebration]);
 
@@ -338,16 +344,20 @@ export default function ChatPage() {
       if (!res.ok) return;
 
       setYouClickedConnect(data.youClicked);
-      if (data.matched && data.partnerProfileId) {
-        if (!friendsMatchedRef.current) {
-          openMutualConnectCelebration();
-        }
-        setFriendsMatched(true);
+      setPartnerClickedConnect(Boolean(data.partnerClicked));
+      if (data.friendStatus) {
+        setChatFriendStatus(data.friendStatus as FriendLinkStatus);
+      }
+      if (data.connectionType) {
+        setChatConnectionType(data.connectionType as FriendConnectionType);
+      }
+      if (data.mutualSpark && data.partnerProfileId) {
         setFriendId(data.partnerProfileId);
-        setChatFriendStatus("friends");
         if (data.partnerUsername) {
           setFriendUsername(data.partnerUsername);
         }
+        setChatFriendStatus("friends");
+        openMutualConnectCelebration();
       }
     } catch {
       // retry on next poll
@@ -395,10 +405,7 @@ export default function ChatPage() {
         const res = await fetch("/api/match", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            matchMode: getMatchPrefs().matchMode,
-            countryCode: getMatchPrefs().countryCode,
-          }),
+          body: JSON.stringify(getMatchRequestBody()),
           cache: "no-store",
         });
         const text = await res.text();
@@ -612,10 +619,13 @@ export default function ChatPage() {
     setPartnerId(null);
     setPartnerLabel(null);
     setSharedTags([]);
-    setFriendsMatched(false);
+    setChatFriendStatus("none");
+    setChatConnectionType(null);
     setYouClickedConnect(false);
+    setPartnerClickedConnect(false);
     setConnectNotice(null);
     resetCelebration();
+    mutualSparkCelebratedRef.current = false;
     setEndedBySelf(true);
     setStatus("disconnected");
 
@@ -714,8 +724,7 @@ export default function ChatPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         roomId: previousRoomId,
-        matchMode: getMatchPrefs().matchMode,
-        countryCode: getMatchPrefs().countryCode,
+        ...getMatchRequestBody(),
       }),
     });
     const data = await res.json();
@@ -738,10 +747,7 @@ export default function ChatPage() {
       const r = await fetch("/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          matchMode: getMatchPrefs().matchMode,
-          countryCode: getMatchPrefs().countryCode,
-        }),
+        body: JSON.stringify(getMatchRequestBody()),
       });
       const d = await r.json();
       if (d.roomId) {
@@ -793,14 +799,14 @@ export default function ChatPage() {
 
       setYouClickedConnect(true);
 
-      if (data.matched && data.partnerProfileId) {
-        setFriendsMatched(true);
+      if (data.matched && data.connectionType === "mutual_connect") {
+        setChatConnectionType("mutual_connect");
+        setChatFriendStatus("friends");
         setFriendId(data.partnerProfileId);
         setFriendUsername(data.partnerUsername ?? "Friend");
-        setChatFriendStatus("friends");
         openMutualConnectCelebration();
-      } else {
-        setConnectNotice("Waiting for them to tap Connect too…");
+      } else if (data.waitingForPartner) {
+        setConnectNotice("Waiting for them to feel the spark too…");
       }
     } catch {
       setError("Connect failed. Try again.");
@@ -835,7 +841,9 @@ export default function ChatPage() {
       setChatFriendStatus(nextStatus);
 
       if (nextStatus === "friends") {
-        setFriendsMatched(true);
+        setChatConnectionType(
+          (data.connectionType as FriendConnectionType | undefined) ?? "request"
+        );
         setFriendId(partnerId);
         setConnectNotice(data.message ?? "You are now friends!");
       } else {
@@ -897,7 +905,7 @@ export default function ChatPage() {
     if (res.ok) {
       setPartnerProfileOpen(false);
       setChatFriendStatus("none");
-      setFriendsMatched(false);
+      setChatConnectionType(null);
       setConnectNotice(data.message ?? "Removed from friends.");
       setTimeout(() => setConnectNotice(null), 4000);
     } else {
@@ -935,10 +943,17 @@ export default function ChatPage() {
   }
 
   function renderSparkButton() {
-    if (friendsMatched || chatFriendStatus === "friends") {
+    if (chatConnectionType === "mutual_connect") {
       return (
         <span className="text-xs font-semibold text-pink-200 px-2 py-1.5">
-          Friends ✨
+          Mutual spark ✨
+        </span>
+      );
+    }
+    if (youClickedConnect && partnerClickedConnect) {
+      return (
+        <span className="text-xs font-semibold text-pink-200/80 px-2 py-1.5">
+          Spark matched…
         </span>
       );
     }
@@ -952,17 +967,24 @@ export default function ChatPage() {
         {connectLoading
           ? "…"
           : youClickedConnect
-            ? "Waiting for them…"
-            : "Connect"}
+            ? "Waiting for their spark…"
+            : "Feel the spark"}
       </button>
     );
   }
 
   function renderFriendRequestButton() {
-    if (friendsMatched || chatFriendStatus === "friends") {
+    if (chatFriendStatus === "friends") {
+      if (chatConnectionType === "mutual_connect") {
+        return (
+          <span className="text-[10px] text-pink-300 px-2 py-1.5">
+            Mutual spark — you&apos;re connected
+          </span>
+        );
+      }
       return (
-        <span className="text-[10px] text-slate-500 px-2 py-1.5">
-          Already friends
+        <span className="text-[10px] text-purple-300 px-2 py-1.5">
+          Friends — message anytime
         </span>
       );
     }
@@ -1087,6 +1109,16 @@ export default function ChatPage() {
           mediaError={mediaError}
           connectionState={connectionState}
           status={status}
+          selfLabel={
+            profile
+              ? formatPartnerLine(
+                  profile.username,
+                  profile.age,
+                  profile.show_age ?? true
+                )
+              : "You"
+          }
+          partnerLabel={partnerLabel}
           matchBadge={roomBadge}
           videoEnabled={videoEnabled}
           audioEnabled={audioEnabled}
@@ -1331,7 +1363,7 @@ export default function ChatPage() {
       )}
     </main>
 
-    {friendsMatched && friendId && profile && (
+    {chatFriendStatus === "friends" && friendId && profile && (
       <FriendsPanel
         friendId={friendId}
         friendUsername={friendUsername || "Friend"}

@@ -49,11 +49,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { data: appeal, error: insertError } = await supabase
+      .from("restriction_appeals")
+      .insert({
+        user_id: auth.profile.id,
+        message,
+        restriction_reason: restriction.reason ?? "restricted",
+        status: "open",
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
     await notifyModerators({
       type: "restriction_appeal",
       reason: restriction.reason ?? "restricted",
       reportedUserId: auth.profile.id,
-      details: message,
+      details: `${message}\nAppeal id: ${appeal?.id ?? "unknown"}`,
     });
 
     return NextResponse.json({

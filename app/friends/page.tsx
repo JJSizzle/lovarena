@@ -26,6 +26,10 @@ type IncomingRequest = Friend & {
   requested_at: string;
 };
 
+type OutgoingRequest = Friend & {
+  requested_at: string;
+};
+
 function toFriend(profile: FriendProfileView): Friend {
   return {
     id: profile.id,
@@ -115,6 +119,9 @@ export default function FriendsPage() {
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>(
     []
   );
+  const [outgoingRequests, setOutgoingRequests] = useState<OutgoingRequest[]>(
+    []
+  );
   const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
   const [profileFriendId, setProfileFriendId] = useState<string | null>(null);
   const [requestLoading, setRequestLoading] = useState<string | null>(null);
@@ -127,6 +134,7 @@ export default function FriendsPage() {
     if (!res.ok) return;
     setFriends(data.friends ?? []);
     setIncomingRequests(data.incomingRequests ?? []);
+    setOutgoingRequests(data.outgoingRequests ?? []);
   }, []);
 
   useEffect(() => {
@@ -199,6 +207,25 @@ export default function FriendsPage() {
     }
   }
 
+  async function handleCancelOutgoing(recipientId: string) {
+    setRequestLoading(recipientId);
+    setRequestNotice(null);
+    const res = await fetch("/api/friends/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ friendId: recipientId, action: "cancel" }),
+    });
+    const data = await res.json();
+    setRequestLoading(null);
+
+    if (res.ok) {
+      setRequestNotice(data.message ?? "Request cancelled.");
+      await loadFriends();
+    } else {
+      setRequestNotice(data.error ?? "Cancel failed");
+    }
+  }
+
   async function handleBlockFriend(friendProfile: FriendProfileView) {
     if (
       !confirm(
@@ -245,6 +272,7 @@ export default function FriendsPage() {
   );
   const hasConnections = friends.length > 0;
   const hasRequests = incomingRequests.length > 0;
+  const hasOutgoing = outgoingRequests.length > 0;
 
   function renderFriendRow(friend: Friend) {
     return (
@@ -339,7 +367,49 @@ export default function FriendsPage() {
           </section>
         )}
 
-        {!hasConnections && !hasRequests ? (
+        {hasOutgoing && (
+          <section className="mb-6">
+            <h2 className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">
+              Sent requests
+            </h2>
+            <ul className="space-y-2">
+              {outgoingRequests.map((request) => (
+                <li
+                  key={request.id}
+                  className="flex items-center justify-between gap-2 rounded-2xl border border-slate-600/40 bg-slate-950/80 p-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <ProfileAvatar
+                      url={request.avatar_url}
+                      emoji={request.avatar_emoji}
+                      alt={request.username}
+                      size="sm"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm truncate">
+                        {request.username}
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        Waiting ·{" "}
+                        {new Date(request.requested_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCancelOutgoing(request.id)}
+                    disabled={requestLoading === request.id}
+                    className={`${chatBtnGhost} !px-2.5 !py-1 !text-[10px] shrink-0`}
+                  >
+                    {requestLoading === request.id ? "…" : "Cancel"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {!hasConnections && !hasRequests && !hasOutgoing ? (
           <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-8 text-center">
             <p className="text-4xl mb-3">❤️</p>
             <p className="text-slate-300 font-medium">No friends yet</p>

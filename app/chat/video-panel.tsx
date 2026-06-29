@@ -17,6 +17,8 @@ type VideoPanelProps = {
   mediaError: string | null;
   connectionState: string;
   status: "matching" | "connected" | "disconnected" | "restricted";
+  selfLabel: string;
+  partnerLabel?: string | null;
   matchBadge: string;
   videoEnabled: boolean;
   audioEnabled: boolean;
@@ -72,6 +74,8 @@ export function VideoPanel({
   mediaError,
   connectionState,
   status,
+  selfLabel,
+  partnerLabel,
   matchBadge,
   videoEnabled,
   audioEnabled,
@@ -100,6 +104,9 @@ export function VideoPanel({
   const videoActive = status === "connected";
 
   const strangerLabel = `${strangerFlag ? `${strangerFlag} ` : ""}Stranger`;
+  const strangerTileLabel =
+    partnerLabel?.trim() ||
+    (status === "matching" ? "Waiting for match…" : strangerLabel);
   const disconnectedLabel = endedBySelf ? "Chat ended" : "Stranger disconnected";
 
   const remoteVideo = videoActive ? (
@@ -228,15 +235,34 @@ export function VideoPanel({
 
   return (
     <div className="flex flex-col items-center w-full px-3 sm:px-4 pt-3 sm:pt-6 pb-2">
-      <div className="flex items-center justify-between w-full max-w-4xl mb-3 sm:mb-4 px-1">
-        <Link
-          href="/"
-          className="text-xl sm:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent hover:opacity-90 transition"
-        >
-          LOVARENA
-        </Link>
-        <div className="bg-purple-500/10 border border-purple-500/30 rounded-full px-3 py-1 text-[10px] sm:text-xs font-semibold text-purple-300">
-          {matchBadge}
+      <div className="grid grid-cols-3 items-start w-full max-w-4xl mb-3 sm:mb-4 px-1 gap-2">
+        <div className="min-w-0 flex flex-col items-start gap-1.5 text-left">
+          <p
+            className="text-sm sm:text-lg font-bold text-pink-300 truncate max-w-full leading-tight"
+            title={partnerLabel ?? undefined}
+          >
+            {partnerLabel?.trim() ||
+              (status === "matching" ? "…" : "Stranger")}
+          </p>
+          <div className="bg-purple-500/10 border border-purple-500/30 rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-purple-300 whitespace-nowrap">
+            {matchBadge}
+          </div>
+        </div>
+        <div className="text-center min-w-0">
+          <Link
+            href="/"
+            className="inline-block text-lg sm:text-2xl md:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent hover:opacity-90 transition leading-tight"
+          >
+            LOVARENA
+          </Link>
+        </div>
+        <div className="min-w-0 text-right">
+          <p
+            className="text-sm sm:text-lg font-bold text-cyan-300 truncate leading-tight"
+            title={selfLabel}
+          >
+            {selfLabel}
+          </p>
         </div>
       </div>
 
@@ -248,7 +274,7 @@ export function VideoPanel({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6 w-full max-w-4xl mb-3">
         <VideoTile
-          label={strangerLabel}
+          label={strangerTileLabel}
           labelClass="text-pink-300 border-pink-500/20"
           borderClass="border-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.15)] md:shadow-[0_0_20px_rgba(236,72,153,0.2)]"
         >
@@ -287,29 +313,29 @@ export function VideoPanel({
         </VideoTile>
       </div>
 
-      <div className="w-full max-w-4xl space-y-2 mb-2">
+      <div className="w-full max-w-4xl space-y-2 mb-2 flex flex-col items-center">
         <div className={`${chatToolbar} !gap-1.5 md:!gap-2`}>{mediaControls}</div>
         {showConnect && (socialSpark || friendSlot) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
             <div className="rounded-xl border border-pink-500/25 bg-pink-500/5 px-3 py-2">
-              <p className="text-[9px] font-bold uppercase tracking-wide text-pink-300 mb-1.5">
+              <p className="text-[9px] font-bold uppercase tracking-wide text-pink-300 mb-1.5 text-center">
                 ✨ Mutual spark
               </p>
-              <p className="text-[10px] text-slate-500 mb-2 leading-snug">
-                Both tap — instant mutual
+              <p className="text-[10px] text-slate-500 mb-2 leading-snug text-center">
+                Feel mutual attraction? Both tap if the chemistry is there.
               </p>
-              <div className={`${chatToolbar} !justify-start !gap-1.5`}>
+              <div className={`${chatToolbar} !gap-1.5`}>
                 {socialSpark}
               </div>
             </div>
             <div className="rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 px-3 py-2">
-              <p className="text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 mb-1.5">
-                Friend request
+              <p className="text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 mb-1.5 text-center">
+                Add friend
               </p>
-              <p className="text-[10px] text-slate-500 mb-2 leading-snug">
-                One-sided — they can accept later
+              <p className="text-[10px] text-slate-500 mb-2 leading-snug text-center">
+                Stay in touch platonically — separate from a romantic spark.
               </p>
-              <div className={`${chatToolbar} !justify-start !gap-1.5`}>
+              <div className={`${chatToolbar} !gap-1.5`}>
                 {friendSlot}
               </div>
             </div>

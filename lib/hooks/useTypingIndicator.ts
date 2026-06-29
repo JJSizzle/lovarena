@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export function useTypingIndicator(
-  roomId: string | null,
+  channelName: string | null,
   userId: string,
   text: string,
   active: boolean
@@ -13,13 +13,13 @@ export function useTypingIndicator(
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!roomId || !userId || !active) {
+    if (!channelName || !userId || !active) {
       setPartnerTyping(false);
       return;
     }
 
     const supabase = createClient();
-    const channel = supabase.channel(`typing:${roomId}`, {
+    const channel = supabase.channel(channelName, {
       config: { broadcast: { self: false } },
     });
 
@@ -39,13 +39,13 @@ export function useTypingIndicator(
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       supabase.removeChannel(channel);
     };
-  }, [roomId, userId, active]);
+  }, [channelName, userId, active]);
 
   useEffect(() => {
-    if (!roomId || !userId || !active) return;
+    if (!channelName || !userId || !active) return;
 
     const supabase = createClient();
-    const channel = supabase.channel(`typing:${roomId}`);
+    const channel = supabase.channel(channelName);
 
     const typing = text.trim().length > 0;
     channel.subscribe((status) => {
@@ -57,7 +57,7 @@ export function useTypingIndicator(
         });
       }
     });
-  }, [roomId, userId, text, active]);
+  }, [channelName, userId, text, active]);
 
   return partnerTyping;
 }

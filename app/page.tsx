@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   type MatchMode,
+  getPreferSharedInterests,
   setMatchPrefs,
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
@@ -32,10 +33,12 @@ export default function HomePage() {
   const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
   const [entering, setEntering] = useState(false);
   const [enterError, setEnterError] = useState<string | null>(null);
+  const [preferSharedInterests, setPreferSharedInterests] = useState(false);
   const seasonal = getSeasonalTheme();
 
   useEffect(() => {
     setCountry(guessCountryCode());
+    setPreferSharedInterests(getPreferSharedInterests());
   }, []);
 
   useEffect(() => {
@@ -50,7 +53,7 @@ export default function HomePage() {
 
   async function handleStart() {
     setEnterError(null);
-    setMatchPrefs(mode, country);
+    setMatchPrefs(mode, country, preferSharedInterests);
 
     if (!user) {
       router.push("/login?next=/chat");
@@ -59,6 +62,16 @@ export default function HomePage() {
 
     if (!isGenderIdentity(genderIdentity) || !isLookingFor(lookingFor)) {
       setEnterError("Select who you are and who you want to meet.");
+      return;
+    }
+
+    if (
+      preferSharedInterests &&
+      (!profile?.interests || profile.interests.length === 0)
+    ) {
+      setEnterError(
+        "Add at least one interest on your profile to use shared-interest matching."
+      );
       return;
     }
 
@@ -232,6 +245,24 @@ export default function HomePage() {
               </select>
             </div>
           )}
+
+          <label className="flex items-start gap-3 rounded-3xl border border-violet-500/25 bg-slate-950/80 backdrop-blur-xl p-4 cursor-pointer hover:border-violet-400/40 transition">
+            <input
+              type="checkbox"
+              checked={preferSharedInterests}
+              onChange={(e) => setPreferSharedInterests(e.target.checked)}
+              className="mt-0.5 rounded border-violet-500/40 bg-slate-900 text-violet-500 focus:ring-violet-500/50"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-violet-200">
+                Prefer shared interests
+              </span>
+              <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
+                Only match when you share at least one interest tag from your
+                profile. May take longer to find someone.
+              </span>
+            </span>
+          </label>
 
           {user && (
             <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-4 shadow-[0_0_30px_rgba(168,85,247,0.1)] space-y-4">

@@ -6,6 +6,29 @@ import {
   isBlockedEitherWay,
   requireAuthProfile,
 } from "@/lib/auth/api-auth";
+import { friendLinkStatus } from "@/lib/friends/friend-link-status";
+import type { FriendConnectionType } from "@/lib/friends/connection-type";
+
+async function getAcceptedFriendship(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string,
+  partnerId: string
+): Promise<{ connectionType: FriendConnectionType | null } | null> {
+  const { data: rows } = await supabase
+    .from("friendships")
+    .select("user_id, friend_id, status, connection_type")
+    .or(
+      `and(user_id.eq.${userId},friend_id.eq.${partnerId}),and(user_id.eq.${partnerId},friend_id.eq.${userId})`
+    );
+
+  const accepted = (rows ?? []).find((row) => row.status === "accepted");
+  if (!accepted) return null;
+
+  return {
+    connectionType: (accepted.connection_type ??
+      null) as FriendConnectionType | null,
+  };
+}
 
 async function areFriends(
   supabase: ReturnType<typeof createAdminClient>,
@@ -68,12 +91,32 @@ export async function GET(req: NextRequest) {
 
     const matched =
       partnerId && (await areFriends(supabase, auth.profile.id, partnerId));
+    const friendship = partnerId
+      ? await getAcceptedFriendship(supabase, auth.profile.id, partnerId)
+      : null;
+
+    const { data: friendRows } = partnerId
+      ? await supabase
+          .from("friendships")
+          .select("user_id, friend_id, status")
+          .or(
+            `and(user_id.eq.${auth.profile.id},friend_id.eq.${partnerId}),and(user_id.eq.${partnerId},friend_id.eq.${auth.profile.id})`
+          )
+      : { data: [] };
 
     return NextResponse.json({
       youClicked: !!myClick,
       partnerClicked,
       partnerProfileId: partnerId,
       partnerUsername,
+      mutualSpark:
+        !!myClick &&
+        partnerClicked &&
+        friendship?.connectionType === "mutual_connect",
+      connectionType: friendship?.connectionType ?? null,
+      friendStatus: partnerId
+        ? friendLinkStatus(auth.profile.id, partnerId, friendRows ?? [])
+        : "none",
       matched: !!matched,
     });
   } catch (err) {
@@ -141,7 +184,15 @@ export async function POST(req: NextRequest) {
       partnerId
     );
 
-    if (!alreadyFriends) {
+    if (alreadyFriends) {
+      await supabase
+        .from("friendships")
+        .update({ connection_type: "mutual_connect" })
+        .or(
+          `and(user_id.eq.${auth.profile.id},friend_id.eq.${partnerId}),and(user_id.eq.${partnerId},friend_id.eq.${auth.profile.id})`
+        )
+        .eq("status", "accepted");
+    } else {
       await supabase.from("friendships").upsert(
         [
           {
