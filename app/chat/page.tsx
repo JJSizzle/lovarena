@@ -10,6 +10,10 @@ import {
 } from "@/lib/match-prefs";
 import { randomIceBreaker } from "@/lib/ice-breakers";
 import { useWebRTC } from "@/lib/webrtc/useWebRTC";
+import {
+  acquireLocalMedia,
+  mediaErrorMessage,
+} from "@/lib/webrtc/media-constraints";
 import { VideoPanel } from "./video-panel";
 import { useAuth } from "@/components/AuthProvider";
 import { FriendsPanel } from "@/components/FriendsPanel";
@@ -104,6 +108,9 @@ export default function ChatPage() {
   const [mediaMode, setMediaMode] = useState<"pending" | "granted" | "text-only">(
     "pending"
   );
+  const [mediaEnabling, setMediaEnabling] = useState(false);
+  const [mediaGateError, setMediaGateError] = useState<string | null>(null);
+  const prefetchedMediaRef = useRef<MediaStream | null>(null);
   const [primaryLanguage, setPrimaryLanguage] = useState("English");
   const [autoTranslate, setAutoTranslate] = useState(false);
   const bottomRef = useScrollOnNewMessage(messages, roomId);
@@ -152,7 +159,22 @@ export default function ChatPage() {
     toggleAudio,
     stopMedia,
     connectionState,
-  } = useWebRTC(roomId, userId, webrtcActive, voiceOnly);
+  } = useWebRTC(roomId, userId, webrtcActive, voiceOnly, prefetchedMediaRef);
+
+  const handleEnableMedia = useCallback(async () => {
+    setMediaGateError(null);
+    setMediaEnabling(true);
+    try {
+      prefetchedMediaRef.current?.getTracks().forEach((t) => t.stop());
+      prefetchedMediaRef.current = await acquireLocalMedia(voiceOnly);
+      setMediaMode("granted");
+    } catch (err) {
+      prefetchedMediaRef.current = null;
+      setMediaGateError(mediaErrorMessage(err));
+    } finally {
+      setMediaEnabling(false);
+    }
+  }, [voiceOnly]);
 
   useEffect(() => {
     if (status === "connected" && roomId) {
@@ -507,6 +529,9 @@ export default function ChatPage() {
 
   useEffect(() => {
     setMediaMode("pending");
+    setMediaGateError(null);
+    prefetchedMediaRef.current?.getTracks().forEach((t) => t.stop());
+    prefetchedMediaRef.current = null;
   }, [roomId]);
 
   useEffect(() => {
@@ -1039,9 +1064,23 @@ export default function ChatPage() {
       <MediaPermissionGate
         visible={status === "connected" && !!roomId && mediaMode === "pending"}
         voiceOnly={voiceOnly}
-        onEnable={() => setMediaMode("granted")}
+        loading={mediaEnabling}
+        error={mediaGateError}
+        onEnable={handleEnableMedia}
         onTextOnly={() => setMediaMode("text-only")}
       />
+      {status === "connected" && mediaMode === "text-only" && !voiceOnly && (
+        <div className="px-4 pb-2">
+          <button
+            type="button"
+            onClick={() => void handleEnableMedia()}
+            disabled={mediaEnabling}
+            className="w-full max-w-4xl mx-auto block rounded-xl border border-cyan-500/30 bg-cyan-500/10 py-2.5 text-sm font-medium text-cyan-200 hover:bg-cyan-500/15 disabled:opacity-60"
+          >
+            {mediaEnabling ? "Opening camera…" : "Enable camera & microphone"}
+          </button>
+        </div>
+      )}
       <header className="flex items-center justify-between px-4 py-3 gap-2 text-sm">
         <Link href="/" className="text-slate-400 hover:text-white shrink-0 text-xs">
           ← Home

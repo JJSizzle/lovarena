@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   acquireCameraTrack,
-  getVideoConstraints,
+  acquireLocalMedia,
   mediaErrorMessage,
 } from "@/lib/webrtc/media-constraints";
 import { getIceServers } from "@/lib/webrtc/ice-servers";
@@ -32,13 +38,12 @@ async function refreshLocalVideoElement(
   }
   applyIosVideoAttrs(el);
   const track = stream.getVideoTracks()[0];
-  if (track && !track.enabled) {
-    return;
-  }
-  try {
-    await el.play();
-  } catch {
-    // autoplay policies — preview may resume on next frame
+  if (track?.enabled) {
+    try {
+      await el.play();
+    } catch {
+      // autoplay policies — preview may resume on next frame
+    }
   }
 }
 
@@ -46,7 +51,8 @@ export function useWebRTC(
   roomId: string | null,
   userId: string,
   active: boolean,
-  voiceOnly = false
+  voiceOnly = false,
+  prefetchedStreamRef?: MutableRefObject<MediaStream | null>
 ) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -61,17 +67,23 @@ export function useWebRTC(
   const togglingVideoRef = useRef(false);
 
   const [mediaError, setMediaError] = useState<string | null>(null);
-  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [videoEnabled, setVideoEnabled] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [connectionState, setConnectionState] = useState<string>("new");
+  const [mediaRetryKey, setMediaRetryKey] = useState(0);
 
   voiceOnlyRef.current = voiceOnly;
 
   const bindLocalPreview = useCallback((el: HTMLVideoElement | null) => {
     localVideoRef.current = el;
     const stream = localStreamRef.current;
-    if (!el || !stream) return;
-    void refreshLocalVideoElement(el, stream);
+    if (el && stream) {
+      void refreshLocalVideoElement(el, stream);
+    }
+  }, []);
+
+  const retryMedia = useCallback(() => {
+    setMediaRetryKey((k) => k + 1);
   }, []);
 
   async function replaceVideoTrack(newTrack: MediaStreamTrack) {
@@ -140,13 +152,16 @@ export function useWebRTC(
     if (voiceOnlyRef.current || togglingVideoRef.current) return;
 
     const stream = localStreamRef.current;
-    if (!stream) return;
+    if (!stream) {
+      if (active) retryMedia();
+      return;
+    }
 
     togglingVideoRef.current = true;
 
     try {
       let track = stream.getVideoTracks()[0];
-      const turningOn = !track?.enabled;
+      const turningOn = !track || !track.enabled || track.readyState === "ended";
 
       if (turningOn && (!track || track.readyState === "ended")) {
         const { track: newTrack, error } = await acquireCameraTrack();
@@ -178,7 +193,7 @@ export function useWebRTC(
     } finally {
       togglingVideoRef.current = false;
     }
-  }, []);
+  }, [active, retryMedia]);
 
   const toggleAudio = useCallback(() => {
     const stream = localStreamRef.current;
@@ -194,6 +209,14 @@ export function useWebRTC(
   }, []);
 
   useEffect(() => {
+    if (!active) return;
+    const stream = localStreamRef.current;
+    if (stream && localVideoRef.current) {
+      void refreshLocalVideoElement(localVideoRef.current, stream);
+    }
+  }, [active, videoEnabled]);
+
+  useEffect(() => {
     if (!active || !roomId || !userId) return;
 
     let cancelled = false;
@@ -203,27 +226,11 @@ export function useWebRTC(
       iceQueueRef.current = [];
 
       try {
-        let stream: MediaStream | null = null;
-        const mediaAttempts: MediaStreamConstraints[] = voiceOnly
-          ? [{ video: false, audio: { echoCancellation: true, noiseSuppression: true } }]
-          : [
-              {
-                video: getVideoConstraints(),
-                audio: { echoCancellation: true, noiseSuppression: true },
-              },
-              {
-                video: true,
-                audio: { echoCancellation: true, noiseSuppression: true },
-              },
-            ];
-
-        for (const constraints of mediaAttempts) {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-            break;
-          } catch {
-            // try simpler constraints on desktop / busy camera
-          }
+        let stream: MediaStream | null = prefetchedStreamRef?.current ?? null;
+        if (stream) {
+          prefetchedStreamRef!.current = null;
+        } else {
+          stream = await acquireLocalMedia(voiceOnly);
         }
 
         if (!stream) {
@@ -240,9 +247,10 @@ export function useWebRTC(
         localStreamRef.current = stream;
         const videoTrack = stream.getVideoTracks()[0];
         setVideoEnabled(
-          !voiceOnly && Boolean(videoTrack?.enabled && videoTrack.readyState === "live")
+          !voiceOnly &&
+            Boolean(videoTrack?.enabled && videoTrack.readyState === "live")
         );
-        setAudioEnabled(true);
+        setAudioEnabled(Boolean(stream.getAudioTracks()[0]?.enabled ?? true));
         await refreshLocalVideoElement(localVideoRef.current, stream);
 
         const roomRes = await fetch(`/api/room?roomId=${roomId}`, {
@@ -336,6 +344,7 @@ export function useWebRTC(
         }
       } catch (err) {
         if (!cancelled) {
+          setVideoEnabled(false);
           setMediaError(mediaErrorMessage(err));
         }
       }
@@ -359,7 +368,7 @@ export function useWebRTC(
       iceQueueRef.current = [];
       setConnectionState("closed");
     };
-  }, [active, roomId, userId, voiceOnly]);
+  }, [active, roomId, userId, voiceOnly, mediaRetryKey]);
 
   return {
     localVideoRef,
@@ -371,6 +380,7 @@ export function useWebRTC(
     toggleVideo,
     toggleAudio,
     stopMedia,
+    retryMedia,
     connectionState,
   };
 }
