@@ -17,6 +17,7 @@ import type { PartyGameMode, PartyState } from "@/lib/party/party-types";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { usePartyWebRTC } from "@/lib/webrtc/usePartyWebRTC";
 import { AppQuickNav } from "@/components/AppQuickNav";
+import { AppPageHeader } from "@/components/AppPageHeader";
 
 function PartyPageContent() {
   const router = useRouter();
@@ -320,20 +321,18 @@ function PartyPageContent() {
     >
       <ParticleBackground />
       <div className="relative z-10 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <Link href="/" className="text-sm text-slate-400 hover:text-white">
-            ← Home
-          </Link>
-          <h1 className="text-lg font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-            Party
-          </h1>
-          <Link
-            href="/friends"
-            className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
-          >
-            Friends →
-          </Link>
-        </div>
+        <AppPageHeader
+          title="Party"
+          action={
+            <Link
+              href="/friends"
+              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+            >
+              Friends →
+            </Link>
+          }
+          className="mb-6"
+        />
 
         {!inParty && user && <AppQuickNav className="mb-6 max-w-md mx-auto" />}
 

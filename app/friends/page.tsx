@@ -13,6 +13,7 @@ import type { FriendConnectionType } from "@/lib/friends/connection-type";
 import type { FriendProfileView } from "@/lib/friends/friend-profile-view";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { AppQuickNav } from "@/components/AppQuickNav";
+import { AppPageHeader } from "@/components/AppPageHeader";
 
 type Friend = {
   id: string;
@@ -303,17 +304,20 @@ export default function FriendsPage() {
     >
       <ParticleBackground />
       <main className="relative z-10 flex-1 max-w-md mx-auto w-full px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <Link href="/profile" className="text-sm text-slate-400 hover:text-white">
-            ← Profile
-          </Link>
-          <h1 className="text-lg font-extrabold bg-gradient-to-r from-pink-500 to-cyan-400 bg-clip-text text-transparent">
-            Friends
-          </h1>
-          <Link href="/chat" className="text-xs text-emerald-400">
-            Arena →
-          </Link>
-        </div>
+        <AppPageHeader
+          title="Friends"
+          backHref="/profile"
+          backLabel="← Profile"
+          action={
+            <Link
+              href="/chat"
+              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+            >
+              Arena →
+            </Link>
+          }
+          className="mb-5"
+        />
 
         <AppQuickNav className="mb-5" />
 
@@ -421,8 +425,9 @@ export default function FriendsPage() {
             <p className="text-4xl mb-3">❤️</p>
             <p className="text-slate-300 font-medium">No friends yet</p>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-              Match in the arena, then add people you click with. Manage who can
-              reach out in{" "}
+              Match in the arena and tap ✨ mutual spark when you both feel it —
+              you&apos;ll land here automatically. Or accept a request below.
+              Privacy toggles live in{" "}
               <Link href="/settings" className="text-fuchsia-400 hover:text-fuchsia-300">
                 Settings
               </Link>

@@ -31,6 +31,8 @@ type VideoPanelProps = {
   loadingNext: boolean;
   endedBySelf?: boolean;
   showConnect?: boolean;
+  socialCompact?: boolean;
+  socialCompactLabel?: string;
   sparkSlot?: React.ReactNode;
   friendSlot?: React.ReactNode;
   connectSlot?: React.ReactNode;
@@ -89,6 +91,8 @@ export function VideoPanel({
   loadingNext,
   endedBySelf = false,
   showConnect,
+  socialCompact = false,
+  socialCompactLabel,
   sparkSlot,
   friendSlot,
   connectSlot,
@@ -337,7 +341,16 @@ export function VideoPanel({
 
       <div className="w-full max-w-4xl space-y-2 mb-2 flex flex-col items-center">
         <div className={`${chatToolbar} !gap-1.5 md:!gap-2`}>{mediaControls}</div>
-        {showConnect && (socialSpark || friendSlot) && (
+        {showConnect && socialCompact && socialCompactLabel && (
+          <div className="w-full rounded-xl border border-purple-500/25 bg-purple-500/5 px-3 py-2.5 text-center">
+            <p className="text-xs font-semibold text-purple-100">
+              {socialCompactLabel}
+            </p>
+          </div>
+        )}
+        {showConnect &&
+          !socialCompact &&
+          (socialSpark || friendSlot) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
             <div className="rounded-xl border border-pink-500/25 bg-pink-500/5 px-3 py-2">
               <p className="text-[9px] font-bold uppercase tracking-wide text-pink-300 mb-1.5 text-center">

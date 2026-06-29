@@ -33,6 +33,7 @@ import { ReferralBadge } from "@/components/ReferralBadge";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { AppQuickNav } from "@/components/AppQuickNav";
+import { AppPageHeader } from "@/components/AppPageHeader";
 import { isInvitedNewcomer, CONNECTOR_REFERRALS, AMBASSADOR_REFERRALS } from "@/lib/referral/badges";
 import { REP_MAX, reputationTier } from "@/lib/reputation";
 import { COUNTRIES } from "@/lib/countries";
@@ -223,15 +224,17 @@ export default function ProfilePage() {
     <main className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white px-6 py-8 pb-24 overflow-hidden`}>
       <ParticleBackground />
       <div className="relative z-10 max-w-lg mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="text-sm text-slate-400 hover:text-white">← Home</Link>
-          <h1 className="text-xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-            Profile
-          </h1>
-          <Link href="/chat" className="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
-            Arena →
-          </Link>
-        </div>
+        <AppPageHeader
+          title="Profile"
+          action={
+            <Link
+              href="/chat"
+              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+            >
+              Arena →
+            </Link>
+          }
+        />
 
         <AppQuickNav />
 
@@ -545,14 +548,16 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6 flex flex-col gap-3">
-          {profile?.is_admin && (
-            <Link href="/admin" className="text-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm py-2.5">Admin dashboard</Link>
-          )}
-          <button type="button" onClick={() => signOut().then(() => router.push("/"))} className="rounded-xl border border-slate-700 text-slate-400 py-2.5 text-sm hover:text-white">
-            Sign out
-          </button>
-        </div>
+        {profile?.is_admin && (
+          <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
+            <Link
+              href="/admin"
+              className="block text-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm py-2.5 hover:bg-amber-500/15 transition"
+            >
+              Admin dashboard
+            </Link>
+          </div>
+        )}
 
         <div className="rounded-3xl border border-red-500/30 bg-red-950/20 p-6">
           <h2 className="font-bold text-red-400 mb-2">Delete account</h2>

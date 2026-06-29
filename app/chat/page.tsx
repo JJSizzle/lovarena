@@ -1304,6 +1304,12 @@ export default function ChatPage() {
           sharedTags={sharedTags}
           voiceOnly={voiceOnly}
           connectHint={null}
+          socialCompact={chatFriendStatus === "friends"}
+          socialCompactLabel={
+            chatConnectionType === "mutual_connect"
+              ? "✨ Mutual spark — you're friends"
+              : "🤝 Friends — message anytime"
+          }
           sparkSlot={renderSparkButton()}
           friendSlot={renderFriendRequestButton()}
           actionSlot={

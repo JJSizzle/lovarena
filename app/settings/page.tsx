@@ -20,6 +20,7 @@ import { LANGUAGE_OPTIONS } from "@/lib/profile-tags";
 import { isSupportedTranslationLanguage } from "@/lib/translation/language-codes";
 import { soundsEnabled, setSoundsEnabled } from "@/lib/sounds";
 import { AppQuickNav } from "@/components/AppQuickNav";
+import { AppPageHeader } from "@/components/AppPageHeader";
 
 function SettingRow({
   title,
@@ -67,7 +68,7 @@ function Toggle({
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, profile, loading, refreshProfile, signOut } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
 
   const [matchMode, setMatchMode] = useState<MatchMode>("worldwide");
   const [countryCode, setCountryCode] = useState("US");
@@ -160,20 +161,17 @@ export default function SettingsPage() {
     >
       <ParticleBackground />
       <div className="relative z-10 max-w-lg mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="text-sm text-slate-400 hover:text-white">
-            ← Home
-          </Link>
-          <h1 className="text-xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-            Settings
-          </h1>
-          <Link
-            href="/chat"
-            className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
-          >
-            Arena →
-          </Link>
-        </div>
+        <AppPageHeader
+          title="Settings"
+          action={
+            <Link
+              href="/chat"
+              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+            >
+              Arena →
+            </Link>
+          }
+        />
 
         <AppQuickNav className="mb-2" />
 
@@ -370,13 +368,6 @@ export default function SettingsPage() {
             <Link href="/friends" className="text-emerald-400 hover:text-emerald-300">
               Friends →
             </Link>
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="text-slate-400 hover:text-white"
-            >
-              Sign out
-            </button>
           </div>
         </div>
       </div>
