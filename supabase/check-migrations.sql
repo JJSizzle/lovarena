@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 11 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 12 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -179,6 +179,25 @@ select migration, status from (
         select 1 from information_schema.tables
         where table_schema = 'public' and table_name = 'party_votes'
       ) then '❌ party_votes missing — run party-rooms.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 12, 'party-permissions',
+    case
+      when not has_table_privilege('service_role', 'public.party_rooms', 'INSERT') then
+        '❌ service_role grants missing — run party-permissions.sql'
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'is_party_member'
+      ) then '❌ is_party_member missing — run party-permissions.sql'
+      when not exists (
+        select 1 from pg_policies
+        where schemaname = 'public' and tablename = 'party_rooms'
+          and policyname = 'Party members read party_rooms'
+      ) then '❌ RLS policies missing — run party-permissions.sql'
       else '✅ applied'
     end
 ) checks
