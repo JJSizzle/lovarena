@@ -44,9 +44,9 @@ export default function HomePage() {
   useEffect(() => {
     setMode(getMatchMode());
     setPreferSharedInterests(getPreferSharedInterests());
-    setCountry(getCountryCode() || profile?.country_code || guessCountryCode());
-    setStateCode(getStateCode() ?? profile?.state_code ?? null);
-  }, [profile?.country_code, profile?.state_code]);
+    setCountry(getCountryCode() || guessCountryCode());
+    setStateCode(getStateCode());
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -88,28 +88,14 @@ export default function HomePage() {
         !profile ||
         profile.gender_identity !== genderIdentity ||
         profile.looking_for !== lookingFor;
-      const locationChanged =
-        !profile ||
-        profile.country_code !== (country || null) ||
-        profile.state_code !== (country === "US" ? stateCode : null);
 
-      if (orientationChanged || locationChanged) {
+      if (orientationChanged) {
         const res = await fetch("/api/profile", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...(orientationChanged
-              ? {
-                  gender_identity: genderIdentity,
-                  looking_for: lookingFor,
-                }
-              : {}),
-            ...(locationChanged
-              ? {
-                  country_code: country || null,
-                  state_code: country === "US" ? stateCode : null,
-                }
-              : {}),
+            gender_identity: genderIdentity,
+            looking_for: lookingFor,
           }),
         });
         const data = await res.json();
@@ -267,7 +253,7 @@ export default function HomePage() {
                 htmlFor="country"
                 className="block text-sm text-purple-300/80 mb-2 font-medium"
               >
-                Your country / region
+                Match in this country
               </label>
               <select
                 id="country"
@@ -285,6 +271,9 @@ export default function HomePage() {
                   </option>
                 ))}
               </select>
+              <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                For matching only — does not change your profile location.
+              </p>
               {country === "US" && (
                 <div className="mt-4">
                   <label

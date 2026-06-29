@@ -91,11 +91,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMatchMode(getMatchMode());
-    setCountryCode(getCountryCode() || profile?.country_code || guessCountryCode());
-    setStateCode(getStateCode() ?? profile?.state_code ?? null);
+    setCountryCode(getCountryCode() || guessCountryCode());
+    setStateCode(getStateCode());
     setPreferSharedInterests(getPreferSharedInterests());
     setSoundEffects(soundsEnabled());
-  }, [profile?.country_code, profile?.state_code]);
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -129,12 +129,6 @@ export default function SettingsPage() {
           notifications_enabled: notificationsEnabled,
           allow_friend_requests: allowFriendRequests,
           allow_mutual_spark: allowMutualSpark,
-          ...(matchMode === "regional"
-            ? {
-                country_code: countryCode || null,
-                state_code: countryCode === "US" ? stateCode : null,
-              }
-            : {}),
         }),
       });
       const data = await res.json();
@@ -204,7 +198,10 @@ export default function SettingsPage() {
               </select>
             </SettingRow>
             {matchMode === "regional" && (
-              <SettingRow title="Country">
+              <SettingRow
+                title="Match country"
+                description="Where to find matches. Does not change your profile location — set that on Profile."
+              >
                 <select
                   value={countryCode}
                   onChange={(e) => {
