@@ -15,6 +15,10 @@ import {
 } from "@/lib/notifications/friend-request-email";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import {
+  allowsFriendRequests,
+  allowsMutualSpark,
+} from "@/lib/social-privacy";
 
 export async function POST(req: NextRequest) {
   try {
@@ -173,6 +177,21 @@ export async function POST(req: NextRequest) {
         connectionType: "request",
         message: "They already requested you — you are now friends!",
       });
+    }
+
+    const { data: targetProfile } = await supabase
+      .from("profiles")
+      .select("username, allow_friend_requests")
+      .eq("id", friendId)
+      .maybeSingle();
+
+    if (!allowsFriendRequests(targetProfile?.allow_friend_requests)) {
+      return NextResponse.json(
+        {
+          error: `${targetProfile?.username ?? "This user"} isn't accepting friend requests right now.`,
+        },
+        { status: 403 }
+      );
     }
 
     const { error } = await supabase.from("friendships").insert({

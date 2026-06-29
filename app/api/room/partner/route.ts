@@ -7,6 +7,10 @@ import {
 import { friendLinkStatus } from "@/lib/friends/friend-link-status";
 import { overlapTags, getSafetyLabel } from "@/lib/safety-label";
 import { genderLabel, type GenderIdentity } from "@/lib/profile-orientation";
+import {
+  allowsFriendRequests,
+  allowsMutualSpark,
+} from "@/lib/social-privacy";
 
 export async function GET(req: NextRequest) {
   try {
@@ -29,7 +33,7 @@ export async function GET(req: NextRequest) {
     const { data: partner } = await supabase
       .from("profiles")
       .select(
-        "username, age, show_age, gender_identity, interests, languages, reputation_score, created_at, age_verified, avatar_url, avatar_emoji, bio"
+        "username, age, show_age, gender_identity, interests, languages, reputation_score, created_at, age_verified, avatar_url, avatar_emoji, bio, allow_friend_requests, allow_mutual_spark"
       )
       .eq("id", partnerId)
       .maybeSingle();
@@ -82,6 +86,10 @@ export async function GET(req: NextRequest) {
         friendRows ?? []
       ),
       connectionType: acceptedRow?.connection_type ?? null,
+      partnerAllowsFriendRequests: allowsFriendRequests(
+        partner?.allow_friend_requests
+      ),
+      partnerAllowsMutualSpark: allowsMutualSpark(partner?.allow_mutual_spark),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Partner info failed";

@@ -13,6 +13,8 @@ export type AuthProfile = {
   interests: string[];
   avatar_emoji: string | null;
   voice_only_default: boolean;
+  allow_friend_requests?: boolean;
+  allow_mutual_spark?: boolean;
   chat_streak: number;
   reputation_score: number;
   created_at: string;
@@ -36,7 +38,7 @@ export async function requireAuthProfile(): Promise<
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "id, username, age_verified, is_admin, gender_identity, looking_for, interests, avatar_emoji, voice_only_default, chat_streak, reputation_score, created_at"
+      "id, username, age_verified, is_admin, gender_identity, looking_for, interests, avatar_emoji, voice_only_default, allow_friend_requests, allow_mutual_spark, chat_streak, reputation_score, created_at"
     )
     .eq("id", user.id)
     .maybeSingle();

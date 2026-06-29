@@ -398,8 +398,12 @@ export default function ProfilePage() {
             <Link href="/friends" className="text-xs text-emerald-400">View all →</Link>
           </div>
           <p className="text-xs text-slate-500">
-            Tap Connect when you both feel a spark, or Add friend for a
-            low-pressure request — then message from Friends.
+            Add friends from recent matches (within 30 days). Turn off incoming
+            requests anytime in{" "}
+            <Link href="/settings" className="text-fuchsia-400 hover:text-fuchsia-300">
+              Settings
+            </Link>
+            .
           </p>
         </div>
 

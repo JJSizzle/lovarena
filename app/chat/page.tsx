@@ -41,6 +41,10 @@ import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
 import { TranslateToolbar } from "@/components/TranslateToolbar";
 import { isOnboardingComplete } from "@/lib/profile-orientation";
 import { formatPartnerLine } from "@/lib/profile-age";
+import {
+  allowsFriendRequests,
+  allowsMutualSpark,
+} from "@/lib/social-privacy";
 import { isAgeVerified, syncProfileAgeVerified } from "@/lib/age-gate";
 import { useTypingIndicator } from "@/lib/hooks/useTypingIndicator";
 import { useMatchCelebration } from "@/lib/hooks/useMatchCelebration";
@@ -99,6 +103,9 @@ export default function ChatPage() {
   const [partnerProfileOpen, setPartnerProfileOpen] = useState(false);
   const [partnerId, setPartnerId] = useState<string | null>(null);
   const [partnerLabel, setPartnerLabel] = useState<string | null>(null);
+  const [partnerAllowsFriendRequests, setPartnerAllowsFriendRequests] =
+    useState(true);
+  const [partnerAllowsMutualSpark, setPartnerAllowsMutualSpark] = useState(true);
   const [sharedTags, setSharedTags] = useState<string[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackRoomId, setFeedbackRoomId] = useState<string | null>(null);
@@ -195,6 +202,12 @@ export default function ChatPage() {
             );
             setFriendUsername(d.partnerUsername);
           }
+          if (typeof d.partnerAllowsFriendRequests === "boolean") {
+            setPartnerAllowsFriendRequests(d.partnerAllowsFriendRequests);
+          }
+          if (typeof d.partnerAllowsMutualSpark === "boolean") {
+            setPartnerAllowsMutualSpark(d.partnerAllowsMutualSpark);
+          }
         })
         .catch(() => {});
     }
@@ -205,6 +218,8 @@ export default function ChatPage() {
       resetCelebration();
       setPartnerId(null);
       setPartnerLabel(null);
+      setPartnerAllowsFriendRequests(true);
+      setPartnerAllowsMutualSpark(true);
       setSharedTags([]);
       setChatFriendStatus("none");
       setChatConnectionType(null);
@@ -971,10 +986,29 @@ export default function ChatPage() {
   }
 
   function renderSparkButton() {
+    const selfAllowsSpark = allowsMutualSpark(profile?.allow_mutual_spark);
+
     if (chatConnectionType === "mutual_connect") {
       return (
         <span className="text-xs font-semibold text-pink-200 px-2 py-1.5">
           Mutual spark ✨
+        </span>
+      );
+    }
+    if (!selfAllowsSpark) {
+      return (
+        <span className="text-[10px] text-slate-500 px-2 py-1.5 text-center leading-snug">
+          Spark off in{" "}
+          <Link href="/settings" className="text-fuchsia-400 hover:text-fuchsia-300">
+            Settings
+          </Link>
+        </span>
+      );
+    }
+    if (!partnerAllowsMutualSpark) {
+      return (
+        <span className="text-[10px] text-slate-500 px-2 py-1.5 text-center leading-snug">
+          Not accepting sparks
         </span>
       );
     }
@@ -1002,6 +1036,10 @@ export default function ChatPage() {
   }
 
   function renderFriendRequestButton() {
+    const selfAllowsRequests = allowsFriendRequests(
+      profile?.allow_friend_requests
+    );
+
     if (chatFriendStatus === "friends") {
       if (chatConnectionType === "mutual_connect") {
         return (
@@ -1038,6 +1076,23 @@ export default function ChatPage() {
         >
           {friendRequestLoading ? "…" : "Accept request"}
         </button>
+      );
+    }
+    if (!selfAllowsRequests) {
+      return (
+        <span className="text-[10px] text-slate-500 px-2 py-1.5 text-center leading-snug">
+          Requests off in{" "}
+          <Link href="/settings" className="text-fuchsia-400 hover:text-fuchsia-300">
+            Settings
+          </Link>
+        </span>
+      );
+    }
+    if (!partnerAllowsFriendRequests) {
+      return (
+        <span className="text-[10px] text-slate-500 px-2 py-1.5 text-center leading-snug">
+          Not accepting requests
+        </span>
       );
     }
     return (

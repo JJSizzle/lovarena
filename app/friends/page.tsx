@@ -414,10 +414,12 @@ export default function FriendsPage() {
             <p className="text-4xl mb-3">❤️</p>
             <p className="text-slate-300 font-medium">No friends yet</p>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-              Tap a friend&apos;s name to view their profile.{" "}
-              <strong className="text-pink-300">Connect</strong> for Mutuals,{" "}
-              <strong className="text-fuchsia-300">Add friend</strong> for your
-              Friends list.
+              Match in the arena, then add people you click with. Manage who can
+              reach out in{" "}
+              <Link href="/settings" className="text-fuchsia-400 hover:text-fuchsia-300">
+                Settings
+              </Link>
+              .
             </p>
             <Link
               href="/chat"

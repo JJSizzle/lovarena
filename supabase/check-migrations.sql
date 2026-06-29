@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 7 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 8 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -106,6 +106,23 @@ select migration, status from (
         where n.nspname = 'public' and p.proname = 'find_or_create_match'
           and pg_get_function_identity_arguments(p.oid) like '%boolean%'
       ) then '❌ match fn missing 4th arg — run prefer-shared-interests.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 8, 'social-privacy-prefs',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'profiles'
+          and column_name = 'allow_friend_requests'
+      ) then '❌ columns missing — run social-privacy-prefs.sql'
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'profiles'
+          and column_name = 'allow_mutual_spark'
+      ) then '❌ allow_mutual_spark missing — run social-privacy-prefs.sql'
       else '✅ applied'
     end
 ) checks

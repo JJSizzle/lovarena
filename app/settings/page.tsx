@@ -75,6 +75,8 @@ export default function SettingsPage() {
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [soundEffects, setSoundEffects] = useState(true);
+  const [allowFriendRequests, setAllowFriendRequests] = useState(true);
+  const [allowMutualSpark, setAllowMutualSpark] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +100,8 @@ export default function SettingsPage() {
     setPrimaryLanguage(profile.primary_language ?? "English");
     setAutoTranslate(profile.auto_translate ?? false);
     setNotificationsEnabled(profile.notifications_enabled ?? true);
+    setAllowFriendRequests(profile.allow_friend_requests !== false);
+    setAllowMutualSpark(profile.allow_mutual_spark !== false);
   }, [profile]);
 
   async function handleSave(e: React.FormEvent) {
@@ -119,6 +123,8 @@ export default function SettingsPage() {
           primary_language: primaryLanguage,
           auto_translate: autoTranslate,
           notifications_enabled: notificationsEnabled,
+          allow_friend_requests: allowFriendRequests,
+          allow_mutual_spark: allowMutualSpark,
         }),
       });
       const data = await res.json();
@@ -255,6 +261,29 @@ export default function SettingsPage() {
                 disabled={!isSupportedTranslationLanguage(primaryLanguage)}
                 onChange={setAutoTranslate}
               />
+            </SettingRow>
+          </section>
+
+          <section className="pt-2">
+            <h2 className="text-sm font-bold text-fuchsia-300 mb-1">Privacy</h2>
+            <p className="text-[11px] text-slate-500 mb-2">
+              Control who can reach out after a match. You can still accept
+              requests that were already sent.
+            </p>
+            <SettingRow
+              title="Allow friend requests"
+              description="Let people add you from recent matches. When off, others see “Not accepting requests.”"
+            >
+              <Toggle
+                checked={allowFriendRequests}
+                onChange={setAllowFriendRequests}
+              />
+            </SettingRow>
+            <SettingRow
+              title="Allow mutual spark"
+              description="Let in-chat ✨ spark create a mutual connection when you both tap."
+            >
+              <Toggle checked={allowMutualSpark} onChange={setAllowMutualSpark} />
             </SettingRow>
           </section>
 

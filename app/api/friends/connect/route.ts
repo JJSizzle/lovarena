@@ -8,6 +8,10 @@ import {
 } from "@/lib/auth/api-auth";
 import { friendLinkStatus } from "@/lib/friends/friend-link-status";
 import type { FriendConnectionType } from "@/lib/friends/connection-type";
+import {
+  allowsFriendRequests,
+  allowsMutualSpark,
+} from "@/lib/social-privacy";
 
 async function getAcceptedFriendship(
   supabase: ReturnType<typeof createAdminClient>,
@@ -83,7 +87,7 @@ export async function GET(req: NextRequest) {
 
       const { data: partnerProfile } = await supabase
         .from("profiles")
-        .select("username")
+        .select("username, allow_mutual_spark")
         .eq("id", partnerId)
         .maybeSingle();
       partnerUsername = partnerProfile?.username ?? null;
@@ -154,7 +158,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!allowsMutualSpark(auth.profile.allow_mutual_spark)) {
+      return NextResponse.json(
+        {
+          error:
+            "Mutual spark is turned off in your settings. Enable it under Settings → Privacy to connect this way.",
+        },
+        { status: 403 }
+      );
+    }
+
     const supabase = createAdminClient();
+
+    const { data: partnerProfilePrefs } = await supabase
+      .from("profiles")
+      .select("username, allow_mutual_spark")
+      .eq("id", partnerId)
+      .maybeSingle();
+
+    if (!allowsMutualSpark(partnerProfilePrefs?.allow_mutual_spark)) {
+      return NextResponse.json(
+        {
+          error: `${partnerProfilePrefs?.username ?? "This user"} isn't accepting mutual spark right now.`,
+        },
+        { status: 403 }
+      );
+    }
 
     await supabase.from("room_connect_clicks").upsert({
       room_id: roomId,
