@@ -42,6 +42,7 @@ export type PartyState = {
   currentPrompt: string | null;
   currentOptions: TriviaOption[] | null;
   correctOptionId: string | null;
+  votingDeadlineAt: string | null;
   members: PartyMemberView[];
   votes: PartyVoteView[];
   myVote: string | null;
@@ -62,6 +63,7 @@ export type PartyRoomRow = {
   current_prompt: string | null;
   current_options: TriviaOption[] | null;
   correct_option_id: string | null;
+  voting_deadline_at: string | null;
   created_at: string;
   updated_at: string;
 };

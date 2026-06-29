@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 /** Scroll to bottom only when a new message is appended, not on poll refreshes. */
 export function useScrollOnNewMessage<T extends { id: string }>(
   messages: T[],
-  resetKey?: string | null
+  resetKey?: string | null,
+  scrollContainerRef?: RefObject<HTMLElement | null>
 ) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevCountRef = useRef(0);
@@ -26,12 +27,20 @@ export function useScrollOnNewMessage<T extends { id: string }>(
     prevCountRef.current = count;
     prevLastIdRef.current = lastId;
 
-    if (hasNewMessage) {
-      bottomRef.current?.scrollIntoView({
-        behavior: prevCount === 0 ? "instant" : "smooth",
-      });
+    if (!hasNewMessage) return;
+
+    const behavior = prevCount === 0 ? "instant" : "smooth";
+    const container = scrollContainerRef?.current;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior });
+      return;
     }
-  }, [messages]);
+
+    bottomRef.current?.scrollIntoView({
+      behavior,
+      block: "nearest",
+    });
+  }, [messages, scrollContainerRef]);
 
   return bottomRef;
 }

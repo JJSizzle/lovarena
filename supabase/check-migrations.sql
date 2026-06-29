@@ -200,5 +200,17 @@ select migration, status from (
       ) then '❌ RLS policies missing — run party-permissions.sql'
       else '✅ applied'
     end
+
+  union all
+
+  select 13, 'party-trivia-timer',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'party_rooms'
+          and column_name = 'voting_deadline_at'
+      ) then '❌ voting_deadline_at missing — run party-trivia-timer.sql'
+      else '✅ applied'
+    end
 ) checks
 order by ord;

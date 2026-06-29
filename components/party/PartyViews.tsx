@@ -1,13 +1,82 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   chatBtnFun,
   chatBtnGhost,
   chatBtnLove,
   chatBtnNext,
 } from "@/lib/chat-buttons";
+import { TRIVIA_VOTE_SECONDS } from "@/lib/party/trivia-config";
 import type { PartyState } from "@/lib/party/party-types";
 import { PartyMemberBar } from "@/components/party/PartyMemberBar";
+
+function TriviaTimer({
+  deadline,
+  onExpire,
+}: {
+  deadline: string;
+  onExpire: () => void;
+}) {
+  const [remaining, setRemaining] = useState(TRIVIA_VOTE_SECONDS);
+  const firedRef = useRef(false);
+  const onExpireRef = useRef(onExpire);
+
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
+  useEffect(() => {
+    firedRef.current = false;
+  }, [deadline]);
+
+  useEffect(() => {
+    function tick() {
+      const ms = new Date(deadline).getTime() - Date.now();
+      const next = Math.max(0, Math.ceil(ms / 1000));
+      setRemaining(next);
+      if (next === 0 && !firedRef.current) {
+        firedRef.current = true;
+        onExpireRef.current();
+      }
+    }
+
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [deadline]);
+
+  const urgent = remaining <= 5;
+  const progress = Math.min(
+    100,
+    Math.max(0, (remaining / TRIVIA_VOTE_SECONDS) * 100)
+  );
+
+  return (
+    <div className="space-y-2 max-w-xs mx-auto w-full">
+      <div className="flex items-center justify-between text-xs">
+        <span className={urgent ? "text-amber-300" : "text-slate-400"}>
+          {remaining > 0 ? "Time to answer" : "Time's up!"}
+        </span>
+        <span
+          className={`font-bold tabular-nums ${
+            urgent ? "text-amber-300" : "text-cyan-200"
+          }`}
+        >
+          {remaining}s
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+        <div
+          className={`h-full transition-[width] duration-300 ${
+            urgent ? "bg-amber-400" : "bg-cyan-400"
+          }`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   party: PartyState;
@@ -88,6 +157,7 @@ type GameProps = {
   onNext: () => void;
   onEnd: () => void;
   onLeave: () => void;
+  onTimeout: () => void;
 };
 
 export function PartyGameView({
@@ -97,6 +167,7 @@ export function PartyGameView({
   onNext,
   onEnd,
   onLeave,
+  onTimeout,
 }: GameProps) {
   const isTrivia = party.gameMode === "trivia";
   const votedCount = party.votes.length;
@@ -124,7 +195,13 @@ export function PartyGameView({
 
       <PartyMemberBar members={party.members} />
 
-      <div className="rounded-3xl border-2 border-fuchsia-500/40 bg-gradient-to-br from-slate-900 to-purple-950/80 p-6 text-center shadow-[0_0_30px_rgba(217,70,239,0.15)]">
+      <div className="rounded-3xl border-2 border-fuchsia-500/40 bg-gradient-to-br from-slate-900 to-purple-950/80 p-6 text-center shadow-[0_0_30px_rgba(217,70,239,0.15)] space-y-4">
+        {isTrivia && party.phase === "voting" && party.votingDeadlineAt && (
+          <TriviaTimer
+            deadline={party.votingDeadlineAt}
+            onExpire={onTimeout}
+          />
+        )}
         <p className="text-lg sm:text-xl font-bold text-white leading-snug">
           {party.currentPrompt}
         </p>
@@ -157,7 +234,7 @@ export function PartyGameView({
         <p className="text-center text-xs text-slate-500">
           {party.myVote
             ? `You voted · ${votedCount}/${memberCount} answered`
-            : "Tap your answer"}
+            : "Tap your answer before time runs out"}
           {allVoted && " · Revealing…"}
         </p>
       )}

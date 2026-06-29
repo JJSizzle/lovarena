@@ -4,8 +4,10 @@ import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { assertPartyMember } from "@/lib/party/party-auth";
 import {
   buildPartyState,
+  maybeAdvanceTriviaOnTimeout,
   maybeAdvanceTriviaRound,
   startNextRound,
+  syncPartyRoom,
 } from "@/lib/party/party-state";
 
 export async function POST(req: NextRequest) {
@@ -58,6 +60,13 @@ export async function POST(req: NextRequest) {
 
       const advanced = await maybeAdvanceTriviaRound(supabase, room);
       if (advanced) room = advanced;
+      else {
+        const timedOut = await maybeAdvanceTriviaOnTimeout(supabase, room);
+        if (timedOut) room = timedOut;
+      }
+    } else if (action === "timeout") {
+      const timedOut = await maybeAdvanceTriviaOnTimeout(supabase, room);
+      if (timedOut) room = timedOut;
     } else if (action === "next") {
       if (room.game_mode === "prompts") {
         if (room.phase !== "discussion") {
@@ -100,9 +109,14 @@ export async function POST(req: NextRequest) {
       .eq("id", partyId)
       .single();
 
+    const synced = await syncPartyRoom(
+      supabase,
+      (latest ?? room) as typeof room
+    );
+
     const party = await buildPartyState(
       supabase,
-      latest ?? room,
+      synced,
       auth.profile.id,
       req.nextUrl.origin
     );

@@ -260,7 +260,7 @@ function PartyPageContent() {
   }
 
   async function handleAction(
-    action: "vote" | "next" | "end",
+    action: "vote" | "next" | "end" | "timeout",
     optionId?: string
   ) {
     if (!party) return;
@@ -287,6 +287,21 @@ function PartyPageContent() {
       setBusy(false);
     }
   }
+
+  const handleTimeout = useCallback(async () => {
+    if (!party || party.phase !== "voting") return;
+    try {
+      const res = await fetch("/api/party/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partyId: party.id, action: "timeout" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.party) setParty(data.party);
+    } catch {
+      // ignore — polling will sync state
+    }
+  }, [party]);
 
   if (loading || !user) {
     return (
@@ -468,6 +483,7 @@ function PartyPageContent() {
                   onNext={() => handleAction("next")}
                   onEnd={() => handleAction("end")}
                   onLeave={handleLeave}
+                  onTimeout={() => void handleTimeout()}
                 />
               )}
               {error && (

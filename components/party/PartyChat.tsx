@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { chatBtnGhost, chatBtnSend } from "@/lib/chat-buttons";
+import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
 import type { PartyMessageView } from "@/lib/party/party-types";
 
 type Props = {
@@ -13,7 +14,8 @@ export function PartyChat({ partyId, enabled }: Props) {
   const [messages, setMessages] = useState<PartyMessageView[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useScrollOnNewMessage(messages, partyId, scrollRef);
 
   useEffect(() => {
     if (!enabled || !partyId) return;
@@ -35,10 +37,6 @@ export function PartyChat({ partyId, enabled }: Props) {
     const interval = setInterval(load, 3000);
     return () => clearInterval(interval);
   }, [partyId, enabled]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -71,7 +69,10 @@ export function PartyChat({ partyId, enabled }: Props) {
           Party chat
         </p>
       </div>
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 max-h-48 lg:max-h-none">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-2 max-h-48 lg:max-h-none"
+      >
         {messages.length === 0 && (
           <p className="text-xs text-slate-600 text-center py-4">
             Say hi to your friends…

@@ -1,4 +1,5 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
+import { triviaVotingDeadline } from "@/lib/party/trivia-config";
 import type {
   PartyMemberView,
   PartyRoomRow,
@@ -107,6 +108,7 @@ export async function buildPartyState(
     currentPrompt: room.current_prompt,
     currentOptions: options,
     correctOptionId: room.correct_option_id,
+    votingDeadlineAt: room.voting_deadline_at ?? null,
     members,
     votes,
     myVote,
@@ -139,6 +141,7 @@ export async function maybeAdvanceTriviaRound(
     .from("party_rooms")
     .update({
       phase: "reveal",
+      voting_deadline_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", room.id)
@@ -148,6 +151,43 @@ export async function maybeAdvanceTriviaRound(
 
   if (error || !updated) return null;
   return updated as PartyRoomRow;
+}
+
+export async function maybeAdvanceTriviaOnTimeout(
+  supabase: Supabase,
+  room: PartyRoomRow
+): Promise<PartyRoomRow | null> {
+  if (room.game_mode !== "trivia" || room.phase !== "voting") return null;
+  if (!room.voting_deadline_at) return null;
+  if (new Date(room.voting_deadline_at).getTime() > Date.now()) return null;
+
+  const { data: updated, error } = await supabase
+    .from("party_rooms")
+    .update({
+      phase: "reveal",
+      voting_deadline_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", room.id)
+    .eq("phase", "voting")
+    .select("*")
+    .maybeSingle();
+
+  if (error || !updated) return null;
+  return updated as PartyRoomRow;
+}
+
+/** Apply vote-count and timer advances before returning room state. */
+export async function syncPartyRoom(
+  supabase: Supabase,
+  room: PartyRoomRow
+): Promise<PartyRoomRow> {
+  let current = room;
+  const byVotes = await maybeAdvanceTriviaRound(supabase, current);
+  if (byVotes) current = byVotes;
+  const byTimeout = await maybeAdvanceTriviaOnTimeout(supabase, current);
+  if (byTimeout) current = byTimeout;
+  return current;
 }
 
 export async function startNextRound(
@@ -167,6 +207,7 @@ export async function startNextRound(
         current_prompt: prompt,
         current_options: null,
         correct_option_id: null,
+        voting_deadline_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", room.id)
@@ -186,6 +227,7 @@ export async function startNextRound(
       current_prompt: trivia.question,
       current_options: trivia.options,
       correct_option_id: trivia.correctId,
+      voting_deadline_at: triviaVotingDeadline(),
       updated_at: new Date().toISOString(),
     })
     .eq("id", room.id)
@@ -213,6 +255,7 @@ export async function startFirstRound(
         current_prompt: prompt,
         current_options: null,
         correct_option_id: null,
+        voting_deadline_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", room.id)
@@ -233,6 +276,7 @@ export async function startFirstRound(
       current_prompt: trivia.question,
       current_options: trivia.options,
       correct_option_id: trivia.correctId,
+      voting_deadline_at: triviaVotingDeadline(),
       updated_at: new Date().toISOString(),
     })
     .eq("id", room.id)

@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { generateInviteCode } from "@/lib/party/game-content";
 import { areFriends } from "@/lib/party/party-auth";
-import { buildPartyState } from "@/lib/party/party-state";
+import { buildPartyState, syncPartyRoom } from "@/lib/party/party-state";
 import type { PartyGameMode } from "@/lib/party/party-types";
 
 function isGameMode(value: unknown): value is PartyGameMode {
@@ -49,9 +49,10 @@ export async function GET(req: NextRequest) {
     const origin = req.nextUrl.origin;
 
     if (member) {
+      const synced = await syncPartyRoom(supabase, room);
       const party = await buildPartyState(
         supabase,
-        room,
+        synced,
         auth.profile.id,
         origin
       );
