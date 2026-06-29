@@ -5,10 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   type MatchMode,
+  getMatchMode,
+  getCountryCode,
+  getStateCode,
   getPreferSharedInterests,
   setMatchPrefs,
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
+import { US_STATES } from "@/lib/us-states";
 import { useAuth } from "@/components/AuthProvider";
 import {
   isGenderIdentity,
@@ -29,6 +33,7 @@ export default function HomePage() {
   const { user, profile, loading, refreshProfile, signOut } = useAuth();
   const [mode, setMode] = useState<MatchMode>("worldwide");
   const [country, setCountry] = useState("US");
+  const [stateCode, setStateCode] = useState<string | null>(null);
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
   const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
   const [entering, setEntering] = useState(false);
@@ -37,7 +42,9 @@ export default function HomePage() {
   const seasonal = getSeasonalTheme();
 
   useEffect(() => {
-    setCountry(guessCountryCode());
+    setCountry(getCountryCode() || guessCountryCode());
+    setMode(getMatchMode());
+    setStateCode(getStateCode());
     setPreferSharedInterests(getPreferSharedInterests());
   }, []);
 
@@ -53,7 +60,7 @@ export default function HomePage() {
 
   async function handleStart() {
     setEnterError(null);
-    setMatchPrefs(mode, country, preferSharedInterests);
+    setMatchPrefs(mode, country, preferSharedInterests, stateCode);
 
     if (!user) {
       router.push("/login?next=/chat");
@@ -251,7 +258,11 @@ export default function HomePage() {
               <select
                 id="country"
                 value={country}
-                onChange={(e) => setCountry(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setCountry(next);
+                  if (next !== "US") setStateCode(null);
+                }}
                 className="select-dark w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 text-slate-100"
               >
                 {COUNTRIES.map((c) => (
@@ -260,6 +271,35 @@ export default function HomePage() {
                   </option>
                 ))}
               </select>
+              {country === "US" && (
+                <div className="mt-4">
+                  <label
+                    htmlFor="state"
+                    className="block text-sm text-purple-300/80 mb-2 font-medium"
+                  >
+                    Same state (optional, US only)
+                  </label>
+                  <select
+                    id="state"
+                    value={stateCode ?? ""}
+                    onChange={(e) =>
+                      setStateCode(e.target.value ? e.target.value : null)
+                    }
+                    className="select-dark w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 text-slate-100"
+                  >
+                    <option value="">Whole country</option>
+                    {US_STATES.map((s) => (
+                      <option key={s.code} value={s.code}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                    Narrower matches take longer. After 30 seconds waiting in
+                    chat, you can expand to the whole US.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

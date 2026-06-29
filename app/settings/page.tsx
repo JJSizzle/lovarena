@@ -10,10 +10,12 @@ import {
   type MatchMode,
   getMatchMode,
   getCountryCode,
+  getStateCode,
   getPreferSharedInterests,
   setMatchPrefs,
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
+import { US_STATES } from "@/lib/us-states";
 import { LANGUAGE_OPTIONS } from "@/lib/profile-tags";
 import { isSupportedTranslationLanguage } from "@/lib/translation/language-codes";
 import { soundsEnabled, setSoundsEnabled } from "@/lib/sounds";
@@ -68,6 +70,7 @@ export default function SettingsPage() {
 
   const [matchMode, setMatchMode] = useState<MatchMode>("worldwide");
   const [countryCode, setCountryCode] = useState("US");
+  const [stateCode, setStateCode] = useState<string | null>(null);
   const [preferSharedInterests, setPreferSharedInterests] = useState(false);
   const [faceBlurDefault, setFaceBlurDefault] = useState(true);
   const [voiceOnlyDefault, setVoiceOnlyDefault] = useState(false);
@@ -89,6 +92,7 @@ export default function SettingsPage() {
   useEffect(() => {
     setMatchMode(getMatchMode());
     setCountryCode(getCountryCode() || guessCountryCode());
+    setStateCode(getStateCode());
     setPreferSharedInterests(getPreferSharedInterests());
     setSoundEffects(soundsEnabled());
   }, []);
@@ -110,7 +114,7 @@ export default function SettingsPage() {
     setError(null);
     setMessage(null);
 
-    setMatchPrefs(matchMode, countryCode, preferSharedInterests);
+    setMatchPrefs(matchMode, countryCode, preferSharedInterests, stateCode);
     setSoundsEnabled(soundEffects);
 
     try {
@@ -197,12 +201,37 @@ export default function SettingsPage() {
               <SettingRow title="Country">
                 <select
                   value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setCountryCode(next);
+                    if (next !== "US") setStateCode(null);
+                  }}
                   className="select-dark rounded-xl bg-slate-900 border border-purple-500/20 px-3 py-2 text-sm text-slate-100 max-w-[10rem]"
                 >
                   {COUNTRIES.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.name}
+                    </option>
+                  ))}
+                </select>
+              </SettingRow>
+            )}
+            {matchMode === "regional" && countryCode === "US" && (
+              <SettingRow
+                title="Same state (optional)"
+                description="Leave on whole country for faster matches."
+              >
+                <select
+                  value={stateCode ?? ""}
+                  onChange={(e) =>
+                    setStateCode(e.target.value ? e.target.value : null)
+                  }
+                  className="select-dark rounded-xl bg-slate-900 border border-purple-500/20 px-3 py-2 text-sm text-slate-100 max-w-[10rem]"
+                >
+                  <option value="">Whole country</option>
+                  {US_STATES.map((s) => (
+                    <option key={s.code} value={s.code}>
+                      {s.name}
                     </option>
                   ))}
                 </select>

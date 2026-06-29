@@ -4,13 +4,16 @@ import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
+import { isValidUsStateCode } from "@/lib/us-states";
+
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
     const { profile } = auth;
-    const { matchMode, countryCode, preferSharedInterests } = await req.json();
+    const { matchMode, countryCode, stateCode, preferSharedInterests } =
+      await req.json();
 
     const ip = clientIp(req);
     const rl = await rateLimit(`match:${profile.id}:${ip}`, 30, 60);
@@ -29,6 +32,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let normalizedState: string | null = null;
+    if (
+      mode === "regional" &&
+      countryCode === "US" &&
+      stateCode &&
+      isValidUsStateCode(stateCode)
+    ) {
+      normalizedState = String(stateCode).toUpperCase();
+    }
+
     const supabase = createAdminClient();
 
     const restriction = await getRestrictionApiPayload(supabase, profile.id);
@@ -41,6 +54,7 @@ export async function POST(req: NextRequest) {
       p_match_mode: mode,
       p_country_code: mode === "regional" ? countryCode : null,
       p_prefer_shared_interests: Boolean(preferSharedInterests),
+      p_state_code: normalizedState,
     });
 
     if (error) {

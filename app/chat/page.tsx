@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import {
   getMatchPrefs,
   getMatchRequestBody,
+  formatRegionalBadge,
+  expandRegionalToCountry,
 } from "@/lib/match-prefs";
 import { randomIceBreaker } from "@/lib/ice-breakers";
 import { useWebRTC } from "@/lib/webrtc/useWebRTC";
@@ -82,6 +84,8 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [loadingNext, setLoadingNext] = useState(false);
   const [cancellingWait, setCancellingWait] = useState(false);
+  const [expandingRegion, setExpandingRegion] = useState(false);
+  const [matchScopeKey, setMatchScopeKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showIceBreakerPopup, setShowIceBreakerPopup] = useState(false);
   const [iceBreakerQuestion, setIceBreakerQuestion] = useState("");
@@ -235,7 +239,7 @@ export default function ChatPage() {
   const matchPrefs = getMatchPrefs();
   const roomBadge =
     matchPrefs.matchMode === "regional"
-      ? `REGIONAL · ${matchPrefs.countryCode}`
+      ? formatRegionalBadge(matchPrefs.countryCode, matchPrefs.stateCode)
       : "GLOBAL ROOM";
 
   useEffect(() => {
@@ -491,7 +495,37 @@ export default function ChatPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [userId, authLoading, profile?.age_verified, status, router]);
+  }, [userId, authLoading, profile?.age_verified, status, router, matchScopeKey]);
+
+  async function handleExpandRegion() {
+    if (status !== "matching" || expandingRegion) return;
+    setExpandingRegion(true);
+    setError(null);
+    expandRegionalToCountry();
+    setMatchScopeKey((k) => k + 1);
+    try {
+      const res = await fetch("/api/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(getMatchRequestBody()),
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not expand search");
+        return;
+      }
+      if (data.roomId) {
+        setEndedBySelf(false);
+        setRoomId(data.roomId);
+        setStatus("connected");
+      }
+    } catch {
+      setError("Could not expand search. Try again.");
+    } finally {
+      setExpandingRegion(false);
+    }
+  }
 
   useEffect(() => {
     if (!roomId) return;
@@ -1197,8 +1231,17 @@ export default function ChatPage() {
         <>
         <MatchingWaitScreen
           visible={status === "matching"}
+          stateCode={matchPrefs.stateCode}
           onCancel={handleCancelMatching}
           cancelling={cancellingWait}
+          onExpandToCountry={
+            matchPrefs.matchMode === "regional" &&
+            matchPrefs.countryCode === "US" &&
+            matchPrefs.stateCode
+              ? handleExpandRegion
+              : undefined
+          }
+          expanding={expandingRegion}
         />
         {status !== "idle" && (
         <VideoPanel

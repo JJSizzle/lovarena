@@ -5,13 +5,16 @@ import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
 import { processQualifiedChat } from "@/lib/referral/process-qualified-chat";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
+import { isValidUsStateCode } from "@/lib/us-states";
+
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
     const { profile } = auth;
-    const { roomId, matchMode, countryCode, preferSharedInterests } = await req.json();
+    const { roomId, matchMode, countryCode, stateCode, preferSharedInterests } =
+      await req.json();
 
     const ip = clientIp(req);
     const rl = await rateLimit(`next:${profile.id}:${ip}`, 20, 60);
@@ -23,6 +26,16 @@ export async function POST(req: NextRequest) {
     }
 
     const mode = matchMode === "regional" ? "regional" : "worldwide";
+    let normalizedState: string | null = null;
+    if (
+      mode === "regional" &&
+      countryCode === "US" &&
+      stateCode &&
+      isValidUsStateCode(stateCode)
+    ) {
+      normalizedState = String(stateCode).toUpperCase();
+    }
+
     const supabase = createAdminClient();
     let referralReward: { rewarded: boolean; message: string } | null = null;
 
@@ -49,6 +62,7 @@ export async function POST(req: NextRequest) {
         p_match_mode: mode,
         p_country_code: mode === "regional" ? countryCode : null,
         p_prefer_shared_interests: Boolean(preferSharedInterests),
+        p_state_code: normalizedState,
       }
     );
 

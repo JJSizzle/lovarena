@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 8 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 9 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -123,6 +123,26 @@ select migration, status from (
         where table_schema = 'public' and table_name = 'profiles'
           and column_name = 'allow_mutual_spark'
       ) then '❌ allow_mutual_spark missing — run social-privacy-prefs.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 9, 'regional-state-match',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'waiting_users'
+          and column_name = 'state_code'
+      ) then '❌ state_code missing — run regional-state-match.sql'
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'find_or_create_match'
+          and pg_get_function_identity_arguments(p.oid) like '%text%'
+          and pg_get_function_identity_arguments(p.oid) like '%boolean%'
+          and pg_get_function_identity_arguments(p.oid) like '%text%'
+      ) then '❌ match fn missing state arg — run regional-state-match.sql'
       else '✅ applied'
     end
 ) checks
