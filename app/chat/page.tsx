@@ -148,7 +148,10 @@ export default function ChatPage() {
   );
 
   const webrtcActive =
-    status === "connected" && !!roomId && mediaMode === "granted";
+    status === "connected" &&
+    !!roomId &&
+    !!userId &&
+    mediaMode === "granted";
   const {
     attachLocalVideo,
     remoteVideoRef,
@@ -1160,6 +1163,13 @@ export default function ChatPage() {
           partnerLabel={partnerLabel}
           matchBadge={roomBadge}
           videoEnabled={videoEnabled}
+          mediaStarting={
+            mediaMode === "granted" &&
+            webrtcActive &&
+            !videoEnabled &&
+            !mediaError &&
+            !voiceOnly
+          }
           audioEnabled={audioEnabled}
           onToggleVideo={toggleVideo}
           onToggleAudio={toggleAudio}

@@ -21,6 +21,7 @@ type VideoPanelProps = {
   partnerLabel?: string | null;
   matchBadge: string;
   videoEnabled: boolean;
+  mediaStarting?: boolean;
   audioEnabled: boolean;
   onToggleVideo: () => void;
   onToggleAudio: () => void;
@@ -78,6 +79,7 @@ export function VideoPanel({
   partnerLabel,
   matchBadge,
   videoEnabled,
+  mediaStarting = false,
   audioEnabled,
   onToggleVideo,
   onToggleAudio,
@@ -161,10 +163,22 @@ export function VideoPanel({
         />
         {!isCameraOn && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-[1] bg-slate-900/90 pointer-events-none">
-            <span className="text-3xl mb-2 opacity-80" aria-hidden>
-              📷
-            </span>
-            <p className="text-slate-400 font-medium text-xs">Camera off</p>
+            {mediaStarting ? (
+              <>
+                <div className="w-8 h-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mb-2" />
+                <p className="text-slate-400 font-medium text-xs">Starting camera…</p>
+              </>
+            ) : (
+              <>
+                <span className="text-3xl mb-2 opacity-80" aria-hidden>
+                  📷
+                </span>
+                <p className="text-slate-400 font-medium text-xs">Camera off</p>
+                <p className="text-slate-500 text-[10px] mt-1 px-4 text-center">
+                  Tap Turn cam on if you enabled video
+                </p>
+              </>
+            )}
           </div>
         )}
       </>

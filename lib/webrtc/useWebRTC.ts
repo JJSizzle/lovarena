@@ -37,14 +37,20 @@ async function refreshLocalVideoElement(
     el.srcObject = stream;
   }
   applyIosVideoAttrs(el);
-  const track = stream.getVideoTracks()[0];
-  if (track?.enabled) {
-    try {
-      await el.play();
-    } catch {
-      // autoplay policies — preview may resume on next frame
-    }
-  }
+
+  const tryPlay = () => {
+    void el.play().catch(() => {});
+  };
+
+  el.onloadeddata = tryPlay;
+  tryPlay();
+  requestAnimationFrame(tryPlay);
+}
+
+function hasLiveVideoTrack(stream: MediaStream | null, voiceOnly: boolean) {
+  if (voiceOnly) return false;
+  const track = stream?.getVideoTracks()[0];
+  return Boolean(track && track.readyState === "live");
 }
 
 export function useWebRTC(
@@ -65,12 +71,14 @@ export function useWebRTC(
   const isInitiatorRef = useRef(false);
   const voiceOnlyRef = useRef(voiceOnly);
   const togglingVideoRef = useRef(false);
+  const forceNewStreamRef = useRef(false);
 
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [videoEnabled, setVideoEnabled] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [connectionState, setConnectionState] = useState<string>("new");
   const [mediaRetryKey, setMediaRetryKey] = useState(0);
+  const [previewKey, setPreviewKey] = useState(0);
 
   voiceOnlyRef.current = voiceOnly;
 
@@ -83,7 +91,27 @@ export function useWebRTC(
   }, []);
 
   const retryMedia = useCallback(() => {
+    forceNewStreamRef.current = true;
     setMediaRetryKey((k) => k + 1);
+  }, []);
+
+  const stopLocalTracks = useCallback(() => {
+    localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    localStreamRef.current = null;
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+  }, []);
+
+  const teardownPeerConnection = useCallback(() => {
+    pcRef.current?.close();
+    pcRef.current = null;
+    if (channelRef.current) {
+      const supabase = createClient();
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+    iceQueueRef.current = [];
+    setConnectionState("closed");
   }, []);
 
   async function replaceVideoTrack(newTrack: MediaStreamTrack) {
@@ -110,6 +138,7 @@ export function useWebRTC(
     newTrack.enabled = true;
     setVideoEnabled(true);
     setMediaError(null);
+    setPreviewKey((k) => k + 1);
     await refreshLocalVideoElement(localVideoRef.current, stream);
   }
 
@@ -136,30 +165,64 @@ export function useWebRTC(
     });
   }
 
+  async function ensureLocalStream(): Promise<MediaStream> {
+    const needsFreshStream =
+      forceNewStreamRef.current ||
+      !hasLiveVideoTrack(localStreamRef.current, voiceOnly);
+
+    if (!needsFreshStream && localStreamRef.current) {
+      return localStreamRef.current;
+    }
+
+    forceNewStreamRef.current = false;
+    stopLocalTracks();
+
+    let stream = prefetchedStreamRef?.current ?? null;
+    if (stream) {
+      prefetchedStreamRef!.current = null;
+    } else {
+      stream = await acquireLocalMedia(voiceOnly);
+    }
+
+    if (!stream) {
+      throw new DOMException(
+        "Could not open camera or microphone.",
+        "NotReadableError"
+      );
+    }
+
+    const videoTrack = stream.getVideoTracks()[0];
+    if (videoTrack) {
+      videoTrack.enabled = true;
+    }
+
+    localStreamRef.current = stream;
+    setVideoEnabled(hasLiveVideoTrack(stream, voiceOnly));
+    setAudioEnabled(Boolean(stream.getAudioTracks()[0]?.enabled ?? true));
+    setPreviewKey((k) => k + 1);
+    await refreshLocalVideoElement(localVideoRef.current, stream);
+    return stream;
+  }
+
   const stopMedia = useCallback(() => {
-    localStreamRef.current?.getTracks().forEach((t) => t.stop());
-    localStreamRef.current = null;
-    if (localVideoRef.current) localVideoRef.current.srcObject = null;
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-    pcRef.current?.close();
-    pcRef.current = null;
+    stopLocalTracks();
+    teardownPeerConnection();
     setVideoEnabled(false);
     setAudioEnabled(false);
-    setConnectionState("closed");
-  }, []);
+  }, [stopLocalTracks, teardownPeerConnection]);
 
   const toggleVideo = useCallback(async () => {
     if (voiceOnlyRef.current || togglingVideoRef.current) return;
 
-    const stream = localStreamRef.current;
-    if (!stream) {
-      if (active) retryMedia();
-      return;
-    }
-
     togglingVideoRef.current = true;
 
     try {
+      let stream = localStreamRef.current;
+      if (!stream) {
+        if (!active) return;
+        stream = await ensureLocalStream();
+      }
+
       let track = stream.getVideoTracks()[0];
       const turningOn = !track || !track.enabled || track.readyState === "ended";
 
@@ -188,12 +251,15 @@ export function useWebRTC(
       setMediaError(null);
 
       if (turningOn) {
+        setPreviewKey((k) => k + 1);
         await refreshLocalVideoElement(localVideoRef.current, stream);
       }
+    } catch (err) {
+      setMediaError(mediaErrorMessage(err));
     } finally {
       togglingVideoRef.current = false;
     }
-  }, [active, retryMedia]);
+  }, [active]);
 
   const toggleAudio = useCallback(() => {
     const stream = localStreamRef.current;
@@ -214,44 +280,26 @@ export function useWebRTC(
     if (stream && localVideoRef.current) {
       void refreshLocalVideoElement(localVideoRef.current, stream);
     }
-  }, [active, videoEnabled]);
+  }, [active, videoEnabled, previewKey]);
 
   useEffect(() => {
-    if (!active || !roomId || !userId) return;
+    if (!active) {
+      stopMedia();
+      return;
+    }
+
+    if (!roomId || !userId) return;
 
     let cancelled = false;
 
     async function start() {
       setMediaError(null);
       iceQueueRef.current = [];
+      teardownPeerConnection();
 
       try {
-        let stream: MediaStream | null = prefetchedStreamRef?.current ?? null;
-        if (stream) {
-          prefetchedStreamRef!.current = null;
-        } else {
-          stream = await acquireLocalMedia(voiceOnly);
-        }
-
-        if (!stream) {
-          throw new DOMException(
-            "Could not open camera or microphone.",
-            "NotReadableError"
-          );
-        }
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        localStreamRef.current = stream;
-        const videoTrack = stream.getVideoTracks()[0];
-        setVideoEnabled(
-          !voiceOnly &&
-            Boolean(videoTrack?.enabled && videoTrack.readyState === "live")
-        );
-        setAudioEnabled(Boolean(stream.getAudioTracks()[0]?.enabled ?? true));
-        await refreshLocalVideoElement(localVideoRef.current, stream);
+        const stream = await ensureLocalStream();
+        if (cancelled) return;
 
         const roomRes = await fetch(`/api/room?roomId=${roomId}`, {
           cache: "no-store",
@@ -354,21 +402,17 @@ export function useWebRTC(
 
     return () => {
       cancelled = true;
-      localStreamRef.current?.getTracks().forEach((t) => t.stop());
-      localStreamRef.current = null;
-      if (localVideoRef.current) localVideoRef.current.srcObject = null;
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-      pcRef.current?.close();
-      pcRef.current = null;
-      if (channelRef.current) {
-        const supabase = createClient();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-      iceQueueRef.current = [];
-      setConnectionState("closed");
+      teardownPeerConnection();
     };
-  }, [active, roomId, userId, voiceOnly, mediaRetryKey]);
+  }, [
+    active,
+    roomId,
+    userId,
+    voiceOnly,
+    mediaRetryKey,
+    stopMedia,
+    teardownPeerConnection,
+  ]);
 
   return {
     localVideoRef,
