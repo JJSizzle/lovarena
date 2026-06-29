@@ -11,7 +11,7 @@ import {
   acquireLocalMedia,
   mediaErrorMessage,
 } from "@/lib/webrtc/media-constraints";
-import { getIceServers } from "@/lib/webrtc/ice-servers";
+import { resolveIceServers } from "@/lib/webrtc/ice-servers";
 
 type SignalOut =
   | { type: "offer"; sdp: string }
@@ -428,7 +428,7 @@ export function useWebRTC(
         isInitiatorRef.current = roomData.user1_id === userId;
 
         const pc = new RTCPeerConnection({
-          iceServers: getIceServers(),
+          iceServers: await resolveIceServers(),
           bundlePolicy: "max-bundle",
         });
         pcRef.current = pc;

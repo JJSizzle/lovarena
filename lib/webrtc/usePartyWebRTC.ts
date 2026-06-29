@@ -11,7 +11,7 @@ import {
   acquireLocalMedia,
   mediaErrorMessage,
 } from "@/lib/webrtc/media-constraints";
-import { getIceServers } from "@/lib/webrtc/ice-servers";
+import { resolveIceServers } from "@/lib/webrtc/ice-servers";
 
 type SignalOut =
   | { type: "offer"; sdp: string }
@@ -399,7 +399,7 @@ export function usePartyWebRTC(
       if (peersRef.current.has(peerId)) return;
 
       const pc = new RTCPeerConnection({
-        iceServers: getIceServers(),
+        iceServers: await resolveIceServers(),
         bundlePolicy: "max-bundle",
       });
 
