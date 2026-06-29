@@ -26,7 +26,7 @@ import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, profile, loading, refreshProfile } = useAuth();
+  const { user, profile, loading, refreshProfile, signOut } = useAuth();
   const [mode, setMode] = useState<MatchMode>("worldwide");
   const [country, setCountry] = useState("US");
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
@@ -159,6 +159,15 @@ export default function HomePage() {
           >
             {user ? "Profile" : "Sign in"}
           </Link>
+          {user && (
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="text-xs text-slate-500 hover:text-white transition"
+            >
+              Sign out
+            </button>
+          )}
         </div>
       </header>
 
