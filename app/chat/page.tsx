@@ -16,6 +16,7 @@ import { SafetyActions } from "@/components/SafetyActions";
 import { MediaPermissionGate } from "@/components/MediaPermissionGate";
 import { MatchingWaitScreen } from "@/components/MatchingWaitScreen";
 import { RestrictionPanel } from "@/components/RestrictionPanel";
+import { FriendProfileSheet } from "@/components/FriendProfileSheet";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import dynamic from "next/dynamic";
 
@@ -43,6 +44,7 @@ import { countryCodeToFlag } from "@/lib/flags";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { chatBtnLove, chatBtnSend, chatBtnFun, chatBtnGhost, chatBtnFriend } from "@/lib/chat-buttons";
 import type { FriendLinkStatus } from "@/lib/friends/friend-link-status";
+import type { FriendProfileView } from "@/lib/friends/friend-profile-view";
 import { beaconLeaveChat } from "@/lib/chat-leave-beacon";
 
 type Message = {
@@ -87,6 +89,7 @@ export default function ChatPage() {
   const friendsMatchedRef = useRef(false);
   const mutualConnectCelebrationShownRef = useRef<string | null>(null);
   const [bothRevealed, setBothRevealed] = useState(false);
+  const [partnerProfileOpen, setPartnerProfileOpen] = useState(false);
   const [partnerId, setPartnerId] = useState<string | null>(null);
   const [partnerLabel, setPartnerLabel] = useState<string | null>(null);
   const [sharedTags, setSharedTags] = useState<string[]>([]);
@@ -846,6 +849,91 @@ export default function ChatPage() {
     }
   }
 
+  async function handleCancelFriendRequest() {
+    if (!partnerId) return;
+
+    setFriendRequestLoading(true);
+    setConnectNotice(null);
+
+    try {
+      const res = await fetch("/api/friends/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ friendId: partnerId, action: "cancel" }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Could not cancel request");
+        return;
+      }
+
+      setChatFriendStatus("none");
+      setConnectNotice(data.message ?? "Request cancelled.");
+      setTimeout(() => setConnectNotice(null), 4000);
+    } catch {
+      setError("Could not cancel request.");
+    } finally {
+      setFriendRequestLoading(false);
+    }
+  }
+
+  async function handleRemovePartnerFriend(profile: FriendProfileView) {
+    if (
+      !confirm(
+        `Remove ${profile.username} from your friends? You can add them again from a future match.`
+      )
+    ) {
+      return;
+    }
+
+    const res = await fetch("/api/friends", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ friendId: profile.id }),
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      setPartnerProfileOpen(false);
+      setChatFriendStatus("none");
+      setFriendsMatched(false);
+      setConnectNotice(data.message ?? "Removed from friends.");
+      setTimeout(() => setConnectNotice(null), 4000);
+    } else {
+      setError(data.error ?? "Remove failed");
+    }
+  }
+
+  async function handleBlockPartner(profile: FriendProfileView) {
+    if (
+      !confirm(
+        `Block ${profile.username}? They won't be matched with you again.`
+      )
+    ) {
+      return;
+    }
+
+    const res = await fetch("/api/blocks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blockedId: profile.id }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "Block failed");
+      return;
+    }
+
+    setPartnerProfileOpen(false);
+    stopMedia();
+    setRoomId(null);
+    setEndedBySelf(false);
+    setStatus("disconnected");
+    setError(`${profile.username} blocked. Press Next for a new match.`);
+  }
+
   function renderSparkButton() {
     if (friendsMatched || chatFriendStatus === "friends") {
       return (
@@ -880,9 +968,14 @@ export default function ChatPage() {
     }
     if (chatFriendStatus === "pending_sent") {
       return (
-        <span className="text-[10px] sm:text-xs text-slate-400 px-2 py-1.5">
-          Request sent
-        </span>
+        <button
+          type="button"
+          onClick={handleCancelFriendRequest}
+          disabled={friendRequestLoading}
+          className={chatBtnGhost}
+        >
+          {friendRequestLoading ? "…" : "Cancel request"}
+        </button>
       );
     }
     if (chatFriendStatus === "pending_received") {
@@ -949,6 +1042,15 @@ export default function ChatPage() {
             (endedBySelf ? "Chat ended" : "Stranger left")}
           {status === "restricted" && "Restricted"}
         </div>
+        {status === "connected" && partnerId && (
+          <button
+            type="button"
+            onClick={() => setPartnerProfileOpen(true)}
+            className={`${chatBtnGhost} !text-[10px] !py-1 !px-2 shrink-0`}
+          >
+            Profile
+          </button>
+        )}
         {profile && (
           <Link
             href="/profile"
@@ -1236,6 +1338,17 @@ export default function ChatPage() {
         myId={profile.id}
       />
     )}
+
+    <FriendProfileSheet
+      friendId={partnerId}
+      open={partnerProfileOpen && !!partnerId}
+      onClose={() => setPartnerProfileOpen(false)}
+      roomId={roomId}
+      onRemove={
+        chatFriendStatus === "friends" ? handleRemovePartnerFriend : undefined
+      }
+      onBlock={handleBlockPartner}
+    />
     </div>
   );
 }

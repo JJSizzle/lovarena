@@ -14,16 +14,20 @@ type FriendProfileSheetProps = {
   friendId: string | null;
   open: boolean;
   onClose: () => void;
-  onMessage: (profile: FriendProfileView) => void;
-  onRemove: (profile: FriendProfileView) => void;
+  roomId?: string | null;
+  onMessage?: (profile: FriendProfileView) => void;
+  onRemove?: (profile: FriendProfileView) => void;
+  onBlock?: (profile: FriendProfileView) => void;
 };
 
 export function FriendProfileSheet({
   friendId,
   open,
   onClose,
+  roomId,
   onMessage,
   onRemove,
+  onBlock,
 }: FriendProfileSheetProps) {
   const [profile, setProfile] = useState<FriendProfileView | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,9 +44,12 @@ export function FriendProfileSheet({
     setLoading(true);
     setError(null);
 
-    fetch(`/api/friends/${encodeURIComponent(friendId)}/profile`, {
-      cache: "no-store",
-    })
+    fetch(
+      roomId
+        ? `/api/partner/${encodeURIComponent(friendId)}/profile?roomId=${encodeURIComponent(roomId)}`
+        : `/api/friends/${encodeURIComponent(friendId)}/profile`,
+      { cache: "no-store" }
+    )
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
@@ -63,7 +70,7 @@ export function FriendProfileSheet({
     return () => {
       cancelled = true;
     };
-  }, [open, friendId]);
+  }, [open, friendId, roomId]);
 
   if (!open) return null;
 
@@ -124,11 +131,12 @@ export function FriendProfileSheet({
                   <p className="text-slate-400 text-sm mt-0.5">{profile.gender}</p>
                 )}
                 <div className="flex flex-wrap justify-center gap-2 mt-3">
-                  {profile.connectionType === "mutual_connect" ? (
+                  {profile.connectionType === "mutual_connect" && (
                     <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-pink-500/20 text-pink-200 border border-pink-500/30">
                       ✨ Mutual spark
                     </span>
-                  ) : (
+                  )}
+                  {profile.connectionType === "request" && (
                     <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30">
                       Friend
                     </span>
@@ -219,20 +227,33 @@ export function FriendProfileSheet({
               </p>
 
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => onMessage(profile)}
-                  className={`${chatBtnLove} w-full !py-2.5 !text-sm`}
-                >
-                  Message
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemove(profile)}
-                  className={`${chatBtnBlock} w-full !py-2 !text-xs`}
-                >
-                  Remove from list
-                </button>
+                {onMessage && (
+                  <button
+                    type="button"
+                    onClick={() => onMessage(profile)}
+                    className={`${chatBtnLove} w-full !py-2.5 !text-sm`}
+                  >
+                    Message
+                  </button>
+                )}
+                {onRemove && (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(profile)}
+                    className={`${chatBtnBlock} w-full !py-2 !text-xs`}
+                  >
+                    Remove from list
+                  </button>
+                )}
+                {onBlock && (
+                  <button
+                    type="button"
+                    onClick={() => onBlock(profile)}
+                    className={`${chatBtnBlock} w-full !py-2 !text-xs border-red-500/40`}
+                  >
+                    Block user
+                  </button>
+                )}
               </div>
             </>
           )}

@@ -20,6 +20,7 @@ type MatchHistoryRowProps = {
   friendStatus: FriendLinkStatus;
   onBlocked: (partnerId: string) => void;
   onFriendStatusChange: (partnerId: string, status: FriendLinkStatus) => void;
+  onRemoved?: (partnerId: string) => void;
 };
 
 export function MatchHistoryRow({
@@ -30,6 +31,7 @@ export function MatchHistoryRow({
   friendStatus,
   onBlocked,
   onFriendStatusChange,
+  onRemoved,
 }: MatchHistoryRowProps) {
   const [reportOpen, setReportOpen] = useState(false);
   const [reason, setReason] = useState("harassment");
@@ -97,15 +99,76 @@ export function MatchHistoryRow({
     }
   }
 
+  async function handleCancelRequest() {
+    setLoading(true);
+    setStatus(null);
+    const res = await fetch("/api/friends/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ friendId: partnerId, action: "cancel" }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (res.ok) {
+      onFriendStatusChange(partnerId, "none");
+      setStatus(data.message ?? "Request cancelled.");
+    } else {
+      setStatus(data.error ?? "Cancel failed");
+    }
+  }
+
+  async function handleRemoveFriend() {
+    if (
+      !confirm(
+        `Remove ${partnerUsername} from your friends? You can add them again from a future match.`
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setStatus(null);
+    const res = await fetch("/api/friends", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ friendId: partnerId }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (res.ok) {
+      onFriendStatusChange(partnerId, "none");
+      onRemoved?.(partnerId);
+      setStatus(data.message ?? "Removed.");
+    } else {
+      setStatus(data.error ?? "Remove failed");
+    }
+  }
+
   function friendButton() {
     if (friendStatus === "friends") {
       return (
-        <span className="text-[10px] text-pink-300 px-1.5 py-1">Friends</span>
+        <>
+          <span className="text-[10px] text-pink-300 px-1.5 py-1">Friends</span>
+          <button
+            type="button"
+            onClick={handleRemoveFriend}
+            disabled={loading}
+            className={`${chatBtnBlock} !px-2 !py-1 !text-[10px]`}
+          >
+            Remove
+          </button>
+        </>
       );
     }
     if (friendStatus === "pending_sent") {
       return (
-        <span className="text-[10px] text-slate-500 px-1.5 py-1">Requested</span>
+        <button
+          type="button"
+          onClick={handleCancelRequest}
+          disabled={loading}
+          className={`${chatBtnGhost} !px-2 !py-1 !text-[10px]`}
+        >
+          Cancel
+        </button>
       );
     }
     if (friendStatus === "pending_received") {

@@ -199,6 +199,33 @@ export default function FriendsPage() {
     }
   }
 
+  async function handleBlockFriend(friendProfile: FriendProfileView) {
+    if (
+      !confirm(
+        `Block ${friendProfile.username}? They won't be matched with you again.`
+      )
+    ) {
+      return;
+    }
+
+    setRequestNotice(null);
+    const res = await fetch("/api/blocks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blockedId: friendProfile.id }),
+    });
+
+    if (res.ok) {
+      setRequestNotice(`${friendProfile.username} blocked.`);
+      if (activeFriend?.id === friendProfile.id) setActiveFriend(null);
+      if (profileFriendId === friendProfile.id) setProfileFriendId(null);
+      await loadFriends();
+    } else {
+      const data = await res.json();
+      setRequestNotice(data.error ?? "Block failed");
+    }
+  }
+
   const seasonal = getSeasonalTheme();
 
   if (loading || !user || !profile) {
@@ -381,6 +408,10 @@ export default function FriendsPage() {
         onRemove={(p) => {
           setProfileFriendId(null);
           void handleRemoveFriend(toFriend(p));
+        }}
+        onBlock={(p) => {
+          setProfileFriendId(null);
+          void handleBlockFriend(p);
         }}
       />
 

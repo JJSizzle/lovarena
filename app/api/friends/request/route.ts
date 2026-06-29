@@ -45,6 +45,44 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient();
 
+    const { data: rows } = await supabase
+      .from("friendships")
+      .select("user_id, friend_id, status")
+      .or(
+        `and(user_id.eq.${auth.profile.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${auth.profile.id})`
+      );
+
+    const status = friendLinkStatus(
+      auth.profile.id,
+      friendId,
+      rows ?? []
+    );
+
+    if (action === "cancel") {
+      if (status !== "pending_sent") {
+        return NextResponse.json(
+          { error: "No outgoing friend request to cancel." },
+          { status: 400 }
+        );
+      }
+      const { error: cancelError } = await supabase
+        .from("friendships")
+        .delete()
+        .eq("user_id", auth.profile.id)
+        .eq("friend_id", friendId)
+        .eq("status", "pending");
+
+      if (cancelError) {
+        return NextResponse.json({ error: cancelError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        friendStatus: "none",
+        message: "Friend request cancelled.",
+      });
+    }
+
     const matched = await verifyRecentMatch(
       supabase,
       auth.profile.id,
@@ -59,19 +97,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    const { data: rows } = await supabase
-      .from("friendships")
-      .select("user_id, friend_id, status")
-      .or(
-        `and(user_id.eq.${auth.profile.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${auth.profile.id})`
-      );
-
-    const status = friendLinkStatus(
-      auth.profile.id,
-      friendId,
-      rows ?? []
-    );
 
     if (status === "friends") {
       return NextResponse.json({
