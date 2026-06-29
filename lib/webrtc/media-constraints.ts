@@ -49,7 +49,7 @@ async function tryEachVideoDevice(
 
   const videoInputs = devices.filter((d) => d.kind === "videoinput");
   for (const device of videoInputs) {
-    const video: MediaTrackConstraints = device.deviceId
+    const video: boolean | MediaTrackConstraints = device.deviceId
       ? { deviceId: { exact: device.deviceId } }
       : true;
     const stream = await tryGetUserMedia({
