@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { useIncomingFriendCount } from "@/lib/hooks/useIncomingFriendCount";
 
 const NAV_ITEMS = [
   {
@@ -38,6 +39,7 @@ const SIGN_OUT_IDLE =
 export function AppQuickNav({ className = "" }: Props) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const { incomingCount } = useIncomingFriendCount();
   const showSignOut = Boolean(user);
 
   return (
@@ -52,11 +54,16 @@ export function AppQuickNav({ className = "" }: Props) {
           <Link
             key={item.href}
             href={item.href}
-            className={`rounded-xl border px-2 py-2.5 text-center text-xs font-bold tracking-wide transition ${
+            className={`relative rounded-xl border px-2 py-2.5 text-center text-xs font-bold tracking-wide transition ${
               isActive ? item.active : item.idle
             }`}
           >
             {item.label}
+            {item.href === "/friends" && incomingCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-pink-500 text-[9px] font-bold text-white flex items-center justify-center px-1 shadow-md">
+                {incomingCount > 9 ? "9+" : incomingCount}
+              </span>
+            )}
           </Link>
         );
       })}

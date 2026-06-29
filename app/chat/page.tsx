@@ -25,6 +25,7 @@ import { MatchingWaitScreen } from "@/components/MatchingWaitScreen";
 import { RestrictionPanel } from "@/components/RestrictionPanel";
 import { FriendProfileSheet } from "@/components/FriendProfileSheet";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { markFirstChatComplete } from "@/lib/install-prompt";
 import dynamic from "next/dynamic";
 
 const LazyChatParticles = dynamic(
@@ -193,6 +194,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (status === "connected" && roomId) {
+      markFirstChatComplete();
       celebrate(roomId);
       fetch(`/api/room/partner?roomId=${encodeURIComponent(roomId)}`)
         .then((r) => r.json())

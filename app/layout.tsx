@@ -5,6 +5,7 @@ import { AgeGate } from "@/components/AgeGate";
 import { AuthProvider } from "@/components/AuthProvider";
 import { CookieConsent } from "@/components/CookieConsent";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { FriendActivityNotifier } from "@/components/FriendActivityNotifier";
 import { FriendMessageNotifier } from "@/components/FriendMessageNotifier";
 import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
@@ -77,6 +78,7 @@ export default function RootLayout({
             <CookieConsent />
             <InstallPrompt />
             <FriendMessageNotifier />
+            <FriendActivityNotifier />
           </AgeGate>
         </AuthProvider>
       </body>

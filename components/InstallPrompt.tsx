@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  dismissInstallPrompt,
+  hasCompletedFirstChat,
+  isInstallDismissed,
+} from "@/lib/install-prompt";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -22,6 +27,7 @@ function isStandalone(): boolean {
 }
 
 export function InstallPrompt() {
+  const [eligible, setEligible] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     null
   );
@@ -31,13 +37,18 @@ export function InstallPrompt() {
   useEffect(() => {
     if (isStandalone()) return;
 
-    try {
-      if (localStorage.getItem("lovarena_install_dismissed") === "1") {
-        setDismissed(true);
-      }
-    } catch {
-      // ignore
+    function syncEligibility() {
+      setEligible(hasCompletedFirstChat());
+      setDismissed(isInstallDismissed());
     }
+
+    syncEligibility();
+    window.addEventListener("lovarena:first-chat", syncEligibility);
+    return () => window.removeEventListener("lovarena:first-chat", syncEligibility);
+  }, []);
+
+  useEffect(() => {
+    if (!eligible || dismissed || isStandalone()) return;
 
     if (isIos()) {
       setShowIosHint(true);
@@ -51,17 +62,13 @@ export function InstallPrompt() {
 
     window.addEventListener("beforeinstallprompt", onBip);
     return () => window.removeEventListener("beforeinstallprompt", onBip);
-  }, []);
+  }, [eligible, dismissed]);
 
   function dismiss() {
     setDismissed(true);
     setShowIosHint(false);
     setDeferred(null);
-    try {
-      localStorage.setItem("lovarena_install_dismissed", "1");
-    } catch {
-      // ignore
-    }
+    dismissInstallPrompt();
   }
 
   async function install() {
@@ -71,18 +78,15 @@ export function InstallPrompt() {
     dismiss();
   }
 
-  if (dismissed || isStandalone()) return null;
+  if (!eligible || dismissed || isStandalone()) return null;
 
   if (showIosHint && isIos()) {
     return (
       <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-purple-500/30 bg-slate-900/95 backdrop-blur px-4 py-3 shadow-lg">
         <p className="text-sm text-slate-200">
           <strong className="text-fuchsia-300">Add Lovarena to Home Screen:</strong>{" "}
-          tap Share → Add to Home Screen for the app-like experience on{" "}
+          tap Share → Add to Home Screen for quick access on{" "}
           <span className="text-cyan-300/90">lovarena.app</span>.
-        </p>
-        <p className="mt-1.5 text-[11px] text-slate-500">
-          Native iOS &amp; Android apps are coming in the near future.
         </p>
         <button
           type="button"
@@ -102,11 +106,8 @@ export function InstallPrompt() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-slate-200">
-            Install Lovarena for quick access — works like an app from your
-            browser.
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Native iOS &amp; Android apps are coming in the near future.
+            Nice chat! Install Lovarena for one-tap access from your home
+            screen.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">

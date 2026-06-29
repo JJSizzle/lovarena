@@ -244,5 +244,16 @@ select migration, status from (
       ) then '❌ hangout game_mode missing — run party-hangout-mode.sql'
       else '✅ applied'
     end
+
+  union all
+
+  select 16, 'friendships-realtime',
+    case
+      when not exists (
+        select 1 from pg_publication_tables
+        where pubname = 'supabase_realtime' and tablename = 'friendships'
+      ) then '❌ friendships realtime missing — run friendships-realtime.sql'
+      else '✅ applied'
+    end
 ) checks
 order by ord;
