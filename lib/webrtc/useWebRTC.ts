@@ -21,12 +21,21 @@ type SignalOut =
 
 type SignalMessage = SignalOut & { from: string };
 
-function applyIosVideoAttrs(el: HTMLVideoElement | null) {
+function applyLocalVideoAttrs(el: HTMLVideoElement | null) {
   if (!el) return;
   el.playsInline = true;
   el.setAttribute("playsinline", "true");
   el.setAttribute("webkit-playsinline", "true");
   el.muted = true;
+}
+
+function applyRemoteVideoAttrs(el: HTMLVideoElement | null) {
+  if (!el) return;
+  el.playsInline = true;
+  el.setAttribute("playsinline", "true");
+  el.setAttribute("webkit-playsinline", "true");
+  el.muted = false;
+  el.volume = 1;
 }
 
 async function refreshLocalVideoElement(
@@ -37,7 +46,26 @@ async function refreshLocalVideoElement(
   if (el.srcObject !== stream) {
     el.srcObject = stream;
   }
-  applyIosVideoAttrs(el);
+  applyLocalVideoAttrs(el);
+
+  const tryPlay = () => {
+    void el.play().catch(() => {});
+  };
+
+  el.onloadeddata = tryPlay;
+  tryPlay();
+  requestAnimationFrame(tryPlay);
+}
+
+async function refreshRemoteVideoElement(
+  el: HTMLVideoElement | null,
+  stream: MediaStream | null
+) {
+  if (!el || !stream) return;
+  if (el.srcObject !== stream) {
+    el.srcObject = stream;
+  }
+  applyRemoteVideoAttrs(el);
 
   const tryPlay = () => {
     void el.play().catch(() => {});
@@ -408,11 +436,13 @@ export function useWebRTC(
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
         pc.ontrack = (event) => {
-          const remoteStream = event.streams[0] ?? new MediaStream([event.track]);
+          const remoteStream =
+            event.streams[0] ?? new MediaStream([event.track]);
           if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStream;
-            applyIosVideoAttrs(remoteVideoRef.current);
-            void remoteVideoRef.current.play().catch(() => {});
+            void refreshRemoteVideoElement(
+              remoteVideoRef.current,
+              remoteStream
+            );
           }
         };
 

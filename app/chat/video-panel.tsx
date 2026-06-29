@@ -117,6 +117,7 @@ export function VideoPanel({
         ref={remoteVideoRef}
         autoPlay
         playsInline
+        muted={false}
         className="absolute inset-0 w-full h-full object-cover transition"
       />
       {videoBlurred && !bothRevealed && (
