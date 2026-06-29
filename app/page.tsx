@@ -138,12 +138,20 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-3">
           {user && (
-            <Link
-              href="/friends"
-              className="text-xs text-fuchsia-400 hover:text-fuchsia-300"
-            >
-              Friends
-            </Link>
+            <>
+              <Link
+                href="/settings"
+                className="text-xs text-slate-400 hover:text-white hidden sm:inline"
+              >
+                Settings
+              </Link>
+              <Link
+                href="/friends"
+                className="text-xs text-fuchsia-400 hover:text-fuchsia-300"
+              >
+                Friends
+              </Link>
+            </>
           )}
           <Link
             href={user ? "/profile" : "/login?next=/profile"}
@@ -318,17 +326,6 @@ export default function HomePage() {
             .
           </p>
           <p className="text-center text-xs text-slate-600">lovarena.app</p>
-          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] text-slate-600 pt-1">
-            <Link href="/omegle-alternative" className="hover:text-fuchsia-400">
-              Omegle alternative
-            </Link>
-            <Link href="/free-video-chat" className="hover:text-fuchsia-400">
-              Free video chat
-            </Link>
-            <Link href="/random-chat" className="hover:text-fuchsia-400">
-              Random chat
-            </Link>
-          </nav>
           <div className="flex justify-center pt-2">
             <ShareInviteButton
               referralCode={profile?.referral_code}

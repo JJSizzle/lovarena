@@ -1116,12 +1116,20 @@ export default function ChatPage() {
           </button>
         )}
         {profile && (
-          <Link
-            href="/profile"
-            className="text-[10px] text-purple-300 hover:text-fuchsia-300 truncate hidden sm:block transition"
-          >
-            {profile.username}
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/settings"
+              className="text-[10px] text-slate-400 hover:text-white hidden sm:inline transition"
+            >
+              Settings
+            </Link>
+            <Link
+              href="/profile"
+              className="text-[10px] text-purple-300 hover:text-fuchsia-300 truncate transition"
+            >
+              {profile.username}
+            </Link>
+          </div>
         )}
       </header>
       <div className="px-4 pb-2">

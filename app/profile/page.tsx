@@ -16,17 +16,17 @@ import {
   type GenderIdentity,
   type LookingFor,
 } from "@/lib/profile-orientation";
-import { isSupportedTranslationLanguage } from "@/lib/translation/language-codes";
-import { validateUsername, usernameChangesRemaining, isPlaceholderUsername, MAX_USERNAME_CHANGES } from "@/lib/username";
+import {
+  validateUsername,
+  usernameChangesRemaining,
+  isPlaceholderUsername,
+  MAX_USERNAME_CHANGES,
+} from "@/lib/username";
 import { UsernameInput } from "@/components/UsernameInput";
 import { AVATAR_EMOJIS } from "@/lib/avatars";
 import { parseAgeInput } from "@/lib/profile-age";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import {
-  soundsEnabled,
-  setSoundsEnabled,
-} from "@/lib/sounds";
 import { ShareInviteButton } from "@/components/ShareInviteButton";
 import { MatchHistoryRow } from "@/components/MatchHistoryRow";
 import { ReferralBadge } from "@/components/ReferralBadge";
@@ -63,13 +63,7 @@ export default function ProfilePage() {
   const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
   const [interests, setInterests] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [faceBlurDefault, setFaceBlurDefault] = useState(true);
-  const [voiceOnlyDefault, setVoiceOnlyDefault] = useState(false);
-  const [primaryLanguage, setPrimaryLanguage] = useState("English");
-  const [autoTranslate, setAutoTranslate] = useState(false);
   const [avatarEmoji, setAvatarEmoji] = useState("😎");
-  const [soundEffects, setSoundEffects] = useState(true);
   const [referralCode, setReferralCode] = useState("");
   const [blocks, setBlocks] = useState<BlockRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
@@ -95,18 +89,10 @@ export default function ProfilePage() {
     setLookingFor(profile.looking_for ?? "");
     setInterests(profile.interests ?? []);
     setLanguages(profile.languages ?? []);
-    setNotificationsEnabled(profile.notifications_enabled ?? true);
-    setFaceBlurDefault(profile.face_blur_default ?? true);
-    setVoiceOnlyDefault(profile.voice_only_default ?? false);
-    setPrimaryLanguage(profile.primary_language ?? "English");
-    setAutoTranslate(profile.auto_translate ?? false);
     setAvatarEmoji(profile.avatar_emoji ?? "😎");
     setReferralCode(profile.referral_code ?? "");
   }, [profile]);
 
-  useEffect(() => {
-    setSoundEffects(soundsEnabled());
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -155,11 +141,6 @@ export default function ProfilePage() {
           looking_for: lookingFor,
           interests,
           languages,
-          notifications_enabled: notificationsEnabled,
-          face_blur_default: faceBlurDefault,
-          voice_only_default: voiceOnlyDefault,
-          primary_language: primaryLanguage,
-          auto_translate: autoTranslate,
           avatar_emoji: avatarEmoji,
         }),
       });
@@ -375,56 +356,20 @@ export default function ProfilePage() {
             <ProfileOrientationFields idPrefix="profile-edit" genderIdentity={genderIdentity} lookingFor={lookingFor} onGenderIdentityChange={setGenderIdentity} onLookingForChange={setLookingFor} />
             <TagPicker label="Interests" options={INTEREST_OPTIONS} selected={interests} onChange={setInterests} max={8} />
             <TagPicker label="Languages" options={LANGUAGE_OPTIONS} selected={languages} onChange={setLanguages} max={5} />
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input type="checkbox" checked={faceBlurDefault} onChange={(e) => setFaceBlurDefault(e.target.checked)} />
-              Blur stranger&apos;s video until you both tap Reveal (your preview stays clear)
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input type="checkbox" checked={voiceOnlyDefault} onChange={(e) => setVoiceOnlyDefault(e.target.checked)} />
-              Voice-only mode by default (no camera)
-            </label>
-            <div>
-              <label htmlFor="primary-language" className="block text-sm text-purple-300/80 mb-2 font-medium">
-                Translate messages to
-              </label>
-              <select
-                id="primary-language"
-                value={primaryLanguage}
-                onChange={(e) => setPrimaryLanguage(e.target.value)}
-                className="select-dark w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 text-slate-100"
+            <div className="rounded-xl border border-purple-500/20 bg-slate-900/50 px-4 py-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-200">Chat &amp; app settings</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Video, matching, sounds, translation, notifications
+                </p>
+              </div>
+              <Link
+                href="/settings"
+                className="text-xs font-semibold text-fuchsia-400 hover:text-fuchsia-300 shrink-0"
               >
-                {LANGUAGE_OPTIONS.map((lang) => (
-                  <option key={lang} value={lang}>
-                    {lang}
-                    {!isSupportedTranslationLanguage(lang) ? " (coming soon)" : ""}
-                  </option>
-                ))}
-              </select>
+                Settings →
+              </Link>
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                checked={autoTranslate}
-                disabled={!isSupportedTranslationLanguage(primaryLanguage)}
-                onChange={(e) => setAutoTranslate(e.target.checked)}
-              />
-              Auto-translate incoming chat and friend messages
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                checked={soundEffects}
-                onChange={(e) => {
-                  setSoundEffects(e.target.checked);
-                  setSoundsEnabled(e.target.checked);
-                }}
-              />
-              Sound effects (connect, messages, Next)
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} />
-              Email me when a friend sends a message
-            </label>
             {message && <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">{message}</p>}
             {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
             <button type="submit" disabled={saving} className="w-full rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 disabled:opacity-50 text-white font-extrabold py-3.5">
