@@ -28,7 +28,10 @@ type VideoPanelProps = {
   loadingNext: boolean;
   endedBySelf?: boolean;
   showConnect?: boolean;
+  sparkSlot?: React.ReactNode;
+  friendSlot?: React.ReactNode;
   connectSlot?: React.ReactNode;
+  actionSlot?: React.ReactNode;
   connectHint?: React.ReactNode;
   videoBlurred?: boolean;
   bothRevealed?: boolean;
@@ -80,7 +83,10 @@ export function VideoPanel({
   loadingNext,
   endedBySelf = false,
   showConnect,
+  sparkSlot,
+  friendSlot,
   connectSlot,
+  actionSlot,
   connectHint,
   videoBlurred = false,
   bothRevealed = false,
@@ -140,9 +146,11 @@ export function VideoPanel({
           }`}
         />
         {!isCameraOn && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-[1] bg-slate-900/90">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-400 to-indigo-600 blur-xl opacity-30" />
-            <p className="text-slate-400 font-medium text-xs mt-2">Camera off</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-[1] bg-slate-900/90 pointer-events-none">
+            <span className="text-3xl mb-2 opacity-80" aria-hidden>
+              📷
+            </span>
+            <p className="text-slate-400 font-medium text-xs">Camera off</p>
           </div>
         )}
       </>
@@ -179,11 +187,14 @@ export function VideoPanel({
         onClick={onToggleVideo}
         disabled={!videoActive || voiceOnly}
         className={!isCameraOn ? chatBtnWarn : chatBtnNeutralOn}
+        aria-pressed={isCameraOn}
       >
-        {isCameraOn ? "Cam on" : "Cam off"}
+        {isCameraOn ? "Turn cam off" : "Turn cam on"}
       </button>
     </>
   );
+
+  const socialSpark = sparkSlot ?? connectSlot;
 
   const actionControls = (
     <>
@@ -195,7 +206,7 @@ export function VideoPanel({
       >
         Ice breaker
       </button>
-      {showConnect && connectSlot}
+      {actionSlot}
       <button
         type="button"
         onClick={onStop}
@@ -278,6 +289,32 @@ export function VideoPanel({
 
       <div className="w-full max-w-4xl space-y-2 mb-2">
         <div className={`${chatToolbar} !gap-1.5 md:!gap-2`}>{mediaControls}</div>
+        {showConnect && (socialSpark || friendSlot) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+            <div className="rounded-xl border border-pink-500/25 bg-pink-500/5 px-3 py-2">
+              <p className="text-[9px] font-bold uppercase tracking-wide text-pink-300 mb-1.5">
+                ✨ Mutual spark
+              </p>
+              <p className="text-[10px] text-slate-500 mb-2 leading-snug">
+                Both tap — instant mutual
+              </p>
+              <div className={`${chatToolbar} !justify-start !gap-1.5`}>
+                {socialSpark}
+              </div>
+            </div>
+            <div className="rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 px-3 py-2">
+              <p className="text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 mb-1.5">
+                Friend request
+              </p>
+              <p className="text-[10px] text-slate-500 mb-2 leading-snug">
+                One-sided — they can accept later
+              </p>
+              <div className={`${chatToolbar} !justify-start !gap-1.5`}>
+                {friendSlot}
+              </div>
+            </div>
+          </div>
+        )}
         <div className={`${chatToolbar} !gap-1.5 md:!gap-2`}>{actionControls}</div>
         {showConnect && connectHint && (
           <div className="px-1">{connectHint}</div>

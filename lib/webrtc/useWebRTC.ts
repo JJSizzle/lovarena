@@ -9,11 +9,18 @@ type SignalOut =
 
 type SignalMessage = SignalOut & { from: string };
 
+const VIDEO_CONSTRAINTS: MediaTrackConstraints = {
+  facingMode: "user",
+  width: { ideal: 640 },
+  height: { ideal: 480 },
+};
+
 function applyIosVideoAttrs(el: HTMLVideoElement | null) {
   if (!el) return;
   el.playsInline = true;
   el.setAttribute("playsinline", "true");
   el.setAttribute("webkit-playsinline", "true");
+  el.muted = true;
 }
 
 function mediaErrorMessage(err: unknown): string {
@@ -31,14 +38,38 @@ function mediaErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "Camera/mic access failed";
 }
 
+function syncVideoEnabledFromStream(
+  stream: MediaStream | null,
+  setVideoEnabled: (enabled: boolean) => void
+) {
+  const track = stream?.getVideoTracks()[0];
+  setVideoEnabled(Boolean(track?.enabled && track.readyState === "live"));
+}
+
+async function refreshLocalVideoElement(
+  el: HTMLVideoElement | null,
+  stream: MediaStream | null
+) {
+  if (!el || !stream) return;
+  if (el.srcObject !== stream) {
+    el.srcObject = stream;
+  }
+  applyIosVideoAttrs(el);
+  try {
+    await el.play();
+  } catch {
+    // autoplay policies — preview may resume on next frame
+  }
+}
+
 export function useWebRTC(
   roomId: string | null,
   userId: string,
   active: boolean,
   voiceOnly = false
 ) {
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<ReturnType<
@@ -46,22 +77,63 @@ export function useWebRTC(
   > | null>(null);
   const iceQueueRef = useRef<RTCIceCandidateInit[]>([]);
   const isInitiatorRef = useRef(false);
+  const voiceOnlyRef = useRef(voiceOnly);
 
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [connectionState, setConnectionState] = useState<string>("new");
 
+  voiceOnlyRef.current = voiceOnly;
+
   const bindLocalPreview = useCallback((el: HTMLVideoElement | null) => {
     localVideoRef.current = el;
     const stream = localStreamRef.current;
     if (!el || !stream) return;
-    if (el.srcObject !== stream) {
-      el.srcObject = stream;
-    }
-    applyIosVideoAttrs(el);
-    void el.play().catch(() => {});
+    syncVideoEnabledFromStream(stream, setVideoEnabled);
+    void refreshLocalVideoElement(el, stream);
   }, []);
+
+  async function replaceVideoTrack(newTrack: MediaStreamTrack) {
+    const stream = localStreamRef.current;
+    const pc = pcRef.current;
+    if (!stream) return;
+
+    const oldTrack = stream.getVideoTracks()[0];
+    if (oldTrack && oldTrack !== newTrack) {
+      stream.removeTrack(oldTrack);
+      oldTrack.stop();
+    }
+    if (!stream.getVideoTracks().includes(newTrack)) {
+      stream.addTrack(newTrack);
+    }
+
+    const sender = pc?.getSenders().find((s) => s.track?.kind === "video");
+    if (sender) {
+      await sender.replaceTrack(newTrack);
+    } else if (pc) {
+      pc.addTrack(newTrack, stream);
+    }
+
+    newTrack.enabled = true;
+    setVideoEnabled(true);
+    await refreshLocalVideoElement(localVideoRef.current, stream);
+  }
+
+  async function acquireVideoTrack(): Promise<MediaStreamTrack | null> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: VIDEO_CONSTRAINTS,
+        audio: false,
+      });
+      const track = stream.getVideoTracks()[0] ?? null;
+      stream.getAudioTracks().forEach((t) => t.stop());
+      return track;
+    } catch (err) {
+      setMediaError(mediaErrorMessage(err));
+      return null;
+    }
+  }
 
   async function flushIceQueue(pc: RTCPeerConnection) {
     while (iceQueueRef.current.length > 0) {
@@ -98,17 +170,36 @@ export function useWebRTC(
     setConnectionState("closed");
   }, []);
 
-  const toggleVideo = useCallback(() => {
+  const toggleVideo = useCallback(async () => {
+    if (voiceOnlyRef.current) return;
+
     const stream = localStreamRef.current;
     if (!stream) return;
-    const track = stream.getVideoTracks()[0];
-    if (!track) return;
 
-    const next = !track.enabled;
-    track.enabled = next;
-    setVideoEnabled(next);
-    bindLocalPreview(localVideoRef.current);
-  }, [bindLocalPreview]);
+    let track = stream.getVideoTracks()[0];
+    const turningOn = !track?.enabled;
+
+    if (turningOn && (!track || track.readyState === "ended")) {
+      const newTrack = await acquireVideoTrack();
+      if (!newTrack) return;
+      await replaceVideoTrack(newTrack);
+      return;
+    }
+
+    if (!track) {
+      const newTrack = await acquireVideoTrack();
+      if (!newTrack) return;
+      await replaceVideoTrack(newTrack);
+      return;
+    }
+
+    track.enabled = turningOn;
+    setVideoEnabled(turningOn);
+
+    if (turningOn) {
+      await refreshLocalVideoElement(localVideoRef.current, stream);
+    }
+  }, []);
 
   const toggleAudio = useCallback(() => {
     const stream = localStreamRef.current;
@@ -134,13 +225,7 @@ export function useWebRTC(
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: voiceOnly
-            ? false
-            : {
-                facingMode: "user",
-                width: { ideal: 640 },
-                height: { ideal: 480 },
-              },
+          video: voiceOnly ? false : VIDEO_CONSTRAINTS,
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
@@ -152,9 +237,9 @@ export function useWebRTC(
         }
 
         localStreamRef.current = stream;
-        setVideoEnabled(!voiceOnly);
+        setVideoEnabled(!voiceOnly && stream.getVideoTracks().length > 0);
         setAudioEnabled(true);
-        bindLocalPreview(localVideoRef.current);
+        await refreshLocalVideoElement(localVideoRef.current, stream);
 
         const roomRes = await fetch(`/api/room?roomId=${roomId}`, {
           cache: "no-store",
@@ -176,6 +261,7 @@ export function useWebRTC(
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
             applyIosVideoAttrs(remoteVideoRef.current);
+            void remoteVideoRef.current.play().catch(() => {});
           }
         };
 
@@ -237,7 +323,6 @@ export function useWebRTC(
         await channel.subscribe();
 
         if (isInitiatorRef.current) {
-          // Brief delay so the peer can subscribe to the signaling channel
           await new Promise((r) => setTimeout(r, 500));
           if (cancelled || !pcRef.current) return;
 
@@ -270,7 +355,7 @@ export function useWebRTC(
       iceQueueRef.current = [];
       setConnectionState("closed");
     };
-  }, [active, roomId, userId, voiceOnly, bindLocalPreview]);
+  }, [active, roomId, userId, voiceOnly]);
 
   return {
     localVideoRef,

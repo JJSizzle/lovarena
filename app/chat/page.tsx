@@ -40,7 +40,7 @@ import { useMatchCelebration } from "@/lib/hooks/useMatchCelebration";
 import { useScrollOnNewMessage } from "@/lib/hooks/useScrollOnNewMessage";
 import { countryCodeToFlag } from "@/lib/flags";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
-import { chatBtnLove, chatBtnSend, chatBtnFun, chatBtnGhost } from "@/lib/chat-buttons";
+import { chatBtnLove, chatBtnSend, chatBtnFun, chatBtnGhost, chatBtnFriend } from "@/lib/chat-buttons";
 import type { FriendLinkStatus } from "@/lib/friends/friend-link-status";
 import { beaconLeaveChat } from "@/lib/chat-leave-beacon";
 
@@ -845,14 +845,42 @@ export default function ChatPage() {
     }
   }
 
-  function renderAddFriendButton() {
+  function renderSparkButton() {
     if (friendsMatched || chatFriendStatus === "friends") {
-      return null;
+      return (
+        <span className="text-xs font-semibold text-pink-200 px-2 py-1.5">
+          Friends ✨
+        </span>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={handleConnect}
+        disabled={connectLoading}
+        className={chatBtnLove}
+      >
+        {connectLoading
+          ? "…"
+          : youClickedConnect
+            ? "Waiting for them…"
+            : "Connect"}
+      </button>
+    );
+  }
+
+  function renderFriendRequestButton() {
+    if (friendsMatched || chatFriendStatus === "friends") {
+      return (
+        <span className="text-[10px] text-slate-500 px-2 py-1.5">
+          Already friends
+        </span>
+      );
     }
     if (chatFriendStatus === "pending_sent") {
       return (
-        <span className="text-[10px] sm:text-xs text-slate-400 px-2 py-2">
-          Requested
+        <span className="text-[10px] sm:text-xs text-slate-400 px-2 py-1.5">
+          Request sent
         </span>
       );
     }
@@ -862,9 +890,9 @@ export default function ChatPage() {
           type="button"
           onClick={() => handleFriendRequest(true)}
           disabled={friendRequestLoading}
-          className={chatBtnLove}
+          className={chatBtnFriend}
         >
-          {friendRequestLoading ? "…" : "Accept friend"}
+          {friendRequestLoading ? "…" : "Accept request"}
         </button>
       );
     }
@@ -873,7 +901,7 @@ export default function ChatPage() {
         type="button"
         onClick={() => handleFriendRequest(false)}
         disabled={friendRequestLoading || !partnerId}
-        className={chatBtnLove}
+        className={chatBtnFriend}
       >
         {friendRequestLoading ? "…" : "Add friend"}
       </button>
@@ -977,46 +1005,22 @@ export default function ChatPage() {
           }
           sharedTags={sharedTags}
           voiceOnly={voiceOnly}
-          connectHint={
-            !friendsMatched && chatFriendStatus !== "friends" ? (
-              <p className="text-[10px] text-slate-500 text-center leading-relaxed">
-                <span className="text-pink-300 font-semibold">Connect</span> —
-                both tap when you feel a spark ·{" "}
-                <span className="text-fuchsia-300/90 font-semibold">
-                  Add friend
-                </span>{" "}
-                — low-pressure request
-              </p>
+          connectHint={null}
+          sparkSlot={renderSparkButton()}
+          friendSlot={renderFriendRequestButton()}
+          actionSlot={
+            roomId ? (
+              <SafetyActions
+                roomId={roomId}
+                onBlocked={() => {
+                  stopMedia();
+                  setRoomId(null);
+                  setEndedBySelf(false);
+                  setStatus("disconnected");
+                  setError("User blocked. Press Next for a new match.");
+                }}
+              />
             ) : null
-          }
-          connectSlot={
-            <>
-              {renderAddFriendButton()}
-              <button
-                type="button"
-                onClick={handleConnect}
-                disabled={connectLoading || friendsMatched}
-                className={chatBtnLove}
-              >
-                {friendsMatched
-                  ? "Friends ✨"
-                  : youClickedConnect
-                    ? "Waiting…"
-                    : "Connect"}
-              </button>
-              {roomId && (
-                <SafetyActions
-                  roomId={roomId}
-                  onBlocked={() => {
-                    stopMedia();
-                    setRoomId(null);
-                    setEndedBySelf(false);
-                    setStatus("disconnected");
-                    setError("User blocked. Press Next for a new match.");
-                  }}
-                />
-              )}
-            </>
           }
         />
         )}

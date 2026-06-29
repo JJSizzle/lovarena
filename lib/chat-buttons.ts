@@ -14,6 +14,9 @@ export const chatBtnFun =
 export const chatBtnLove =
   `${chatBtn} border border-pink-500/30 bg-pink-500/10 text-pink-200 hover:bg-pink-500/20`;
 
+export const chatBtnFriend =
+  `${chatBtn} border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-100 hover:bg-fuchsia-500/20`;
+
 export const chatBtnNeutral =
   `${chatBtn} border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white`;
 
