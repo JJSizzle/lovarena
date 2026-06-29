@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth/api-auth";
 import { maybeAutoRestrictFromReports } from "@/lib/moderation/auto-flag-reports";
 import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
+import { areFriends } from "@/lib/party/party-auth";
 import {
   applyReportReputationPenalty,
   validateReportDetails,
@@ -76,11 +77,12 @@ export async function POST(req: NextRequest) {
         auth.profile.id,
         reportedUserId
       );
-      if (!matched) {
+      const friends = await areFriends(auth.profile.id, reportedUserId);
+      if (!matched && !friends) {
         return NextResponse.json(
           {
             error:
-              "You can only report someone from your recent match history.",
+              "You can only report someone from your friends or recent match history.",
           },
           { status: 400 }
         );

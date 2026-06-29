@@ -347,6 +347,19 @@ export default function FriendsPage() {
 
         <AppQuickNav className="mb-5" />
 
+        <div className="mb-5 rounded-xl border border-slate-600/30 bg-slate-950/60 px-3 py-2.5 text-[11px] text-slate-400 leading-relaxed">
+          <p>
+            <span className="font-semibold text-slate-300">Remove</span> unfriends
+            them — you can match and add again later.
+          </p>
+          <p className="mt-1">
+            <span className="font-semibold text-red-300/90">Block</span> stops
+            future matches and ends active chats. Use{" "}
+            <span className="font-semibold text-amber-300/90">Report</span> on a
+            profile for moderation review.
+          </p>
+        </div>
+
         {requestNotice && (
           <p className="text-xs text-slate-300 mb-3 rounded-xl border border-purple-500/30 bg-slate-950/80 px-3 py-2">
             {requestNotice}

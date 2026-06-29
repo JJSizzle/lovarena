@@ -9,6 +9,7 @@ import {
   getCountryCode,
   getStateCode,
   getPreferSharedInterests,
+  getPreferSharedLanguages,
   setMatchPrefs,
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
@@ -40,11 +41,13 @@ export default function HomePage() {
   const [entering, setEntering] = useState(false);
   const [enterError, setEnterError] = useState<string | null>(null);
   const [preferSharedInterests, setPreferSharedInterests] = useState(false);
+  const [preferSharedLanguages, setPreferSharedLanguages] = useState(false);
   const seasonal = getSeasonalTheme();
 
   useEffect(() => {
     setMode(getMatchMode());
     setPreferSharedInterests(getPreferSharedInterests());
+    setPreferSharedLanguages(getPreferSharedLanguages());
     setCountry(getCountryCode() || guessCountryCode());
     setStateCode(getStateCode());
   }, []);
@@ -61,7 +64,7 @@ export default function HomePage() {
 
   async function handleStart() {
     setEnterError(null);
-    setMatchPrefs(mode, country, preferSharedInterests, stateCode);
+    setMatchPrefs(mode, country, preferSharedInterests, stateCode, preferSharedLanguages);
 
     if (!user) {
       router.push("/login?next=/chat");
@@ -79,6 +82,16 @@ export default function HomePage() {
     ) {
       setEnterError(
         "Add at least one interest on your profile to use shared-interest matching."
+      );
+      return;
+    }
+
+    if (
+      preferSharedLanguages &&
+      (!profile?.languages || profile.languages.length === 0)
+    ) {
+      setEnterError(
+        "Add at least one language on your profile to use shared-language matching."
       );
       return;
     }
@@ -295,6 +308,24 @@ export default function HomePage() {
               </span>
               <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
                 Only match when you share at least one interest tag from your
+                profile. May take longer to find someone.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 rounded-3xl border border-cyan-500/25 bg-slate-950/80 backdrop-blur-xl p-4 cursor-pointer hover:border-cyan-400/40 transition">
+            <input
+              type="checkbox"
+              checked={preferSharedLanguages}
+              onChange={(e) => setPreferSharedLanguages(e.target.checked)}
+              className="mt-0.5 rounded border-cyan-500/40 bg-slate-900 text-cyan-500 focus:ring-cyan-500/50"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-cyan-200">
+                Prefer shared languages
+              </span>
+              <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
+                Only match when you share at least one language from your
                 profile. May take longer to find someone.
               </span>
             </span>

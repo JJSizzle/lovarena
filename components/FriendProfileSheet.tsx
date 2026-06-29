@@ -3,12 +3,9 @@
 import { useEffect, useState } from "react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { formatPartnerLine } from "@/lib/profile-age";
-import {
-  chatBtnBlock,
-  chatBtnGhost,
-  chatBtnLove,
-} from "@/lib/chat-buttons";
+import { chatBtnBlock, chatBtnGhost, chatBtnLove, chatBtnReport } from "@/lib/chat-buttons";
 import type { FriendProfileView } from "@/lib/friends/friend-profile-view";
+import { ReportUserDialog } from "@/components/ReportUserDialog";
 
 type FriendProfileSheetProps = {
   friendId: string | null;
@@ -32,6 +29,7 @@ export function FriendProfileSheet({
   const [profile, setProfile] = useState<FriendProfileView | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !friendId) {
@@ -257,11 +255,30 @@ export function FriendProfileSheet({
                     Block user
                   </button>
                 )}
+                {friendId && (
+                  <button
+                    type="button"
+                    onClick={() => setReportOpen(true)}
+                    className={`${chatBtnReport} w-full !py-2 !text-xs`}
+                  >
+                    Report user
+                  </button>
+                )}
               </div>
             </>
           )}
         </div>
       </div>
+
+      {friendId && (
+        <ReportUserDialog
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          reportedUserId={friendId}
+          roomId={roomId}
+          username={profile?.username}
+        />
+      )}
     </div>
   );
 }

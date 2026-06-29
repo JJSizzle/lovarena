@@ -12,6 +12,7 @@ import {
   getCountryCode,
   getStateCode,
   getPreferSharedInterests,
+  getPreferSharedLanguages,
   setMatchPrefs,
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
@@ -74,6 +75,7 @@ export default function SettingsPage() {
   const [countryCode, setCountryCode] = useState("US");
   const [stateCode, setStateCode] = useState<string | null>(null);
   const [preferSharedInterests, setPreferSharedInterests] = useState(false);
+  const [preferSharedLanguages, setPreferSharedLanguages] = useState(false);
   const [faceBlurDefault, setFaceBlurDefault] = useState(true);
   const [voiceOnlyDefault, setVoiceOnlyDefault] = useState(false);
   const [primaryLanguage, setPrimaryLanguage] = useState("English");
@@ -96,6 +98,7 @@ export default function SettingsPage() {
     setCountryCode(getCountryCode() || guessCountryCode());
     setStateCode(getStateCode());
     setPreferSharedInterests(getPreferSharedInterests());
+    setPreferSharedLanguages(getPreferSharedLanguages());
     setSoundEffects(soundsEnabled());
   }, []);
 
@@ -116,7 +119,13 @@ export default function SettingsPage() {
     setError(null);
     setMessage(null);
 
-    setMatchPrefs(matchMode, countryCode, preferSharedInterests, stateCode);
+    setMatchPrefs(
+      matchMode,
+      countryCode,
+      preferSharedInterests,
+      stateCode,
+      preferSharedLanguages
+    );
     setSoundsEnabled(soundEffects);
 
     try {
@@ -248,6 +257,15 @@ export default function SettingsPage() {
               <Toggle
                 checked={preferSharedInterests}
                 onChange={setPreferSharedInterests}
+              />
+            </SettingRow>
+            <SettingRow
+              title="Prefer shared languages"
+              description="Only match when you share at least one profile language. Add languages on Profile."
+            >
+              <Toggle
+                checked={preferSharedLanguages}
+                onChange={setPreferSharedLanguages}
               />
             </SettingRow>
           </section>

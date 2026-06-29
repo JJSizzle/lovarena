@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 12 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 17 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -253,6 +253,26 @@ select migration, status from (
         select 1 from pg_publication_tables
         where pubname = 'supabase_realtime' and tablename = 'friendships'
       ) then '❌ friendships realtime missing — run friendships-realtime.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 17, 'prefer-shared-languages',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'waiting_users'
+          and column_name = 'prefer_shared_languages'
+      ) then '❌ prefer_shared_languages missing — run prefer-shared-languages.sql'
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public'
+          and p.proname = 'find_or_create_match'
+          and pg_get_function_identity_arguments(p.oid) like '%prefer_shared_languages%'
+      ) then '❌ find_or_create_match language param missing — run prefer-shared-languages.sql'
       else '✅ applied'
     end
 ) checks

@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     if ("error" in auth) return auth.error;
 
     const { profile } = auth;
-    const { roomId, matchMode, countryCode, stateCode, preferSharedInterests } =
+    const { roomId, matchMode, countryCode, stateCode, preferSharedInterests, preferSharedLanguages } =
       await req.json();
 
     const ip = clientIp(req);
@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
         p_country_code: mode === "regional" ? countryCode : null,
         p_prefer_shared_interests: Boolean(preferSharedInterests),
         p_state_code: normalizedState,
+        p_prefer_shared_languages: Boolean(preferSharedLanguages),
       }
     );
 

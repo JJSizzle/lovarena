@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 type Props = {
   roomId: string;
   partnerId: string;
@@ -8,6 +10,8 @@ type Props = {
   onReport?: () => void;
 };
 
+const AUTO_DISMISS_MS = 12_000;
+
 export function PostChatFeedback({
   roomId,
   partnerId,
@@ -15,6 +19,12 @@ export function PostChatFeedback({
   onClose,
   onReport,
 }: Props) {
+  useEffect(() => {
+    if (!visible) return;
+    const timer = setTimeout(onClose, AUTO_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [visible, onClose]);
+
   if (!visible) return null;
 
   async function submit(rating: "up" | "down") {
@@ -27,47 +37,47 @@ export function PostChatFeedback({
   }
 
   return (
-    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
-      <div className="max-w-xs w-full rounded-3xl border border-purple-500/30 bg-slate-900 p-6 text-center">
-        <p className="text-sm text-slate-300 font-medium">How was that chat?</p>
-        <div className="mt-4 flex justify-center gap-4">
-          <button
-            type="button"
-            onClick={() => submit("up")}
-            className="text-3xl hover:scale-110 transition"
-            aria-label="Good chat"
-          >
-            👍
-          </button>
-          <button
-            type="button"
-            onClick={() => submit("down")}
-            className="text-3xl hover:scale-110 transition"
-            aria-label="Bad chat"
-          >
-            👎
-          </button>
-        </div>
-        <div className="mt-4 flex flex-col gap-2">
-          {onReport && (
+    <div className="fixed bottom-24 left-1/2 z-[70] w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 animate-fade-in">
+      <div className="rounded-2xl border border-purple-500/25 bg-slate-900/95 backdrop-blur-xl px-4 py-3 shadow-lg">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-slate-300">Quick rating?</p>
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                onReport();
-                onClose();
-              }}
-              className="text-xs text-red-400 hover:text-red-300"
+              onClick={() => void submit("up")}
+              className="text-xl hover:scale-110 transition"
+              aria-label="Good chat"
             >
-              Report instead
+              👍
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs text-slate-500 hover:text-slate-300"
-          >
-            Skip
-          </button>
+            <button
+              type="button"
+              onClick={() => void submit("down")}
+              className="text-xl hover:scale-110 transition"
+              aria-label="Bad chat"
+            >
+              👎
+            </button>
+            {onReport && (
+              <button
+                type="button"
+                onClick={() => {
+                  onReport();
+                  onClose();
+                }}
+                className="text-[10px] text-red-400 hover:text-red-300 px-1"
+              >
+                Report
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-[10px] text-slate-500 hover:text-slate-300 px-1"
+            >
+              Skip
+            </button>
+          </div>
         </div>
       </div>
     </div>
