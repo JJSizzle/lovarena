@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const exploreLinks = [
   { href: "/chat", label: "Enter Arena" },
+  { href: "/party", label: "Party" },
   { href: "/friends", label: "Friends" },
   { href: "/blog/stay-safe", label: "Safety tips" },
   { href: "/blog/ice-breaker-questions", label: "Ice breakers" },

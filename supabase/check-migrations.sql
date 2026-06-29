@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 10 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 11 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -160,6 +160,25 @@ select migration, status from (
         where table_schema = 'public' and table_name = 'profiles'
           and column_name = 'state_code'
       ) then '❌ state_code missing — run profile-location.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 11, 'party-rooms',
+    case
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'party_rooms'
+      ) then '❌ party_rooms missing — run party-rooms.sql'
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'party_members'
+      ) then '❌ party_members missing — run party-rooms.sql'
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'party_votes'
+      ) then '❌ party_votes missing — run party-rooms.sql'
       else '✅ applied'
     end
 ) checks

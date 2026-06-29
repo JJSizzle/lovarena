@@ -316,6 +316,16 @@ export default function FriendsPage() {
           </p>
         )}
 
+        <Link
+          href="/party"
+          className="block mb-6 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 hover:bg-cyan-500/15 transition"
+        >
+          <p className="text-sm font-semibold text-cyan-100">Start a Party</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            2–4 friends · prompt cards or trivia
+          </p>
+        </Link>
+
         {hasRequests && (
           <section className="mb-6">
             <h2 className="text-xs font-bold text-fuchsia-300 mb-2 uppercase tracking-wide">

@@ -158,6 +158,12 @@ export default function HomePage() {
               >
                 Friends
               </Link>
+              <Link
+                href="/party"
+                className="text-xs text-cyan-400 hover:text-cyan-300 hidden sm:inline"
+              >
+                Party
+              </Link>
             </>
           )}
           <Link
