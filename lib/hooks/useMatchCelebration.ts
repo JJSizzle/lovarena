@@ -64,6 +64,7 @@ export function useMatchCelebration() {
           partnerUsername: data.partnerUsername,
           partnerAge: data.partnerAge,
           partnerGender: data.partnerGender,
+          partnerLocation: data.partnerLocation,
           partnerBio: data.partnerBio,
           partnerAvatarUrl: data.partnerAvatarUrl,
           partnerEmoji: data.partnerEmoji,

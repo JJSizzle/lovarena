@@ -5,6 +5,7 @@ import {
 } from "@/lib/profile-orientation";
 import { isValidAge } from "@/lib/profile-age";
 import { reputationTier } from "@/lib/reputation";
+import { formatProfileLocation } from "@/lib/profile-location";
 
 const MAX_BIO_LENGTH = 240;
 
@@ -16,6 +17,7 @@ export type FriendProfileView = {
   bio: string | null;
   age: number | null;
   gender: string | null;
+  location: string | null;
   interests: string[];
   languages: string[];
   sharedInterests: string[];
@@ -44,6 +46,8 @@ type RawProfile = {
   chat_streak: number | null;
   positive_ratings: number | null;
   created_at: string;
+  country_code: string | null;
+  state_code: string | null;
 };
 
 export function formatMemberSince(createdAt: string): string {
@@ -90,6 +94,7 @@ export function buildFriendProfileView(
     gender: profile.gender_identity
       ? genderLabel(profile.gender_identity as GenderIdentity)
       : null,
+    location: formatProfileLocation(profile.country_code, profile.state_code),
     interests,
     languages: (profile.languages ?? []).slice(0, 8),
     sharedInterests,

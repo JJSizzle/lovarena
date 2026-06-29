@@ -42,11 +42,11 @@ export default function HomePage() {
   const seasonal = getSeasonalTheme();
 
   useEffect(() => {
-    setCountry(getCountryCode() || guessCountryCode());
     setMode(getMatchMode());
-    setStateCode(getStateCode());
     setPreferSharedInterests(getPreferSharedInterests());
-  }, []);
+    setCountry(getCountryCode() || profile?.country_code || guessCountryCode());
+    setStateCode(getStateCode() ?? profile?.state_code ?? null);
+  }, [profile?.country_code, profile?.state_code]);
 
   useEffect(() => {
     if (!profile) return;
@@ -88,14 +88,28 @@ export default function HomePage() {
         !profile ||
         profile.gender_identity !== genderIdentity ||
         profile.looking_for !== lookingFor;
+      const locationChanged =
+        !profile ||
+        profile.country_code !== (country || null) ||
+        profile.state_code !== (country === "US" ? stateCode : null);
 
-      if (orientationChanged) {
+      if (orientationChanged || locationChanged) {
         const res = await fetch("/api/profile", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            gender_identity: genderIdentity,
-            looking_for: lookingFor,
+            ...(orientationChanged
+              ? {
+                  gender_identity: genderIdentity,
+                  looking_for: lookingFor,
+                }
+              : {}),
+            ...(locationChanged
+              ? {
+                  country_code: country || null,
+                  state_code: country === "US" ? stateCode : null,
+                }
+              : {}),
           }),
         });
         const data = await res.json();

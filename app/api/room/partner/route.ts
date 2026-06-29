@@ -11,6 +11,7 @@ import {
   allowsFriendRequests,
   allowsMutualSpark,
 } from "@/lib/social-privacy";
+import { formatProfileLocation } from "@/lib/profile-location";
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     const { data: partner } = await supabase
       .from("profiles")
       .select(
-        "username, age, show_age, gender_identity, interests, languages, reputation_score, created_at, age_verified, avatar_url, avatar_emoji, bio, allow_friend_requests, allow_mutual_spark"
+        "username, age, show_age, gender_identity, interests, languages, reputation_score, created_at, age_verified, avatar_url, avatar_emoji, bio, allow_friend_requests, allow_mutual_spark, country_code, state_code"
       )
       .eq("id", partnerId)
       .maybeSingle();
@@ -72,6 +73,10 @@ export async function GET(req: NextRequest) {
       partnerGender: partner?.gender_identity
         ? genderLabel(partner.gender_identity as GenderIdentity)
         : null,
+      partnerLocation: formatProfileLocation(
+        partner?.country_code,
+        partner?.state_code
+      ),
       partnerBio: partner?.bio ? String(partner.bio).slice(0, 120) : null,
       partnerAvatarUrl: partner?.avatar_url ?? null,
       partnerEmoji: partner?.avatar_emoji ?? "🛸",

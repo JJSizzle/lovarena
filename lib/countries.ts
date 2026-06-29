@@ -31,6 +31,20 @@ export const COUNTRIES = [
   { code: "CH", name: "Switzerland" },
 ] as const;
 
+const COUNTRY_NAMES = new Map<string, string>(
+  COUNTRIES.map((c) => [c.code, c.name])
+);
+
+export function getCountryName(code: string | null | undefined): string | null {
+  if (!code) return null;
+  return COUNTRY_NAMES.get(code.toUpperCase()) ?? code;
+}
+
+export function isValidCountryCode(code: string | null | undefined): boolean {
+  if (!code) return false;
+  return COUNTRY_NAMES.has(code.toUpperCase());
+}
+
 export function guessCountryCode(): string {
   if (typeof navigator === "undefined") return "US";
   const lang = navigator.language;

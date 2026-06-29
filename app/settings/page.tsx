@@ -91,11 +91,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMatchMode(getMatchMode());
-    setCountryCode(getCountryCode() || guessCountryCode());
-    setStateCode(getStateCode());
+    setCountryCode(getCountryCode() || profile?.country_code || guessCountryCode());
+    setStateCode(getStateCode() ?? profile?.state_code ?? null);
     setPreferSharedInterests(getPreferSharedInterests());
     setSoundEffects(soundsEnabled());
-  }, []);
+  }, [profile?.country_code, profile?.state_code]);
 
   useEffect(() => {
     if (!profile) return;
@@ -129,6 +129,12 @@ export default function SettingsPage() {
           notifications_enabled: notificationsEnabled,
           allow_friend_requests: allowFriendRequests,
           allow_mutual_spark: allowMutualSpark,
+          ...(matchMode === "regional"
+            ? {
+                country_code: countryCode || null,
+                state_code: countryCode === "US" ? stateCode : null,
+              }
+            : {}),
         }),
       });
       const data = await res.json();

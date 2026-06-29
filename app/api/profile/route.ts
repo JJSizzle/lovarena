@@ -14,9 +14,11 @@ import { isAvatarEmoji } from "@/lib/avatars";
 import { isValidAge } from "@/lib/profile-age";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { isValidCountryCode } from "@/lib/countries";
+import { isValidUsStateCode } from "@/lib/us-states";
 
 const PROFILE_FIELDS =
-  "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, allow_friend_requests, allow_mutual_spark, chat_streak, positive_ratings, qualified_referrals, referred_by, primary_language, auto_translate, created_at";
+  "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, allow_friend_requests, allow_mutual_spark, chat_streak, positive_ratings, qualified_referrals, referred_by, primary_language, auto_translate, country_code, state_code, created_at";
 
 async function isUsernameTaken(
   supabase: ReturnType<typeof createAdminClient>,
@@ -175,6 +177,34 @@ export async function PATCH(req: NextRequest) {
       }
       updates.avatar_emoji = emoji;
     }
+    if ("country_code" in body) {
+      const raw = body.country_code;
+      if (raw === null || raw === "") {
+        updates.country_code = null;
+        updates.state_code = null;
+      } else {
+        const code = String(raw).trim().toUpperCase();
+        if (!isValidCountryCode(code)) {
+          return NextResponse.json({ error: "Invalid country" }, { status: 400 });
+        }
+        updates.country_code = code;
+        if (code !== "US") {
+          updates.state_code = null;
+        }
+      }
+    }
+    if ("state_code" in body) {
+      const raw = body.state_code;
+      if (raw === null || raw === "") {
+        updates.state_code = null;
+      } else {
+        const state = String(raw).trim().toUpperCase();
+        if (!isValidUsStateCode(state)) {
+          return NextResponse.json({ error: "Invalid state" }, { status: 400 });
+        }
+        updates.state_code = state;
+      }
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
@@ -184,9 +214,21 @@ export async function PATCH(req: NextRequest) {
 
     const { data: existing } = await supabase
       .from("profiles")
-      .select("id, username, username_change_count")
+      .select("id, username, username_change_count, country_code")
       .eq("id", user.id)
       .maybeSingle();
+
+    const effectiveCountry =
+      typeof updates.country_code === "string"
+        ? updates.country_code
+        : existing?.country_code ?? null;
+
+    if (updates.state_code && effectiveCountry?.toUpperCase() !== "US") {
+      return NextResponse.json(
+        { error: "State is only available when country is United States." },
+        { status: 400 }
+      );
+    }
 
     if (typeof updates.username === "string") {
       const nextUsername = updates.username;

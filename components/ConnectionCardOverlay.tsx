@@ -13,6 +13,7 @@ export type ConnectionCardData = {
   partnerUsername?: string;
   partnerAge?: number | null;
   partnerGender?: string | null;
+  partnerLocation?: string | null;
   partnerBio?: string | null;
   partnerAvatarUrl?: string | null;
   partnerEmoji?: string;
@@ -48,6 +49,9 @@ export function ConnectionCardOverlay({ data, visible, onDone }: Props) {
         </h3>
         {data.partnerGender && (
           <p className="text-slate-400 text-sm mt-1">{data.partnerGender}</p>
+        )}
+        {data.partnerLocation && (
+          <p className="text-slate-400 text-sm mt-0.5">{data.partnerLocation}</p>
         )}
         <p className="text-fuchsia-400 font-bold text-sm mt-2 tracking-wide uppercase">
           You&apos;re connected!

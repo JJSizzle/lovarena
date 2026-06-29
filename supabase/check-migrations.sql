@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 9 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 10 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -143,6 +143,23 @@ select migration, status from (
           and pg_get_function_identity_arguments(p.oid) like '%boolean%'
           and pg_get_function_identity_arguments(p.oid) like '%text%'
       ) then '❌ match fn missing state arg — run regional-state-match.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 10, 'profile-location',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'profiles'
+          and column_name = 'country_code'
+      ) then '❌ country_code missing — run profile-location.sql'
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'profiles'
+          and column_name = 'state_code'
+      ) then '❌ state_code missing — run profile-location.sql'
       else '✅ applied'
     end
 ) checks

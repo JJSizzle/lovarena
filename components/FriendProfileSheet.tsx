@@ -130,6 +130,9 @@ export function FriendProfileSheet({
                 {profile.gender && (
                   <p className="text-slate-400 text-sm mt-0.5">{profile.gender}</p>
                 )}
+                {profile.location && (
+                  <p className="text-slate-400 text-sm mt-0.5">{profile.location}</p>
+                )}
                 <div className="flex flex-wrap justify-center gap-2 mt-3">
                   {profile.connectionType === "mutual_connect" && (
                     <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-pink-500/20 text-pink-200 border border-pink-500/30">

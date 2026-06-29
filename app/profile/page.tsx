@@ -34,6 +34,9 @@ import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { isInvitedNewcomer, CONNECTOR_REFERRALS, AMBASSADOR_REFERRALS } from "@/lib/referral/badges";
 import { REP_MAX, reputationTier } from "@/lib/reputation";
+import { COUNTRIES } from "@/lib/countries";
+import { US_STATES } from "@/lib/us-states";
+import { formatProfileLocation } from "@/lib/profile-location";
 
 type BlockRow = {
   id: string;
@@ -64,6 +67,8 @@ export default function ProfilePage() {
   const [interests, setInterests] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
   const [avatarEmoji, setAvatarEmoji] = useState("😎");
+  const [countryCode, setCountryCode] = useState("");
+  const [stateCode, setStateCode] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState("");
   const [blocks, setBlocks] = useState<BlockRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
@@ -90,6 +95,8 @@ export default function ProfilePage() {
     setInterests(profile.interests ?? []);
     setLanguages(profile.languages ?? []);
     setAvatarEmoji(profile.avatar_emoji ?? "😎");
+    setCountryCode(profile.country_code ?? "");
+    setStateCode(profile.state_code ?? null);
     setReferralCode(profile.referral_code ?? "");
   }, [profile]);
 
@@ -142,6 +149,8 @@ export default function ProfilePage() {
           interests,
           languages,
           avatar_emoji: avatarEmoji,
+          country_code: countryCode || null,
+          state_code: countryCode === "US" ? stateCode : null,
         }),
       });
       const data = await res.json();
@@ -204,6 +213,10 @@ export default function ProfilePage() {
     profile != null &&
     !isPlaceholderUsername(profile.username) &&
     usernameChangesLeft === 0;
+  const locationPreview = formatProfileLocation(
+    countryCode || profile?.country_code,
+    countryCode === "US" ? stateCode : null
+  );
 
   return (
     <main className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white px-6 py-8 pb-24 overflow-hidden`}>
@@ -230,6 +243,9 @@ export default function ProfilePage() {
                 )}
               </p>
               <p className="text-xs text-slate-400 truncate">{user.email}</p>
+              {locationPreview && (
+                <p className="text-xs text-slate-400 mt-0.5">{locationPreview}</p>
+              )}
               <p className="text-xs text-amber-300 mt-1">
                 Reputation: {profile?.reputation_score ?? 100}/{REP_MAX}
                 <span className="text-slate-500">
@@ -334,6 +350,53 @@ export default function ProfilePage() {
               <label htmlFor="bio" className="block text-sm text-purple-300/80 mb-2 font-medium">Bio</label>
               <textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} rows={3} className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50 resize-none" placeholder="Say something about yourself…" />
             </div>
+            <div>
+              <label htmlFor="profile-country" className="block text-sm text-purple-300/80 mb-2 font-medium">
+                Country / region
+              </label>
+              <select
+                id="profile-country"
+                value={countryCode}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setCountryCode(next);
+                  if (next !== "US") setStateCode(null);
+                }}
+                className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50"
+              >
+                <option value="">Not set</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Shown on your profile when friends or matches view you.
+              </p>
+            </div>
+            {countryCode === "US" && (
+              <div>
+                <label htmlFor="profile-state" className="block text-sm text-purple-300/80 mb-2 font-medium">
+                  State (optional)
+                </label>
+                <select
+                  id="profile-state"
+                  value={stateCode ?? ""}
+                  onChange={(e) =>
+                    setStateCode(e.target.value ? e.target.value : null)
+                  }
+                  className="w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm outline-none focus:border-fuchsia-500/50"
+                >
+                  <option value="">Not set</option>
+                  {US_STATES.map((s) => (
+                    <option key={s.code} value={s.code}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-sm text-purple-300/80 mb-2 font-medium">Avatar emoji</label>
               <div className="flex flex-wrap gap-2">
