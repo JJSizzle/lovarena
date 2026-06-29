@@ -9,6 +9,7 @@ import { chatBtnLove, chatBtnBlock, chatBtnGhost } from "@/lib/chat-buttons";
 import { useAuth } from "@/components/AuthProvider";
 import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
 import { TranslateToolbar } from "@/components/TranslateToolbar";
+import { markSenderRead } from "@/lib/notifications/seen-state";
 
 type PrivateMessage = {
   id: string;
@@ -84,6 +85,10 @@ export function FriendsPanel({
   }
 
   useEffect(() => {
+    markSenderRead(friendId);
+  }, [friendId]);
+
+  useEffect(() => {
     async function load() {
       const res = await fetch(
         `/api/private-messages?friendId=${encodeURIComponent(friendId)}`,
@@ -98,6 +103,13 @@ export function FriendsPanel({
           }
           return next === prev ? prev : next;
         });
+        const loaded = data.messages as PrivateMessage[];
+        const latestIncoming = [...loaded]
+          .reverse()
+          .find((msg) => msg.receiver_id === myId);
+        if (latestIncoming) {
+          markSenderRead(friendId, latestIncoming.created_at);
+        }
       }
     }
 
@@ -119,6 +131,7 @@ export function FriendsPanel({
           const msg = payload.new as PrivateMessage;
           if (msg.receiver_id === myId) {
             setMessages((prev) => appendPrivateMessage(prev, msg));
+            markSenderRead(friendId, msg.created_at);
           }
         }
       )

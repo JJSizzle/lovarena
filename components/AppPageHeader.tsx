@@ -29,7 +29,7 @@ export function AppPageHeader({
       <h1 className="text-xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent text-center truncate px-1">
         {title}
       </h1>
-      <div className="justify-self-end min-w-0">{action ?? <span className="invisible text-xs">·</span>}</div>
+      <div className="justify-self-end min-w-0 pr-11">{action ?? <span className="invisible text-xs">·</span>}</div>
     </header>
   );
 }

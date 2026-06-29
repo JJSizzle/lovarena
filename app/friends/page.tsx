@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { FriendProfileSheet } from "@/components/FriendProfileSheet";
 import { FriendsPanel } from "@/components/FriendsPanel";
@@ -14,6 +14,7 @@ import type { FriendProfileView } from "@/lib/friends/friend-profile-view";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { AppPageHeader } from "@/components/AppPageHeader";
+import { markSenderRead } from "@/lib/notifications/seen-state";
 
 type Friend = {
   id: string;
@@ -119,6 +120,8 @@ function FriendRow({
 
 export default function FriendsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const chatIdFromUrl = searchParams.get("chat");
   const { user, profile, loading } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>(
@@ -132,14 +135,19 @@ export default function FriendsPage() {
   const [requestLoading, setRequestLoading] = useState<string | null>(null);
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [requestNotice, setRequestNotice] = useState<string | null>(null);
+  const [friendsLoaded, setFriendsLoaded] = useState(false);
 
   const loadFriends = useCallback(async () => {
     const res = await fetch("/api/friends", { cache: "no-store" });
     const data = await res.json();
-    if (!res.ok) return;
+    if (!res.ok) {
+      setFriendsLoaded(true);
+      return;
+    }
     setFriends(data.friends ?? []);
     setIncomingRequests(data.incomingRequests ?? []);
     setOutgoingRequests(data.outgoingRequests ?? []);
+    setFriendsLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -151,6 +159,22 @@ export default function FriendsPage() {
     if (!user) return;
     loadFriends().catch(() => {});
   }, [user, loadFriends]);
+
+  useEffect(() => {
+    if (!friendsLoaded || !chatIdFromUrl) return;
+
+    const friend = friends.find((f) => f.id === chatIdFromUrl);
+    if (friend) {
+      setActiveFriend(friend);
+      setProfileFriendId(null);
+      markSenderRead(friend.id);
+      router.replace("/friends", { scroll: false });
+      return;
+    }
+
+    setRequestNotice("That friend wasn't found — they may have removed you.");
+    router.replace("/friends", { scroll: false });
+  }, [friendsLoaded, friends, chatIdFromUrl, router]);
 
   async function handleRequestAction(
     requesterId: string,
@@ -173,6 +197,7 @@ export default function FriendsPage() {
         const accepted = incomingRequests.find((r) => r.id === requesterId);
         if (accepted) {
           setActiveFriend(accepted);
+          markSenderRead(accepted.id);
         }
       }
     } else {
@@ -292,6 +317,7 @@ export default function FriendsPage() {
         onMessage={() => {
           setActiveFriend(friend);
           setProfileFriendId(null);
+          markSenderRead(friend.id);
         }}
         onRemove={() => handleRemoveFriend(friend)}
       />
@@ -460,8 +486,10 @@ export default function FriendsPage() {
         open={profileFriendId != null}
         onClose={() => setProfileFriendId(null)}
         onMessage={(p) => {
-          setActiveFriend(toFriend(p));
+          const friend = toFriend(p);
+          setActiveFriend(friend);
           setProfileFriendId(null);
+          markSenderRead(friend.id);
         }}
         onRemove={(p) => {
           setProfileFriendId(null);

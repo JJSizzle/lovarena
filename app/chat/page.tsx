@@ -1206,7 +1206,7 @@ export default function ChatPage() {
             (endedBySelf ? "Chat ended" : "Stranger left")}
           {status === "restricted" && "Restricted"}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 pr-11">
           {status === "connected" && partnerId && (
             <button
               type="button"
@@ -1227,8 +1227,8 @@ export default function ChatPage() {
         </div>
       </header>
       {profile && (
-        <div className="px-4 pb-2 md:hidden">
-          <AppQuickNav />
+        <div className="px-4 pb-2">
+          <AppQuickNav className="max-w-md mx-auto" />
         </div>
       )}
       <div className="px-4 pb-2">

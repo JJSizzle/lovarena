@@ -6,11 +6,14 @@ import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { playMessageSound } from "@/lib/sounds";
+import { markSenderRead } from "@/lib/notifications/seen-state";
 
 type Toast = {
   id: string;
+  senderId: string;
   senderUsername: string;
   preview: string;
+  createdAt: string;
 };
 
 export function FriendMessageNotifier() {
@@ -43,6 +46,7 @@ export function FriendMessageNotifier() {
             id: string;
             sender_id: string;
             content: string;
+            created_at: string;
           };
 
           const { data: sender } = await supabase
@@ -58,7 +62,13 @@ export function FriendMessageNotifier() {
               : msg.content;
 
           if (pathname !== "/friends") {
-            setToast({ id: msg.id, senderUsername, preview });
+            setToast({
+              id: msg.id,
+              senderId: msg.sender_id,
+              senderUsername,
+              preview,
+              createdAt: msg.created_at,
+            });
             playMessageSound();
           }
 
@@ -111,6 +121,11 @@ export function FriendMessageNotifier() {
 
   if (!toast) return null;
 
+  function openMessage() {
+    markSenderRead(toast!.senderId, toast!.createdAt);
+    setToast(null);
+  }
+
   return (
     <div className="fixed bottom-20 left-1/2 z-[100] w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 animate-fade-in">
       <div className="rounded-2xl border border-pink-500/40 bg-slate-900/95 backdrop-blur-xl p-4 shadow-xl shadow-pink-500/10">
@@ -121,11 +136,11 @@ export function FriendMessageNotifier() {
         <p className="mt-0.5 text-xs text-slate-400 line-clamp-2">{toast.preview}</p>
         <div className="mt-3 flex gap-2">
           <Link
-            href="/friends"
-            onClick={() => setToast(null)}
+            href={`/friends?chat=${encodeURIComponent(toast.senderId)}`}
+            onClick={openMessage}
             className="flex-1 rounded-xl bg-gradient-to-r from-pink-500 to-fuchsia-500 text-center text-xs font-bold text-white py-2"
           >
-            Open Friends
+            Reply
           </Link>
           <button
             type="button"

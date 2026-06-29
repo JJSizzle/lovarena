@@ -7,6 +7,8 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { FriendActivityNotifier } from "@/components/FriendActivityNotifier";
 import { FriendMessageNotifier } from "@/components/FriendMessageNotifier";
+import { NotificationBell } from "@/components/NotificationBell";
+import { NotificationProvider } from "@/components/NotificationProvider";
 import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
 
@@ -72,14 +74,17 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-950 text-white">
         <AuthProvider>
-          <AgeGate>
-            <div className="flex flex-col min-h-full flex-1">{children}</div>
-            <SiteFooter />
-            <CookieConsent />
-            <InstallPrompt />
-            <FriendMessageNotifier />
-            <FriendActivityNotifier />
-          </AgeGate>
+          <NotificationProvider>
+            <AgeGate>
+              <div className="flex flex-col min-h-full flex-1">{children}</div>
+              <SiteFooter />
+              <CookieConsent />
+              <InstallPrompt />
+              <FriendMessageNotifier />
+              <FriendActivityNotifier />
+              <NotificationBell />
+            </AgeGate>
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>

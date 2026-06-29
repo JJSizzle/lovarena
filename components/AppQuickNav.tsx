@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { useIncomingFriendCount } from "@/lib/hooks/useIncomingFriendCount";
+import { useAppNotifications } from "@/components/NotificationProvider";
 
 const NAV_ITEMS = [
   {
@@ -39,7 +39,7 @@ const SIGN_OUT_IDLE =
 export function AppQuickNav({ className = "" }: Props) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const { incomingCount } = useIncomingFriendCount();
+  const { totalCount } = useAppNotifications();
   const showSignOut = Boolean(user);
 
   return (
@@ -59,9 +59,9 @@ export function AppQuickNav({ className = "" }: Props) {
             }`}
           >
             {item.label}
-            {item.href === "/friends" && incomingCount > 0 && (
+            {item.href === "/friends" && totalCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-pink-500 text-[9px] font-bold text-white flex items-center justify-center px-1 shadow-md">
-                {incomingCount > 9 ? "9+" : incomingCount}
+                {totalCount > 9 ? "9+" : totalCount}
               </span>
             )}
           </Link>
