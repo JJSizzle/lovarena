@@ -16,7 +16,8 @@ import { getIceServers } from "@/lib/webrtc/ice-servers";
 type SignalOut =
   | { type: "offer"; sdp: string }
   | { type: "answer"; sdp: string }
-  | { type: "ice"; candidate: RTCIceCandidateInit };
+  | { type: "ice"; candidate: RTCIceCandidateInit }
+  | { type: "ready" };
 
 type SignalMessage = SignalOut & { from: string };
 
@@ -72,6 +73,8 @@ export function useWebRTC(
   const voiceOnlyRef = useRef(voiceOnly);
   const togglingVideoRef = useRef(false);
   const forceNewStreamRef = useRef(false);
+  const wasActiveRef = useRef(false);
+  const offerRetryRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [videoEnabled, setVideoEnabled] = useState(false);
@@ -102,7 +105,15 @@ export function useWebRTC(
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
   }, []);
 
+  const clearOfferRetry = useCallback(() => {
+    if (offerRetryRef.current) {
+      clearInterval(offerRetryRef.current);
+      offerRetryRef.current = null;
+    }
+  }, []);
+
   const teardownPeerConnection = useCallback(() => {
+    clearOfferRetry();
     pcRef.current?.close();
     pcRef.current = null;
     if (channelRef.current) {
@@ -112,7 +123,7 @@ export function useWebRTC(
     }
     iceQueueRef.current = [];
     setConnectionState("closed");
-  }, []);
+  }, [clearOfferRetry]);
 
   async function replaceVideoTrack(newTrack: MediaStreamTrack) {
     const stream = localStreamRef.current;
@@ -163,6 +174,30 @@ export function useWebRTC(
       event: "webrtc-signal",
       payload: { ...payload, from: userId },
     });
+  }
+
+  async function sendOffer() {
+    const pc = pcRef.current;
+    if (!pc || !isInitiatorRef.current) return;
+
+    try {
+      if (pc.signalingState === "have-local-offer" && pc.localDescription?.sdp) {
+        await sendSignal({ type: "offer", sdp: pc.localDescription.sdp });
+        return;
+      }
+
+      if (pc.signalingState !== "stable" && pc.signalingState !== "closed") {
+        return;
+      }
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      if (offer.sdp) {
+        await sendSignal({ type: "offer", sdp: offer.sdp });
+      }
+    } catch {
+      // offer can race during rapid reconnects
+    }
   }
 
   async function ensureLocalStream(): Promise<MediaStream> {
@@ -284,13 +319,68 @@ export function useWebRTC(
 
   useEffect(() => {
     if (!active) {
-      stopMedia();
+      if (wasActiveRef.current) {
+        stopMedia();
+      }
+      wasActiveRef.current = false;
       return;
     }
+
+    wasActiveRef.current = true;
 
     if (!roomId || !userId) return;
 
     let cancelled = false;
+
+    async function handleSignal(msg: SignalMessage) {
+      if (!msg?.from || msg.from === userId) return;
+      const peer = pcRef.current;
+      if (!peer) return;
+
+      try {
+        if (msg.type === "ready") {
+          if (isInitiatorRef.current) {
+            await sendOffer();
+          } else {
+            await sendSignal({ type: "ready" });
+          }
+          return;
+        }
+
+        if (msg.type === "offer" && !isInitiatorRef.current) {
+          await peer.setRemoteDescription(
+            new RTCSessionDescription({ type: "offer", sdp: msg.sdp })
+          );
+          await flushIceQueue(peer);
+          const answer = await peer.createAnswer();
+          await peer.setLocalDescription(answer);
+          if (answer.sdp) {
+            await sendSignal({ type: "answer", sdp: answer.sdp });
+          }
+          return;
+        }
+
+        if (msg.type === "answer" && isInitiatorRef.current) {
+          if (peer.signalingState === "have-local-offer") {
+            await peer.setRemoteDescription(
+              new RTCSessionDescription({ type: "answer", sdp: msg.sdp })
+            );
+            await flushIceQueue(peer);
+          }
+          return;
+        }
+
+        if (msg.type === "ice") {
+          if (peer.remoteDescription) {
+            await peer.addIceCandidate(msg.candidate);
+          } else {
+            iceQueueRef.current.push(msg.candidate);
+          }
+        }
+      } catch {
+        // negotiation can race on fast reconnects
+      }
+    }
 
     async function start() {
       setMediaError(null);
@@ -318,8 +408,9 @@ export function useWebRTC(
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
         pc.ontrack = (event) => {
+          const remoteStream = event.streams[0] ?? new MediaStream([event.track]);
           if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
+            remoteVideoRef.current.srcObject = remoteStream;
             applyIosVideoAttrs(remoteVideoRef.current);
             void remoteVideoRef.current.play().catch(() => {});
           }
@@ -327,7 +418,7 @@ export function useWebRTC(
 
         pc.onicecandidate = (event) => {
           if (event.candidate) {
-            sendSignal({
+            void sendSignal({
               type: "ice",
               candidate: event.candidate.toJSON(),
             });
@@ -336,6 +427,9 @@ export function useWebRTC(
 
         pc.onconnectionstatechange = () => {
           setConnectionState(pc.connectionState);
+          if (pc.connectionState === "connected") {
+            clearOfferRetry();
+          }
         };
 
         const supabase = createClient();
@@ -348,47 +442,29 @@ export function useWebRTC(
           "broadcast",
           { event: "webrtc-signal" },
           async ({ payload }) => {
-            const msg = payload as SignalMessage;
-            if (!msg?.from || msg.from === userId) return;
-            const peer = pcRef.current;
-            if (!peer) return;
-
-            try {
-              if (msg.type === "offer" && !isInitiatorRef.current) {
-                await peer.setRemoteDescription(
-                  new RTCSessionDescription({ type: "offer", sdp: msg.sdp })
-                );
-                await flushIceQueue(peer);
-                const answer = await peer.createAnswer();
-                await peer.setLocalDescription(answer);
-                await sendSignal({ type: "answer", sdp: answer.sdp! });
-              } else if (msg.type === "answer" && isInitiatorRef.current) {
-                await peer.setRemoteDescription(
-                  new RTCSessionDescription({ type: "answer", sdp: msg.sdp })
-                );
-                await flushIceQueue(peer);
-              } else if (msg.type === "ice") {
-                if (peer.remoteDescription) {
-                  await peer.addIceCandidate(msg.candidate);
-                } else {
-                  iceQueueRef.current.push(msg.candidate);
-                }
-              }
-            } catch {
-              // negotiation can race on fast reconnects
-            }
+            await handleSignal(payload as SignalMessage);
           }
         );
 
         await channel.subscribe();
+        if (cancelled || !pcRef.current) return;
+
+        await sendSignal({ type: "ready" });
 
         if (isInitiatorRef.current) {
-          await new Promise((r) => setTimeout(r, 500));
+          await new Promise((r) => setTimeout(r, 400));
           if (cancelled || !pcRef.current) return;
+          await sendOffer();
 
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          await sendSignal({ type: "offer", sdp: offer.sdp! });
+          clearOfferRetry();
+          offerRetryRef.current = setInterval(() => {
+            const current = pcRef.current;
+            if (!current || current.connectionState === "connected") {
+              clearOfferRetry();
+              return;
+            }
+            void sendOffer();
+          }, 3000);
         }
       } catch (err) {
         if (!cancelled) {
@@ -412,6 +488,7 @@ export function useWebRTC(
     mediaRetryKey,
     stopMedia,
     teardownPeerConnection,
+    clearOfferRetry,
   ]);
 
   return {
