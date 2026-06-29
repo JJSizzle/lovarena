@@ -1155,37 +1155,30 @@ export default function ChatPage() {
           />
           {status === "matching" && "Looking for someone…"}
           {status === "idle" && "Matching paused"}
-          {status === "connected" &&
-            (partnerLabel ? `Connected · ${partnerLabel}` : "Connected")}
+          {status === "connected" && "Connected"}
           {status === "disconnected" &&
             (endedBySelf ? "Chat ended" : "Stranger left")}
           {status === "restricted" && "Restricted"}
         </div>
-        {status === "connected" && partnerId && (
-          <button
-            type="button"
-            onClick={() => setPartnerProfileOpen(true)}
-            className={`${chatBtnGhost} !text-[10px] !py-1 !px-2 shrink-0`}
-          >
-            Profile
-          </button>
-        )}
-        {profile && (
-          <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {status === "connected" && partnerId && (
+            <button
+              type="button"
+              onClick={() => setPartnerProfileOpen(true)}
+              className={`${chatBtnGhost} !text-[10px] !py-1 !px-2`}
+            >
+              Profile
+            </button>
+          )}
+          {profile && (
             <Link
               href="/settings"
               className="text-[10px] text-slate-400 hover:text-white hidden sm:inline transition"
             >
               Settings
             </Link>
-            <Link
-              href="/profile"
-              className="text-[10px] text-purple-300 hover:text-fuchsia-300 truncate transition"
-            >
-              {profile.username}
-            </Link>
-          </div>
-        )}
+          )}
+        </div>
       </header>
       <div className="px-4 pb-2">
         <TranslateToolbar
