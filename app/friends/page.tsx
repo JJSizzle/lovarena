@@ -89,6 +89,9 @@ function FriendRow({
           <div className="min-w-0">
             <p className="font-semibold truncate text-sm">{friend.username}</p>
             <p className="text-[10px] text-amber-300">Rep {friend.reputation_score}</p>
+            {friend.connection_type === "mutual_connect" && (
+              <p className="text-[10px] text-pink-300">✨ Mutual spark</p>
+            )}
           </div>
         </button>
         <button
@@ -267,10 +270,11 @@ export default function FriendsPage() {
     );
   }
 
-  const mutuals = friends.filter((f) => f.connection_type === "mutual_connect");
-  const requestFriends = friends.filter(
-    (f) => f.connection_type !== "mutual_connect"
-  );
+  const sortedFriends = [...friends].sort((a, b) => {
+    const aSpark = a.connection_type === "mutual_connect" ? 0 : 1;
+    const bSpark = b.connection_type === "mutual_connect" ? 0 : 1;
+    return aSpark - bSpark;
+  });
   const hasConnections = friends.length > 0;
   const hasRequests = incomingRequests.length > 0;
   const hasOutgoing = outgoingRequests.length > 0;
@@ -434,39 +438,13 @@ export default function FriendsPage() {
         ) : (
           <div className="space-y-6">
             <section>
-              <h2 className="text-xs font-bold text-pink-300 mb-1 uppercase tracking-wide">
-                ✨ Mutuals
-              </h2>
-              <p className="text-[10px] text-slate-500 mb-2">
-                Tap a name for profile · Chat to message
-              </p>
-              {mutuals.length === 0 ? (
-                <p className="text-xs text-slate-600 rounded-2xl border border-dashed border-pink-500/20 bg-slate-950/40 px-4 py-3">
-                  No mutual sparks yet — connect with someone in the arena.
-                </p>
-              ) : (
-                <ul className="space-y-2">{mutuals.map(renderFriendRow)}</ul>
-              )}
-            </section>
-
-            <section>
               <h2 className="text-xs font-bold text-fuchsia-300 mb-1 uppercase tracking-wide">
                 Friends
               </h2>
               <p className="text-[10px] text-slate-500 mb-2">
-                Tap a name for profile · Chat to message
+                Mutual sparks and accepted requests · tap a name for profile
               </p>
-              {requestFriends.length === 0 ? (
-                <p className="text-xs text-slate-600 rounded-2xl border border-dashed border-purple-500/20 bg-slate-950/40 px-4 py-3">
-                  {hasRequests
-                    ? "Accept a request above to add them here."
-                    : "No friends from requests yet."}
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {requestFriends.map(renderFriendRow)}
-                </ul>
-              )}
+              <ul className="space-y-2">{sortedFriends.map(renderFriendRow)}</ul>
             </section>
           </div>
         )}

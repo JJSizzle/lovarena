@@ -883,6 +883,15 @@ export default function ChatPage() {
         setFriendId(data.partnerProfileId);
         setFriendUsername(data.partnerUsername ?? "Friend");
         openMutualConnectCelebration();
+      } else if (data.friendStatus === "friends") {
+        setChatFriendStatus("friends");
+        setChatConnectionType(
+          (data.connectionType as FriendConnectionType | undefined) ??
+            "mutual_connect"
+        );
+        if (data.partnerProfileId) setFriendId(data.partnerProfileId);
+        if (data.partnerUsername) setFriendUsername(data.partnerUsername);
+        openMutualConnectCelebration();
       } else if (data.waitingForPartner) {
         setConnectNotice("Waiting for them to feel the spark too…");
       }

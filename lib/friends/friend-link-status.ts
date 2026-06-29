@@ -67,7 +67,7 @@ export async function acceptFriendshipPair(
     .eq("friend_id", userId)
     .eq("status", "pending");
 
-  await supabase.from("friendships").upsert(
+  const { error: upsertError } = await supabase.from("friendships").upsert(
     [
       {
         user_id: userId,
@@ -84,6 +84,19 @@ export async function acceptFriendshipPair(
     ],
     { onConflict: "user_id,friend_id" }
   );
+
+  if (upsertError) {
+    throw new Error(upsertError.message);
+  }
+}
+
+/** Both users tapped spark in chat — create accepted friendship both ways. */
+export async function ensureMutualSparkFriendship(
+  supabase: SupabaseClient,
+  userId: string,
+  partnerId: string
+): Promise<void> {
+  await acceptFriendshipPair(supabase, userId, partnerId, "mutual_connect");
 }
 
 export async function removeFriendshipPair(
