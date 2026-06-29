@@ -7,7 +7,7 @@ import { buildPartyState, syncPartyRoom } from "@/lib/party/party-state";
 import type { PartyGameMode } from "@/lib/party/party-types";
 
 function isGameMode(value: unknown): value is PartyGameMode {
-  return value === "prompts" || value === "trivia";
+  return value === "prompts" || value === "trivia" || value === "hangout";
 }
 
 export async function GET(req: NextRequest) {

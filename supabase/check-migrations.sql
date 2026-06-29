@@ -212,5 +212,37 @@ select migration, status from (
       ) then '❌ voting_deadline_at missing — run party-trivia-timer.sql'
       else '✅ applied'
     end
+
+  union all
+
+  select 14, 'party-trivia-scores',
+    case
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'party_trivia_scores'
+      ) then '❌ party_trivia_scores missing — run party-trivia-scores.sql'
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'party_rooms'
+          and column_name = 'last_scored_round'
+      ) then '❌ last_scored_round missing — run party-trivia-scores.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 15, 'party-hangout-mode',
+    case
+      when not exists (
+        select 1 from pg_constraint c
+        join pg_class t on t.oid = c.conrelid
+        join pg_namespace n on n.oid = t.relnamespace
+        where n.nspname = 'public'
+          and t.relname = 'party_rooms'
+          and c.conname = 'party_rooms_game_mode_check'
+          and pg_get_constraintdef(c.oid) like '%hangout%'
+      ) then '❌ hangout game_mode missing — run party-hangout-mode.sql'
+      else '✅ applied'
+    end
 ) checks
 order by ord;

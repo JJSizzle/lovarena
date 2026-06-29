@@ -10,6 +10,11 @@ import {
 import { TRIVIA_VOTE_SECONDS } from "@/lib/party/trivia-config";
 import type { PartyState } from "@/lib/party/party-types";
 import { PartyMemberBar } from "@/components/party/PartyMemberBar";
+import {
+  PartyEndConfirmModal,
+  PartyLobbySlots,
+  PartyTriviaScoreboard,
+} from "@/components/party/PartyExtras";
 
 function TriviaTimer({
   deadline,
@@ -83,11 +88,17 @@ type Props = {
   busy: boolean;
   onStart: () => void;
   onLeave: () => void;
+  onKick?: (memberId: string) => void;
 };
 
-export function PartyLobby({ party, busy, onStart, onLeave }: Props) {
+export function PartyLobby({ party, busy, onStart, onLeave, onKick }: Props) {
   const spotsLeft = party.maxPlayers - party.members.length;
-  const modeLabel = party.gameMode === "trivia" ? "Trivia" : "Prompt cards";
+  const modeLabel =
+    party.gameMode === "trivia"
+      ? "Trivia"
+      : party.gameMode === "hangout"
+        ? "Hang out"
+        : "Prompt cards";
 
   return (
     <div className="space-y-6">
@@ -104,7 +115,14 @@ export function PartyLobby({ party, busy, onStart, onLeave }: Props) {
         </p>
       </div>
 
-      <PartyMemberBar members={party.members} />
+      <PartyMemberBar
+        members={party.members}
+        isHost={party.isHost}
+        onKick={onKick}
+        kickBusy={busy}
+      />
+
+      <PartyLobbySlots members={party.members} maxPlayers={party.maxPlayers} />
 
       <div className="rounded-2xl border border-purple-500/20 bg-slate-950/60 px-4 py-3 text-center">
         <p className="text-sm text-slate-300">
@@ -118,7 +136,7 @@ export function PartyLobby({ party, busy, onStart, onLeave }: Props) {
       </div>
 
       <div className="flex flex-col gap-2">
-        {party.isHost && (
+        {party.isHost && party.gameMode !== "hangout" && (
           <button
             type="button"
             onClick={onStart}
@@ -132,9 +150,19 @@ export function PartyLobby({ party, busy, onStart, onLeave }: Props) {
                 : "Waiting for friends…"}
           </button>
         )}
-        {!party.isHost && (
+        {party.isHost && party.gameMode === "hangout" && (
+          <p className="text-center text-xs text-emerald-300/90 px-2">
+            Hangout mode — video and chat are live. No game to start.
+          </p>
+        )}
+        {!party.isHost && party.gameMode !== "hangout" && (
           <p className="text-center text-xs text-slate-500">
             Waiting for the host to start…
+          </p>
+        )}
+        {!party.isHost && party.gameMode === "hangout" && (
+          <p className="text-center text-xs text-slate-500">
+            Just hang out — chat and video with friends.
           </p>
         )}
         <button
@@ -150,14 +178,95 @@ export function PartyLobby({ party, busy, onStart, onLeave }: Props) {
   );
 }
 
+type HangoutProps = {
+  party: PartyState;
+  busy: boolean;
+  onEnd: () => void;
+  onLeave: () => void;
+  onKick?: (memberId: string) => void;
+  endConfirmOpen: boolean;
+  onEndConfirm: () => void;
+  onEndCancel: () => void;
+};
+
+export function PartyHangoutView({
+  party,
+  busy,
+  onEnd,
+  onLeave,
+  onKick,
+  endConfirmOpen,
+  onEndConfirm,
+  onEndCancel,
+}: HangoutProps) {
+  return (
+    <div className="space-y-5">
+      <PartyEndConfirmModal
+        open={endConfirmOpen}
+        busy={busy}
+        onConfirm={onEndConfirm}
+        onCancel={onEndCancel}
+      />
+
+      <div className="text-center space-y-2">
+        <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-full px-3 py-1">
+          Hang out · no game
+        </span>
+        <p className="text-sm text-slate-300">
+          Video and party chat — talk as long as you like.
+        </p>
+      </div>
+
+      <PartyMemberBar
+        members={party.members}
+        isHost={party.isHost}
+        onKick={onKick}
+        kickBusy={busy}
+      />
+
+      {party.status === "lobby" && (
+        <PartyLobbySlots
+          members={party.members}
+          maxPlayers={party.maxPlayers}
+        />
+      )}
+
+      {party.isHost && (
+        <button
+          type="button"
+          onClick={onEnd}
+          disabled={busy}
+          className={`${chatBtnGhost} w-full !text-xs !text-red-300/90`}
+        >
+          End party
+        </button>
+      )}
+
+      <button
+        type="button"
+        onClick={onLeave}
+        disabled={busy}
+        className={`${chatBtnGhost} w-full !text-xs`}
+      >
+        Leave party
+      </button>
+    </div>
+  );
+}
+
 type GameProps = {
   party: PartyState;
   busy: boolean;
   onVote: (optionId: string) => void;
   onNext: () => void;
+  onSkip: () => void;
   onEnd: () => void;
   onLeave: () => void;
   onTimeout: () => void;
+  onKick?: (memberId: string) => void;
+  endConfirmOpen: boolean;
+  onEndConfirm: () => void;
+  onEndCancel: () => void;
 };
 
 export function PartyGameView({
@@ -165,9 +274,14 @@ export function PartyGameView({
   busy,
   onVote,
   onNext,
+  onSkip,
   onEnd,
   onLeave,
   onTimeout,
+  onKick,
+  endConfirmOpen,
+  onEndConfirm,
+  onEndCancel,
 }: GameProps) {
   const isTrivia = party.gameMode === "trivia";
   const votedCount = party.votes.length;
@@ -176,24 +290,53 @@ export function PartyGameView({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-2">
+      <PartyEndConfirmModal
+        open={endConfirmOpen}
+        busy={busy}
+        onConfirm={onEndConfirm}
+        onCancel={onEndCancel}
+      />
+
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
           Round {party.roundIndex + 1}
           {isTrivia ? " · Trivia" : " · Prompts"}
         </span>
         {party.isHost && (
-          <button
-            type="button"
-            onClick={onEnd}
-            disabled={busy}
-            className={`${chatBtnGhost} !text-[10px] !py-1 !px-2`}
-          >
-            End party
-          </button>
+          <div className="flex items-center gap-1.5">
+            {isTrivia &&
+              (party.phase === "voting" || party.phase === "reveal") && (
+                <button
+                  type="button"
+                  onClick={onSkip}
+                  disabled={busy}
+                  className={`${chatBtnGhost} !text-[10px] !py-1 !px-2`}
+                >
+                  Skip question
+                </button>
+              )}
+            <button
+              type="button"
+              onClick={onEnd}
+              disabled={busy}
+              className={`${chatBtnGhost} !text-[10px] !py-1 !px-2 !text-red-300/90`}
+            >
+              End party
+            </button>
+          </div>
         )}
       </div>
 
-      <PartyMemberBar members={party.members} />
+      {isTrivia && party.triviaScores.length > 0 && (
+        <PartyTriviaScoreboard scores={party.triviaScores} />
+      )}
+
+      <PartyMemberBar
+        members={party.members}
+        isHost={party.isHost}
+        onKick={onKick}
+        kickBusy={busy}
+      />
 
       <div className="rounded-3xl border-2 border-fuchsia-500/40 bg-gradient-to-br from-slate-900 to-purple-950/80 p-6 text-center shadow-[0_0_30px_rgba(217,70,239,0.15)] space-y-4">
         {isTrivia && party.phase === "voting" && party.votingDeadlineAt && (

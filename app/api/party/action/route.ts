@@ -6,6 +6,7 @@ import {
   buildPartyState,
   maybeAdvanceTriviaOnTimeout,
   maybeAdvanceTriviaRound,
+  skipTriviaQuestion,
   startNextRound,
   syncPartyRoom,
 } from "@/lib/party/party-state";
@@ -26,8 +27,48 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient();
     let room = membership.room;
 
+    if (action === "end") {
+      if (membership.role !== "host") {
+        return NextResponse.json(
+          { error: "Only the host can end the party." },
+          { status: 403 }
+        );
+      }
+      if (room.status === "ended") {
+        return NextResponse.json({ error: "Party already ended." }, { status: 400 });
+      }
+
+      const { data: updated } = await supabase
+        .from("party_rooms")
+        .update({
+          status: "ended",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", partyId)
+        .select("*")
+        .single();
+
+      if (updated) room = updated;
+
+      const party = await buildPartyState(
+        supabase,
+        room,
+        auth.profile.id,
+        req.nextUrl.origin
+      );
+
+      return NextResponse.json({ party });
+    }
+
     if (room.status !== "playing") {
       return NextResponse.json({ error: "Game not in progress." }, { status: 400 });
+    }
+
+    if (room.game_mode === "hangout") {
+      return NextResponse.json(
+        { error: "Hangout parties have no game actions." },
+        { status: 400 }
+      );
     }
 
     if (action === "vote") {
@@ -84,21 +125,27 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Could not load next round" }, { status: 500 });
       }
       room = updated;
-    } else if (action === "end") {
+    } else if (action === "skip") {
       if (membership.role !== "host") {
-        return NextResponse.json({ error: "Only the host can end the party." }, { status: 403 });
+        return NextResponse.json(
+          { error: "Only the host can skip." },
+          { status: 403 }
+        );
       }
-      const { data: updated } = await supabase
-        .from("party_rooms")
-        .update({
-          status: "ended",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", partyId)
-        .select("*")
-        .single();
-
-      if (updated) room = updated;
+      if (room.game_mode !== "trivia") {
+        return NextResponse.json(
+          { error: "Skip is only for trivia." },
+          { status: 400 }
+        );
+      }
+      const updated = await skipTriviaQuestion(supabase, room);
+      if (!updated) {
+        return NextResponse.json(
+          { error: "Cannot skip right now." },
+          { status: 400 }
+        );
+      }
+      room = updated;
     } else {
       return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { chatBtnNeutralOn, chatBtnWarn, chatToolbar } from "@/lib/chat-buttons";
 import type { PartyMemberView } from "@/lib/party/party-types";
@@ -23,24 +24,34 @@ function VideoTile({
   label,
   borderClass,
   labelClass,
+  compact = false,
+  onFocus,
   children,
 }: {
   label: string;
   borderClass: string;
   labelClass: string;
+  compact?: boolean;
+  onFocus?: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className={`relative bg-slate-900 flex items-center justify-center overflow-hidden rounded-2xl border-2 min-h-[120px] sm:min-h-[140px] aspect-video w-full ${borderClass}`}
+    <button
+      type="button"
+      onClick={onFocus}
+      className={`relative bg-slate-900 flex items-center justify-center overflow-hidden rounded-xl sm:rounded-2xl border-2 w-full text-left ${
+        compact
+          ? "min-h-[72px] aspect-[4/3]"
+          : "min-h-[88px] sm:min-h-[140px] aspect-[4/3] sm:aspect-video"
+      } ${borderClass} ${onFocus ? "cursor-pointer active:scale-[0.98] transition-transform" : ""}`}
     >
       <span
-        className={`text-[10px] font-bold absolute top-2 left-2 z-10 bg-slate-950/80 backdrop-blur-md px-2 py-0.5 rounded-full border ${labelClass}`}
+        className={`text-[10px] font-bold absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10 bg-slate-950/80 backdrop-blur-md px-2 py-0.5 rounded-full border ${labelClass}`}
       >
         {label}
       </span>
       {children}
-    </div>
+    </button>
   );
 }
 
@@ -57,13 +68,98 @@ export function PartyVideoPanel({
   onToggleAudio,
   onRetryMedia,
 }: Props) {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const others = members.filter((m) => !m.isYou);
   const streamByPeer = new Map(remoteStreams.map((r) => [r.peerId, r.stream]));
 
-  const gridClass =
-    others.length <= 1
-      ? "grid grid-cols-1 sm:grid-cols-2 gap-2"
-      : "grid grid-cols-2 gap-2";
+  function renderRemoteTile(member: PartyMemberView, compact = false) {
+    const stream = streamByPeer.get(member.id);
+    const hasVideo = Boolean(
+      stream?.getVideoTracks().some((t) => t.enabled && t.readyState === "live")
+    );
+
+    return (
+      <VideoTile
+        key={member.id}
+        label={member.username}
+        borderClass={
+          focusedId === member.id
+            ? "border-amber-400/60 ring-2 ring-amber-400/30"
+            : "border-cyan-500/40"
+        }
+        labelClass="border-cyan-500/30 text-cyan-200"
+        compact={compact}
+        onFocus={() =>
+          setFocusedId((prev) => (prev === member.id ? null : member.id))
+        }
+      >
+        <video
+          ref={(el) => registerRemoteVideo(member.id, el)}
+          autoPlay
+          playsInline
+          className={`absolute inset-0 w-full h-full object-cover ${
+            hasVideo ? "" : "opacity-0"
+          }`}
+        />
+        {!stream && (
+          <div className="flex flex-col items-center gap-1">
+            <ProfileAvatar
+              url={member.avatarUrl}
+              emoji={member.avatarEmoji}
+              alt={member.username}
+              size={compact ? "sm" : "md"}
+            />
+            <span className="text-[10px] text-slate-500">Connecting…</span>
+          </div>
+        )}
+        {stream && !hasVideo && (
+          <div className="flex flex-col items-center gap-1 text-slate-500">
+            <ProfileAvatar
+              url={member.avatarUrl}
+              emoji={member.avatarEmoji}
+              alt={member.username}
+              size={compact ? "sm" : "md"}
+            />
+            <span className="text-[10px]">Camera off</span>
+          </div>
+        )}
+      </VideoTile>
+    );
+  }
+
+  function renderSelfTile(compact = false) {
+    return (
+      <VideoTile
+        label={selfLabel}
+        borderClass="border-fuchsia-500/50 shadow-[0_0_15px_rgba(217,70,239,0.15)]"
+        labelClass="border-fuchsia-500/30 text-fuchsia-200"
+        compact={compact}
+        onFocus={() => setFocusedId((prev) => (prev === "self" ? null : "self"))}
+      >
+        <video
+          ref={attachLocalVideo}
+          autoPlay
+          playsInline
+          muted
+          className={`absolute inset-0 w-full h-full object-cover ${
+            videoEnabled ? "" : "opacity-0"
+          }`}
+        />
+        {!videoEnabled && (
+          <div className="flex flex-col items-center gap-1 text-slate-500">
+            <span className="text-xl">📷</span>
+            <span className="text-[10px]">Camera off</span>
+          </div>
+        )}
+      </VideoTile>
+    );
+  }
+
+  const focusedRemote = focusedId && focusedId !== "self"
+    ? others.find((m) => m.id === focusedId)
+    : null;
+  const showMobileFocus =
+    focusedId !== null && (focusedRemote || focusedId === "self");
 
   return (
     <div className="space-y-3">
@@ -78,7 +174,6 @@ export function PartyVideoPanel({
             className={`${chatBtnNeutralOn} !text-[10px] !py-1 !px-2 ${
               !videoEnabled ? "opacity-60" : ""
             }`}
-            title={videoEnabled ? "Turn camera off" : "Turn camera on"}
           >
             {videoEnabled ? "Cam on" : "Cam off"}
           </button>
@@ -88,12 +183,17 @@ export function PartyVideoPanel({
             className={`${chatBtnNeutralOn} !text-[10px] !py-1 !px-2 ${
               !audioEnabled ? "opacity-60" : ""
             }`}
-            title={audioEnabled ? "Mute" : "Unmute"}
           >
             {audioEnabled ? "Mic on" : "Muted"}
           </button>
         </div>
       </div>
+
+      {others.length > 0 && (
+        <p className="text-[10px] text-slate-600 text-center sm:hidden">
+          Tap a video to enlarge
+        </p>
+      )}
 
       {mediaError && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
@@ -108,77 +208,35 @@ export function PartyVideoPanel({
         </div>
       )}
 
-      <div className={gridClass}>
-        <VideoTile
-          label={selfLabel}
-          borderClass="border-fuchsia-500/50 shadow-[0_0_15px_rgba(217,70,239,0.15)]"
-          labelClass="border-fuchsia-500/30 text-fuchsia-200"
-        >
-          <video
-            ref={attachLocalVideo}
-            autoPlay
-            playsInline
-            muted
-            className={`absolute inset-0 w-full h-full object-cover ${
-              videoEnabled ? "" : "opacity-0"
-            }`}
-          />
-          {!videoEnabled && (
-            <div className="flex flex-col items-center gap-2 text-slate-500">
-              <span className="text-2xl">📷</span>
-              <span className="text-[10px]">Camera off</span>
-            </div>
-          )}
-        </VideoTile>
+      {/* Mobile: pinned focus layout */}
+      {showMobileFocus && (
+        <div className="sm:hidden space-y-2">
+          {focusedId === "self"
+            ? renderSelfTile(false)
+            : focusedRemote
+              ? renderRemoteTile(focusedRemote, false)
+              : null}
+          <div className="grid grid-cols-3 gap-1.5">
+            {renderSelfTile(true)}
+            {others
+              .filter((m) => m.id !== focusedId)
+              .map((m) => renderRemoteTile(m, true))}
+          </div>
+        </div>
+      )}
 
-        {others.map((member) => {
-          const stream = streamByPeer.get(member.id);
-          const hasVideo = Boolean(
-            stream
-              ?.getVideoTracks()
-              .some((t) => t.enabled && t.readyState === "live")
-          );
-
-          return (
-            <VideoTile
-              key={member.id}
-              label={member.username}
-              borderClass="border-cyan-500/40"
-              labelClass="border-cyan-500/30 text-cyan-200"
-            >
-              <video
-                ref={(el) => registerRemoteVideo(member.id, el)}
-                autoPlay
-                playsInline
-                className={`absolute inset-0 w-full h-full object-cover ${
-                  hasVideo ? "" : "opacity-0"
-                }`}
-              />
-              {!stream && (
-                <div className="flex flex-col items-center gap-2">
-                  <ProfileAvatar
-                    url={member.avatarUrl}
-                    emoji={member.avatarEmoji}
-                    alt={member.username}
-                    size="md"
-                  />
-                  <span className="text-[10px] text-slate-500">Connecting…</span>
-                </div>
-              )}
-              {stream && !hasVideo && (
-                <div className="flex flex-col items-center gap-2 text-slate-500">
-                  <ProfileAvatar
-                    url={member.avatarUrl}
-                    emoji={member.avatarEmoji}
-                    alt={member.username}
-                    size="md"
-                  />
-                  <span className="text-[10px]">Camera off</span>
-                </div>
-              )}
-            </VideoTile>
-          );
-        })}
+      {/* Mobile grid / desktop grid */}
+      <div
+        className={`${
+          showMobileFocus ? "hidden sm:grid" : "grid"
+        } ${
+          others.length <= 1
+            ? "grid-cols-1 sm:grid-cols-2 gap-2"
+            : "grid-cols-2 gap-1.5 sm:gap-2"
+        }`}
+      >
+        {renderSelfTile(others.length >= 2)}
+        {others.map((member) => renderRemoteTile(member, others.length >= 2))}
       </div>
     </div>
   );

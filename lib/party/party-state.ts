@@ -4,6 +4,7 @@ import type {
   PartyMemberView,
   PartyRoomRow,
   PartyState,
+  PartyTriviaScoreView,
   PartyVoteView,
   TriviaOption,
 } from "@/lib/party/party-types";
@@ -72,6 +73,74 @@ export async function loadPartyVotes(
   }));
 }
 
+export async function loadTriviaScores(
+  supabase: Supabase,
+  partyId: string,
+  members: PartyMemberView[],
+  viewerId: string
+): Promise<PartyTriviaScoreView[]> {
+  const { data: rows } = await supabase
+    .from("party_trivia_scores")
+    .select("profile_id, score")
+    .eq("party_id", partyId);
+
+  const scoreById = new Map(
+    (rows ?? []).map((row) => [row.profile_id, row.score as number])
+  );
+
+  return members
+    .map((member) => ({
+      profileId: member.id,
+      username: member.username,
+      score: scoreById.get(member.id) ?? 0,
+      isYou: member.id === viewerId,
+    }))
+    .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username));
+}
+
+/** Award +1 for each correct vote this round (once per round). */
+export async function awardTriviaRoundScores(
+  supabase: Supabase,
+  room: PartyRoomRow
+): Promise<void> {
+  if (room.game_mode !== "trivia" || !room.correct_option_id) return;
+  if ((room.last_scored_round ?? -1) >= room.round_index) return;
+
+  const { data: votes } = await supabase
+    .from("party_votes")
+    .select("profile_id, option_id")
+    .eq("party_id", room.id)
+    .eq("round_index", room.round_index);
+
+  for (const vote of votes ?? []) {
+    if (vote.option_id !== room.correct_option_id) continue;
+
+    const { data: existing } = await supabase
+      .from("party_trivia_scores")
+      .select("score")
+      .eq("party_id", room.id)
+      .eq("profile_id", vote.profile_id)
+      .maybeSingle();
+
+    await supabase.from("party_trivia_scores").upsert(
+      {
+        party_id: room.id,
+        profile_id: vote.profile_id,
+        score: (existing?.score ?? 0) + 1,
+      },
+      { onConflict: "party_id,profile_id" }
+    );
+  }
+
+  await supabase
+    .from("party_rooms")
+    .update({
+      last_scored_round: room.round_index,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", room.id);
+}
+
 export async function buildPartyState(
   supabase: Supabase,
   room: PartyRoomRow,
@@ -79,6 +148,10 @@ export async function buildPartyState(
   origin?: string
 ): Promise<PartyState> {
   const members = await loadPartyMembers(supabase, room.id, viewerId);
+  const triviaScores =
+    room.game_mode === "trivia" && room.status === "playing"
+      ? await loadTriviaScores(supabase, room.id, members, viewerId)
+      : [];
   const votes =
     room.status === "playing"
       ? await loadPartyVotes(supabase, room.id, room.round_index)
@@ -112,6 +185,7 @@ export async function buildPartyState(
     members,
     votes,
     myVote,
+    triviaScores,
     isHost,
     canStart: isHost && room.status === "lobby" && members.length >= 2,
     inviteUrl,
@@ -150,6 +224,7 @@ export async function maybeAdvanceTriviaRound(
     .maybeSingle();
 
   if (error || !updated) return null;
+  await awardTriviaRoundScores(supabase, updated as PartyRoomRow);
   return updated as PartyRoomRow;
 }
 
@@ -174,6 +249,7 @@ export async function maybeAdvanceTriviaOnTimeout(
     .maybeSingle();
 
   if (error || !updated) return null;
+  await awardTriviaRoundScores(supabase, updated as PartyRoomRow);
   return updated as PartyRoomRow;
 }
 
@@ -188,6 +264,21 @@ export async function syncPartyRoom(
   const byTimeout = await maybeAdvanceTriviaOnTimeout(supabase, current);
   if (byTimeout) current = byTimeout;
   return current;
+}
+
+/** Host skips the current trivia question (awards points then loads next). */
+export async function skipTriviaQuestion(
+  supabase: Supabase,
+  room: PartyRoomRow
+): Promise<PartyRoomRow | null> {
+  if (room.game_mode !== "trivia") return null;
+  if (room.phase !== "voting" && room.phase !== "reveal") return null;
+
+  if (room.phase === "voting") {
+    await awardTriviaRoundScores(supabase, room);
+  }
+
+  return startNextRound(supabase, room);
 }
 
 export async function startNextRound(
@@ -242,6 +333,27 @@ export async function startFirstRound(
   supabase: Supabase,
   room: PartyRoomRow
 ): Promise<PartyRoomRow | null> {
+  if (room.game_mode === "hangout") {
+    const { data: updated, error } = await supabase
+      .from("party_rooms")
+      .update({
+        status: "playing",
+        round_index: 0,
+        phase: "waiting",
+        current_prompt: null,
+        current_options: null,
+        correct_option_id: null,
+        voting_deadline_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", room.id)
+      .select("*")
+      .single();
+
+    if (error || !updated) return null;
+    return updated as PartyRoomRow;
+  }
+
   const { pickPrompt, pickTrivia } = await import("@/lib/party/game-content");
 
   if (room.game_mode === "prompts") {

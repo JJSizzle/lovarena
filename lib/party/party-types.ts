@@ -1,4 +1,4 @@
-export type PartyGameMode = "prompts" | "trivia";
+export type PartyGameMode = "prompts" | "trivia" | "hangout";
 export type PartyStatus = "lobby" | "playing" | "ended";
 export type PartyPhase = "waiting" | "voting" | "reveal" | "discussion";
 
@@ -20,6 +20,13 @@ export type PartyVoteView = {
   profileId: string;
   username: string;
   optionId: string;
+};
+
+export type PartyTriviaScoreView = {
+  profileId: string;
+  username: string;
+  score: number;
+  isYou: boolean;
 };
 
 export type PartyMessageView = {
@@ -46,6 +53,7 @@ export type PartyState = {
   members: PartyMemberView[];
   votes: PartyVoteView[];
   myVote: string | null;
+  triviaScores: PartyTriviaScoreView[];
   isHost: boolean;
   canStart: boolean;
   inviteUrl: string;
@@ -64,6 +72,7 @@ export type PartyRoomRow = {
   current_options: TriviaOption[] | null;
   correct_option_id: string | null;
   voting_deadline_at: string | null;
+  last_scored_round: number;
   created_at: string;
   updated_at: string;
 };

@@ -3,13 +3,25 @@
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import type { PartyMemberView } from "@/lib/party/party-types";
 
-export function PartyMemberBar({ members }: { members: PartyMemberView[] }) {
+type Props = {
+  members: PartyMemberView[];
+  isHost?: boolean;
+  onKick?: (memberId: string) => void;
+  kickBusy?: boolean;
+};
+
+export function PartyMemberBar({
+  members,
+  isHost = false,
+  onKick,
+  kickBusy = false,
+}: Props) {
   return (
     <div className="flex flex-wrap justify-center gap-3">
       {members.map((member) => (
         <div
           key={member.id}
-          className={`flex flex-col items-center gap-1 rounded-2xl border px-3 py-2 min-w-[4.5rem] ${
+          className={`relative flex flex-col items-center gap-1 rounded-2xl border px-3 py-2 min-w-[4.5rem] ${
             member.isYou
               ? "border-fuchsia-400/50 bg-fuchsia-500/10"
               : "border-white/10 bg-slate-950/60"
@@ -29,6 +41,16 @@ export function PartyMemberBar({ members }: { members: PartyMemberView[] }) {
             <span className="text-[8px] uppercase tracking-wide text-amber-300">
               Host
             </span>
+          )}
+          {isHost && !member.isYou && onKick && (
+            <button
+              type="button"
+              onClick={() => onKick(member.id)}
+              disabled={kickBusy}
+              className="text-[9px] text-red-400/80 hover:text-red-300 mt-0.5 disabled:opacity-40"
+            >
+              Remove
+            </button>
           )}
         </div>
       ))}

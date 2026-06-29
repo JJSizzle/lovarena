@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { CopyInviteButton, PartyChat } from "@/components/party/PartyChat";
-import { PartyGameView, PartyLobby } from "@/components/party/PartyViews";
+import { PartyGameView, PartyHangoutView, PartyLobby } from "@/components/party/PartyViews";
 import { PartyVideoPanel } from "@/components/party/PartyVideoPanel";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -26,7 +26,7 @@ function PartyPageContent() {
   const seasonal = getSeasonalTheme();
 
   const [party, setParty] = useState<PartyState | null>(null);
-  const [gameMode, setGameMode] = useState<PartyGameMode>("prompts");
+  const [gameMode, setGameMode] = useState<PartyGameMode>("hangout");
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [joinCode, setJoinCode] = useState("");
   const [previewCode, setPreviewCode] = useState<string | null>(null);
@@ -34,6 +34,7 @@ function PartyPageContent() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
 
   const codeFromUrl = searchParams.get("code");
 
@@ -213,7 +214,8 @@ function PartyPageContent() {
   }
 
   const inParty = party && party.status !== "ended";
-  const inGame = party?.status === "playing";
+  const isHangout = party?.gameMode === "hangout";
+  const inGame = party?.status === "playing" && !isHangout;
 
   const peerIds = useMemo(
     () =>
@@ -261,7 +263,7 @@ function PartyPageContent() {
   }
 
   async function handleAction(
-    action: "vote" | "next" | "end" | "timeout",
+    action: "vote" | "next" | "end" | "timeout" | "skip",
     optionId?: string
   ) {
     if (!party) return;
@@ -284,6 +286,40 @@ function PartyPageContent() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Action failed");
+    } finally {
+      setBusy(false);
+      if (action === "end") setEndConfirmOpen(false);
+    }
+  }
+
+  async function handleKick(memberId: string) {
+    if (!party) return;
+    const member = party.members.find((m) => m.id === memberId);
+    if (
+      !member ||
+      !confirm(`Remove ${member.username} from the party?`)
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/party/kick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partyId: party.id, memberId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not remove player");
+      if (data.party) setParty(data.party);
+      else {
+        stopMedia();
+        setParty(null);
+        router.replace("/party");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove player");
     } finally {
       setBusy(false);
     }
@@ -343,15 +379,29 @@ function PartyPageContent() {
                 Friends-only hangout · 2–4 players
               </p>
               <p className="text-xs text-slate-500 mt-1">
-                Video, prompt cards, or trivia — separate from stranger chat
+                Video chat with friends — optional games or just hang out
               </p>
             </div>
 
             <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-6 space-y-4">
               <h2 className="font-bold text-fuchsia-300">Start a party</h2>
               <div>
-                <p className="text-xs text-slate-500 mb-2">Game mode</p>
-                <div className="grid grid-cols-2 gap-2">
+                <p className="text-xs text-slate-500 mb-2">Party type</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGameMode("hangout")}
+                    className={`rounded-2xl border p-3 text-left text-sm ${
+                      gameMode === "hangout"
+                        ? "border-emerald-400 bg-emerald-500/10"
+                        : "border-white/10 bg-slate-900/60"
+                    }`}
+                  >
+                    <span className="font-semibold">Hang out</span>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Video + chat only
+                    </p>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setGameMode("prompts")}
@@ -461,17 +511,37 @@ function PartyPageContent() {
                 onToggleAudio={toggleAudio}
                 onRetryMedia={retryMedia}
               />
-              {party.status === "lobby" && (
+              {party.status === "lobby" && !isHangout && (
                 <>
                   <PartyLobby
                     party={party}
                     busy={busy}
                     onStart={handleStart}
                     onLeave={handleLeave}
+                    onKick={party.isHost ? handleKick : undefined}
                   />
                   <div className="mt-4">
                     <CopyInviteButton inviteUrl={party.inviteUrl} />
                   </div>
+                </>
+              )}
+              {isHangout && (
+                <>
+                  <PartyHangoutView
+                    party={party}
+                    busy={busy}
+                    onEnd={() => setEndConfirmOpen(true)}
+                    onLeave={handleLeave}
+                    onKick={party.isHost ? handleKick : undefined}
+                    endConfirmOpen={endConfirmOpen}
+                    onEndConfirm={() => handleAction("end")}
+                    onEndCancel={() => setEndConfirmOpen(false)}
+                  />
+                  {party.status === "lobby" && (
+                    <div className="mt-4">
+                      <CopyInviteButton inviteUrl={party.inviteUrl} />
+                    </div>
+                  )}
                 </>
               )}
               {inGame && (
@@ -480,9 +550,14 @@ function PartyPageContent() {
                   busy={busy}
                   onVote={(optionId) => handleAction("vote", optionId)}
                   onNext={() => handleAction("next")}
-                  onEnd={() => handleAction("end")}
+                  onSkip={() => handleAction("skip")}
+                  onEnd={() => setEndConfirmOpen(true)}
                   onLeave={handleLeave}
                   onTimeout={() => void handleTimeout()}
+                  onKick={party.isHost ? handleKick : undefined}
+                  endConfirmOpen={endConfirmOpen}
+                  onEndConfirm={() => handleAction("end")}
+                  onEndCancel={() => setEndConfirmOpen(false)}
                 />
               )}
               {error && (
