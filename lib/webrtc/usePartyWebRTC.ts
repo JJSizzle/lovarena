@@ -11,7 +11,12 @@ import {
   acquireLocalMedia,
   mediaErrorMessage,
 } from "@/lib/webrtc/media-constraints";
-import { resolveIceServers } from "@/lib/webrtc/ice-servers";
+import {
+  buildPeerConnectionConfig,
+  resolveWebRtcConfig,
+  sanitizeIceCandidate,
+  sanitizeSdp,
+} from "@/lib/webrtc/webrtc-config";
 
 type SignalOut =
   | { type: "offer"; sdp: string }
@@ -91,6 +96,7 @@ export function usePartyWebRTC(
   > | null>(null);
   const togglingVideoRef = useRef(false);
   const forceNewStreamRef = useRef(false);
+  const relayOnlyRef = useRef(false);
 
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [videoEnabled, setVideoEnabled] = useState(false);
@@ -171,7 +177,10 @@ export function usePartyWebRTC(
     try {
       const pc = state.pc;
       if (pc.signalingState === "have-local-offer" && pc.localDescription?.sdp) {
-        await sendSignal(peerId, { type: "offer", sdp: pc.localDescription.sdp });
+        await sendSignal(peerId, {
+          type: "offer",
+          sdp: sanitizeSdp(pc.localDescription.sdp, relayOnlyRef.current),
+        });
         return;
       }
       if (pc.signalingState !== "stable" && pc.signalingState !== "closed") {
@@ -179,7 +188,12 @@ export function usePartyWebRTC(
       }
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      if (offer.sdp) await sendSignal(peerId, { type: "offer", sdp: offer.sdp });
+      if (offer.sdp) {
+        await sendSignal(peerId, {
+          type: "offer",
+          sdp: sanitizeSdp(offer.sdp, relayOnlyRef.current),
+        });
+      }
     } catch {
       // negotiation race
     }
@@ -368,7 +382,10 @@ export function usePartyWebRTC(
           const answer = await state.pc.createAnswer();
           await state.pc.setLocalDescription(answer);
           if (answer.sdp) {
-            await sendSignal(msg.from, { type: "answer", sdp: answer.sdp });
+            await sendSignal(msg.from, {
+              type: "answer",
+              sdp: sanitizeSdp(answer.sdp, relayOnlyRef.current),
+            });
           }
           return;
         }
@@ -384,10 +401,15 @@ export function usePartyWebRTC(
         }
 
         if (msg.type === "ice") {
+          const candidate = sanitizeIceCandidate(
+            msg.candidate,
+            relayOnlyRef.current
+          );
+          if (!candidate) return;
           if (state.pc.remoteDescription) {
-            await state.pc.addIceCandidate(msg.candidate);
+            await state.pc.addIceCandidate(candidate);
           } else {
-            state.iceQueue.push(msg.candidate);
+            state.iceQueue.push(candidate);
           }
         }
       } catch {
@@ -395,13 +417,14 @@ export function usePartyWebRTC(
       }
     }
 
-    async function connectPeer(peerId: string, stream: MediaStream) {
+    async function connectPeer(
+      peerId: string,
+      stream: MediaStream,
+      rtcConfig: Awaited<ReturnType<typeof resolveWebRtcConfig>>
+    ) {
       if (peersRef.current.has(peerId)) return;
 
-      const pc = new RTCPeerConnection({
-        iceServers: await resolveIceServers(),
-        bundlePolicy: "max-bundle",
-      });
+      const pc = new RTCPeerConnection(buildPeerConnectionConfig(rtcConfig));
 
       const state: PeerState = {
         pc,
@@ -423,12 +446,13 @@ export function usePartyWebRTC(
       };
 
       pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          void sendSignal(peerId, {
-            type: "ice",
-            candidate: event.candidate.toJSON(),
-          });
-        }
+        if (!event.candidate) return;
+        const candidate = sanitizeIceCandidate(
+          event.candidate.toJSON(),
+          relayOnlyRef.current
+        );
+        if (!candidate) return;
+        void sendSignal(peerId, { type: "ice", candidate });
       };
 
       await sendSignal(peerId, { type: "ready" });
@@ -463,9 +487,12 @@ export function usePartyWebRTC(
         await channel.subscribe();
         if (cancelled) return;
 
+        const rtcConfig = await resolveWebRtcConfig();
+        relayOnlyRef.current = rtcConfig.relayOnly;
+
         for (const peerId of sortedPeerIds) {
           if (peerId === userId) continue;
-          await connectPeer(peerId, stream);
+          await connectPeer(peerId, stream, rtcConfig);
         }
       } catch (err) {
         if (!cancelled) {

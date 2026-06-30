@@ -56,29 +56,8 @@ export function getIceServers(): RTCIceServer[] {
   return getStaticIceServers();
 }
 
-const ICE_CACHE_TTL_MS = 55 * 60 * 1000;
-let cachedIceServers: RTCIceServer[] | null = null;
-let cachedAt = 0;
-
 /** Fetches TURN credentials from the server (Metered or static fallback). */
 export async function resolveIceServers(): Promise<RTCIceServer[]> {
-  if (cachedIceServers && Date.now() - cachedAt < ICE_CACHE_TTL_MS) {
-    return cachedIceServers;
-  }
-
-  try {
-    const res = await fetch("/api/webrtc/ice-servers", { cache: "no-store" });
-    const data = (await res.json()) as { iceServers?: RTCIceServer[] };
-    if (res.ok && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
-      cachedIceServers = data.iceServers;
-      cachedAt = Date.now();
-      return cachedIceServers;
-    }
-  } catch {
-    // fall through
-  }
-
-  cachedIceServers = getStaticIceServers();
-  cachedAt = Date.now();
-  return cachedIceServers;
+  const { resolveWebRtcConfig } = await import("@/lib/webrtc/webrtc-config");
+  return (await resolveWebRtcConfig()).iceServers;
 }
