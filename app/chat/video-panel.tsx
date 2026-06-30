@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { RefObject } from "react";
+import { BetaBadge } from "@/components/BetaBadge";
 import {
   chatBtnEnd,
   chatBtnFun,
@@ -274,9 +275,12 @@ export function VideoPanel({
         <div className="text-center min-w-0 flex flex-col items-center gap-1.5">
           <Link
             href="/"
-            className="inline-block text-lg sm:text-2xl md:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent hover:opacity-90 transition leading-tight"
+            className="inline-flex items-center gap-1.5 sm:gap-2 hover:opacity-90 transition"
           >
-            LOVARENA
+            <span className="text-lg sm:text-2xl md:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent leading-tight">
+              LOVARENA
+            </span>
+            <BetaBadge size="sm" className="translate-y-px sm:translate-y-1" />
           </Link>
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-purple-300 whitespace-nowrap">
             {matchBadge}

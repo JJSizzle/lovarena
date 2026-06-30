@@ -28,6 +28,7 @@ import { OnlineStatsBanner } from "@/components/OnlineStatsBanner";
 import { ShareInviteButton } from "@/components/ShareInviteButton";
 import { StreakBadge } from "@/components/StreakBadge";
 import { AppQuickNav } from "@/components/AppQuickNav";
+import { BetaBadge } from "@/components/BetaBadge";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 export default function HomePage() {
@@ -148,10 +149,11 @@ export default function HomePage() {
       <header className="relative z-10 max-w-4xl mx-auto w-full px-4 sm:px-6 pt-5 pb-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <Link href="/" className="inline-block hover:opacity-90 transition">
+            <Link href="/" className="inline-flex items-center gap-2 hover:opacity-90 transition">
               <h1 className="text-xl sm:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]">
                 LOVARENA
               </h1>
+              <BetaBadge size="sm" className="translate-y-px sm:translate-y-0.5" />
             </Link>
             <p className="text-[10px] text-purple-300/60 mt-0.5">{seasonal.label}</p>
           </div>

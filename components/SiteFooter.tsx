@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BetaBadge } from "@/components/BetaBadge";
 
 const exploreLinks = [
   { href: "/chat", label: "Enter Arena" },
@@ -26,8 +27,9 @@ export function SiteFooter() {
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           <div className="col-span-2 sm:col-span-1">
-            <p className="text-sm font-bold bg-gradient-to-r from-pink-400 to-cyan-400 bg-clip-text text-transparent">
-              LOVARENA
+            <p className="inline-flex items-center gap-2 text-sm font-bold bg-gradient-to-r from-pink-400 to-cyan-400 bg-clip-text text-transparent">
+              <span>LOVARENA</span>
+              <BetaBadge size="sm" />
             </p>
             <p className="text-slate-500 mt-2 leading-relaxed">
               Video &amp; text chat for adults 18+. Add to Home Screen for an

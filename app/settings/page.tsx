@@ -22,6 +22,7 @@ import { isSupportedTranslationLanguage } from "@/lib/translation/language-codes
 import { soundsEnabled, setSoundsEnabled } from "@/lib/sounds";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { AppPageHeader } from "@/components/AppPageHeader";
+import { BetaNotice } from "@/components/BetaNotice";
 
 function SettingRow({
   title,
@@ -183,6 +184,8 @@ export default function SettingsPage() {
         />
 
         <AppQuickNav className="mb-2" />
+
+        <BetaNotice />
 
         <form
           onSubmit={handleSave}
