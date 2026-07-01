@@ -30,7 +30,11 @@ export async function subscribeToWebPush(): Promise<{
   const keyRes = await fetch("/api/push/public-key", { cache: "no-store" });
   const keyData = await keyRes.json();
   if (!keyRes.ok || !keyData.enabled || !keyData.publicKey) {
-    return { ok: false, error: "Push is not configured on the server yet." };
+    return {
+      ok: false,
+      error:
+        "Push isn't configured on the server yet. Run npm run setup:web-push, add WEB_PUSH_VAPID_CREDENTIALS to Vercel, and redeploy.",
+    };
   }
 
   const registration = await navigator.serviceWorker.register("/sw.js");

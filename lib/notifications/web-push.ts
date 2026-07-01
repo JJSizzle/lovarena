@@ -1,5 +1,9 @@
 import webpush from "web-push";
 import type { createAdminClient } from "@/lib/supabase/admin";
+import {
+  isWebPushConfigured,
+  resolveVapidConfig,
+} from "@/lib/notifications/vapid-config";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -13,15 +17,15 @@ export type WebPushPayload = {
 let configured = false;
 
 function ensureConfigured(): boolean {
-  const publicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY;
-  const subject =
-    process.env.WEB_PUSH_VAPID_SUBJECT ?? "mailto:support@lovarena.app";
-
-  if (!publicKey || !privateKey) return false;
+  const config = resolveVapidConfig();
+  if (!config) return false;
 
   if (!configured) {
-    webpush.setVapidDetails(subject, publicKey, privateKey);
+    webpush.setVapidDetails(
+      config.subject,
+      config.publicKey,
+      config.privateKey
+    );
     configured = true;
   }
 
@@ -29,8 +33,10 @@ function ensureConfigured(): boolean {
 }
 
 export function getWebPushPublicKey(): string | null {
-  return process.env.WEB_PUSH_VAPID_PUBLIC_KEY ?? null;
+  return resolveVapidConfig()?.publicKey ?? null;
 }
+
+export { isWebPushConfigured };
 
 export async function sendWebPushToUser(
   supabase: AdminClient,
