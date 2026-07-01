@@ -68,9 +68,9 @@ Then verify rows 19–20 in `supabase/check-migrations.sql`.
 
 ## Admin hardening
 
-1. Supabase Auth → enable MFA on your admin account
-2. Vercel → Production → `ADMIN_ALLOWED_IPS=your.home.ip,your.office.ip`
-3. Optional: Cloudflare WAF rule to restrict `/admin` paths
+1. Supabase Auth → enable TOTP under Authentication → Providers (or MFA settings)
+2. Users enroll at **Settings → Account security → Enable 2FA** (or manage existing TOTP)
+3. Optional: `ADMIN_ALLOWED_IPS` on Vercel to lock `/admin` API to known IPs
 4. `/admin` dashboard shows audit log for recent actions
 
 ## Manual smoke (two browsers)

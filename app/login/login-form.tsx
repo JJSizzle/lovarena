@@ -20,8 +20,14 @@ import { UsernameInput } from "@/components/UsernameInput";
 import { REFERRAL_STORAGE_KEY } from "@/lib/referral";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { MfaCodeInput } from "@/components/MfaCodeInput";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { useAuth } from "@/components/AuthProvider";
+import {
+  getPrimaryVerifiedTotpFactorId,
+  needsMfaVerification,
+  verifyTotpCode,
+} from "@/lib/auth/mfa";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -42,6 +48,10 @@ export default function LoginForm() {
   const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
   const [signupAge, setSignupAge] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [mfaStep, setMfaStep] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaUserId, setMfaUserId] = useState<string | null>(null);
 
   const turnstileSiteKey =
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
@@ -223,6 +233,30 @@ export default function LoginForm() {
     }
   }
 
+  async function finishLoginAfterMfa(userId: string) {
+    await ensureProfile(userId);
+    await applyReferralCode();
+    await postAuthRedirect(userId);
+  }
+
+  async function handleMfaVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mfaFactorId || !mfaUserId || mfaCode.length !== 6) return;
+
+    setError(null);
+    setLoading(true);
+    try {
+      await verifyTotpCode(supabase, mfaFactorId, mfaCode);
+      setMfaStep(false);
+      setMfaCode("");
+      await finishLoginAfterMfa(mfaUserId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid authenticator code");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleEmailAuth(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -309,9 +343,26 @@ export default function LoginForm() {
           }
           throw signInError;
         }
-        if (data.user) await ensureProfile(data.user.id);
-        if (data.user) await applyReferralCode();
-        if (data.user) await postAuthRedirect(data.user.id);
+
+        if (data.user) {
+          const requiresMfa = await needsMfaVerification(supabase);
+          if (requiresMfa) {
+            const factorId = await getPrimaryVerifiedTotpFactorId(supabase);
+            if (!factorId) {
+              throw new Error(
+                "Two-factor authentication is required but no authenticator is set up. Contact support."
+              );
+            }
+            setMfaUserId(data.user.id);
+            setMfaFactorId(factorId);
+            setMfaStep(true);
+            setMfaCode("");
+            setLoading(false);
+            return;
+          }
+
+          await finishLoginAfterMfa(data.user.id);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");
@@ -370,14 +421,58 @@ export default function LoginForm() {
           ← Lovarena
         </Link>
         <h1 className="mt-4 text-2xl font-bold bg-gradient-to-r from-pink-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
-          {mode === "login" ? "Welcome back" : "Create account"}
+          {mfaStep
+            ? "Authenticator code"
+            : mode === "login"
+              ? "Welcome back"
+              : "Create account"}
         </h1>
         <p className="mt-2 text-sm text-purple-300/70">
-          {mode === "login"
-            ? "Sign in to add friends and send private messages."
-            : "Join Lovarena — video + text chat with real people."}
+          {mfaStep
+            ? "Enter the 6-digit code from your authenticator app."
+            : mode === "login"
+              ? "Sign in to add friends and send private messages."
+              : "Join Lovarena — video + text chat with real people."}
         </p>
 
+        {mfaStep ? (
+          <form onSubmit={handleMfaVerify} className="mt-6 space-y-4">
+            <MfaCodeInput
+              id="login-mfa-code"
+              value={mfaCode}
+              onChange={setMfaCode}
+              disabled={loading}
+            />
+            {error && (
+              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                {error}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={loading || mfaCode.length !== 6}
+              className="w-full rounded-2xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 disabled:opacity-50 text-white font-extrabold py-3.5"
+            >
+              {loading ? "Verifying…" : "Verify & sign in"}
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                setMfaStep(false);
+                setMfaFactorId(null);
+                setMfaUserId(null);
+                setMfaCode("");
+                setError(null);
+                void signOut();
+              }}
+              className="w-full text-sm text-slate-400 hover:text-slate-200"
+            >
+              ← Back to sign in
+            </button>
+          </form>
+        ) : (
+          <>
         {user && (
           <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             <p>
@@ -561,6 +656,8 @@ export default function LoginForm() {
         >
           {googleLoading ? "Redirecting to Google…" : "Continue with Google"}
         </button>
+          </>
+        )}
       </div>
     </main>
   );

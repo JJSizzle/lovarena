@@ -27,6 +27,7 @@ import {
   subscribeToWebPush,
   unsubscribeFromWebPush,
 } from "@/components/WebPushManager";
+import { MfaSettingsPanel } from "@/components/MfaSettingsPanel";
 
 function SettingRow({
   title,
@@ -398,6 +399,13 @@ export default function SettingsPage() {
             >
               <Toggle checked={allowMutualSpark} onChange={setAllowMutualSpark} />
             </SettingRow>
+          </section>
+
+          <section className="pt-2">
+            <h2 className="text-sm font-bold text-fuchsia-300 mb-1">
+              Account security
+            </h2>
+            {user && <MfaSettingsPanel user={user} />}
           </section>
 
           <section className="pt-2">
