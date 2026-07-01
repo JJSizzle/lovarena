@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { FriendProfileSheet } from "@/components/FriendProfileSheet";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -122,6 +123,7 @@ export default function FriendsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const chatIdFromUrl = searchParams.get("chat");
+  const { confirm } = useConfirm();
   const { user, profile, loading } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>(
@@ -221,13 +223,13 @@ export default function FriendsPage() {
   async function handleRemoveFriend(friend: Friend) {
     const label =
       friend.connection_type === "mutual_connect" ? "mutual" : "friend";
-    if (
-      !confirm(
-        `Remove ${friend.username} from your ${label}s? You can add them again from a future match.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Remove friend?",
+      message: `Remove ${friend.username} from your ${label}s? You can add them again from a future match.`,
+      confirmLabel: "Remove",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setRemoveLoading(friend.id);
     setRequestNotice(null);
@@ -270,13 +272,13 @@ export default function FriendsPage() {
   }
 
   async function handleBlockFriend(friendProfile: FriendProfileView) {
-    if (
-      !confirm(
-        `Block ${friendProfile.username}? They won't be matched with you again.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Block user?",
+      message: `Block ${friendProfile.username}? They won't be matched with you again.`,
+      confirmLabel: "Block",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setRequestNotice(null);
     const res = await fetch("/api/blocks", {

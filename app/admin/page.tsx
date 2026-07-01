@@ -3,7 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
+import { useConfirm } from "@/components/ConfirmProvider";
+import { AppPageHeader } from "@/components/AppPageHeader";
+import { ParticleBackground } from "@/components/ParticleBackground";
+import {
+  chatBtnGhost,
+  chatBtnNeutral,
+  chatBtnWarn,
+} from "@/lib/chat-buttons";
 import { reportReasonLabel } from "@/lib/moderation/report-reasons";
+import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 type Report = {
   id: string;
@@ -27,7 +36,40 @@ type RestrictionAppeal = {
   reviewed_at: string | null;
 };
 
+function AdminCard({
+  title,
+  count,
+  accent,
+  children,
+  empty,
+}: {
+  title: string;
+  count?: number;
+  accent: string;
+  children: React.ReactNode;
+  empty?: string;
+}) {
+  return (
+    <section className="rounded-2xl border border-purple-500/25 bg-slate-950/70 backdrop-blur-xl p-5">
+      <h2 className={`text-base font-semibold ${accent}`}>
+        {title}
+        {count !== undefined && (
+          <span className="ml-2 text-xs font-normal text-slate-500">
+            ({count})
+          </span>
+        )}
+      </h2>
+      <div className="mt-4 space-y-3">{children}</div>
+      {empty && !children && (
+        <p className="mt-4 text-sm text-slate-500">{empty}</p>
+      )}
+    </section>
+  );
+}
+
 export default function AdminPage() {
+  const seasonal = getSeasonalTheme();
+  const { confirm } = useConfirm();
   const { user, profile, loading } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [flagged, setFlagged] = useState<
@@ -63,23 +105,32 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
-        Loading…
+      <div
+        className={`relative min-h-screen flex items-center justify-center bg-gradient-to-br ${seasonal.gradient} text-slate-400`}
+      >
+        <ParticleBackground />
+        <span className="relative z-10">Loading…</span>
       </div>
     );
   }
 
   if (!user || !profile?.is_admin) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
-        <div className="text-center">
+      <main
+        className={`relative min-h-screen flex items-center justify-center bg-gradient-to-br ${seasonal.gradient} text-white px-6`}
+      >
+        <ParticleBackground />
+        <div className="relative z-10 text-center max-w-sm rounded-2xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-8">
           <h1 className="text-xl font-bold">Admin access required</h1>
-          <p className="text-slate-400 mt-2 text-sm">
+          <p className="text-slate-400 mt-2 text-sm leading-relaxed">
             Set{" "}
             <code className="text-sky-400">is_admin = true</code> on your
             profile in Supabase.
           </p>
-          <Link href="/" className="text-sky-400 text-sm mt-4 inline-block">
+          <Link
+            href="/"
+            className="inline-block text-sky-400 text-sm mt-5 hover:text-sky-300"
+          >
             ← Home
           </Link>
         </div>
@@ -99,9 +150,12 @@ export default function AdminPage() {
   }
 
   async function unflagUser(userId: string) {
-    if (!confirm("Remove this user's restriction? They can match again.")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Lift restriction?",
+      message: "Remove this user's restriction? They can match again.",
+      confirmLabel: "Unflag",
+    });
+    if (!ok) return;
 
     setUnflagging(userId);
     try {
@@ -122,13 +176,14 @@ export default function AdminPage() {
   }
 
   async function banUser(userId: string, reportId?: string) {
-    if (
-      !confirm(
-        "Ban this user? They will be flagged and removed from all active chats."
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Ban user?",
+      message:
+        "Ban this user? They will be flagged and removed from all active chats.",
+      confirmLabel: "Ban",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setBanning(userId);
     try {
@@ -177,10 +232,16 @@ export default function AdminPage() {
     appealId: string,
     action: "appeal_approve" | "appeal_deny"
   ) {
-    const label = action === "appeal_approve" ? "approve and lift restriction" : "deny";
-    if (!confirm(`${label.charAt(0).toUpperCase()}${label.slice(1)} this appeal?`)) {
-      return;
-    }
+    const approve = action === "appeal_approve";
+    const ok = await confirm({
+      title: approve ? "Approve appeal?" : "Deny appeal?",
+      message: approve
+        ? "Approve and lift this user's restriction?"
+        : "Deny this appeal? The restriction stays in place.",
+      confirmLabel: approve ? "Approve" : "Deny",
+      variant: approve ? "default" : "danger",
+    });
+    if (!ok) return;
 
     setAppealLoading(appealId);
     try {
@@ -199,7 +260,9 @@ export default function AdminPage() {
           a.id === appealId
             ? {
                 ...a,
-                status: data.status ?? (action === "appeal_approve" ? "approved" : "denied"),
+                status:
+                  data.status ??
+                  (action === "appeal_approve" ? "approved" : "denied"),
                 reviewed_at: new Date().toISOString(),
               }
             : a
@@ -208,7 +271,9 @@ export default function AdminPage() {
       if (action === "appeal_approve") {
         const appeal = appeals.find((a) => a.id === appealId);
         if (appeal) {
-          setFlagged((prev) => prev.filter((f) => f.user_id !== appeal.user_id));
+          setFlagged((prev) =>
+            prev.filter((f) => f.user_id !== appeal.user_id)
+          );
         }
       }
     } finally {
@@ -216,80 +281,115 @@ export default function AdminPage() {
     }
   }
 
-  return (
-    <main className="min-h-screen bg-slate-950 text-white px-6 py-10">
-      <div className="max-w-4xl mx-auto">
-        <Link href="/" className="text-sm text-slate-400 hover:text-white">
-          ← Lovarena
-        </Link>
-        <h1 className="text-2xl font-bold mt-4">Moderation dashboard</h1>
-        {error && <p className="text-red-400 mt-2">{error}</p>}
+  const openReports = reports.filter((r) => r.status === "open");
+  const openAppeals = appeals.filter((a) => a.status === "open");
 
-        <section className="mt-8">
-          <h2 className="text-lg font-semibold text-amber-300">
-            Open reports ({reports.filter((r) => r.status === "open").length})
-          </h2>
-          <div className="mt-4 space-y-3">
+  return (
+    <div
+      className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white overflow-hidden`}
+    >
+      <ParticleBackground />
+      <main className="relative z-10 max-w-4xl mx-auto px-6 py-8">
+        <AppPageHeader
+          title="Moderation"
+          backHref="/"
+          backLabel="← Home"
+          className="mb-6"
+        />
+
+        <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+          Review reports, appeals, and active restrictions. Actions are logged
+          server-side.
+        </p>
+
+        {error && (
+          <p className="text-sm text-red-300 mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
+            {error}
+          </p>
+        )}
+
+        <div className="grid gap-6">
+          <AdminCard
+            title="Open reports"
+            count={openReports.length}
+            accent="text-amber-300"
+          >
             {reports.map((r) => (
               <div
                 key={r.id}
-                className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm"
+                className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm"
               >
                 <p>
-                  <strong>{reportReasonLabel(r.reason)}</strong> · {r.status} ·{" "}
-                  {new Date(r.created_at).toLocaleString()}
+                  <strong className="text-slate-200">
+                    {reportReasonLabel(r.reason)}
+                  </strong>{" "}
+                  ·{" "}
+                  <span
+                    className={
+                      r.status === "open" ? "text-amber-300" : "text-slate-400"
+                    }
+                  >
+                    {r.status}
+                  </span>{" "}
+                  · {new Date(r.created_at).toLocaleString()}
                 </p>
                 {r.details && (
-                  <p className="text-slate-400 mt-1">{r.details}</p>
+                  <p className="text-slate-400 mt-1 leading-relaxed">
+                    {r.details}
+                  </p>
                 )}
                 <p className="text-xs text-slate-500 mt-2 font-mono">
                   reported {r.reported_user_id.slice(0, 8)} · room{" "}
                   {r.room_id?.slice(0, 8) ?? "—"}
                 </p>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {r.status === "open" && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => updateStatus(r.id, "reviewed")}
-                        className="text-xs bg-white/10 px-3 py-1 rounded-lg"
-                      >
-                        Mark reviewed
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => banUser(r.reported_user_id, r.id)}
-                        disabled={banning === r.reported_user_id}
-                        className="text-xs bg-red-600/80 px-3 py-1 rounded-lg disabled:opacity-50"
-                      >
-                        {banning === r.reported_user_id ? "Banning…" : "Ban user"}
-                      </button>
-                    </>
-                  )}
-                </div>
+                {r.status === "open" && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => updateStatus(r.id, "reviewed")}
+                      className={`${chatBtnNeutral} !text-xs`}
+                    >
+                      Mark reviewed
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => banUser(r.reported_user_id, r.id)}
+                      disabled={banning === r.reported_user_id}
+                      className={`${chatBtnWarn} !text-xs !border-red-500/40 !text-red-200`}
+                    >
+                      {banning === r.reported_user_id ? "Banning…" : "Ban user"}
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {reports.length === 0 && (
-              <p className="text-slate-500">No reports yet.</p>
+              <p className="text-sm text-slate-500">No reports yet.</p>
             )}
-          </div>
-        </section>
+          </AdminCard>
 
-        <section className="mt-10">
-          <h2 className="text-lg font-semibold text-violet-300">
-            Restriction appeals ({appeals.filter((a) => a.status === "open").length} open)
-          </h2>
-          <div className="mt-4 space-y-3">
+          <AdminCard
+            title="Restriction appeals"
+            count={openAppeals.length}
+            accent="text-violet-300"
+          >
             {appeals.map((a) => (
               <div
                 key={a.id}
-                className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm"
+                className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm"
               >
                 <p>
-                  <strong>{a.username}</strong> · {a.status} ·{" "}
-                  {new Date(a.created_at).toLocaleString()}
+                  <strong className="text-slate-200">{a.username}</strong> ·{" "}
+                  <span
+                    className={
+                      a.status === "open" ? "text-violet-300" : "text-slate-400"
+                    }
+                  >
+                    {a.status}
+                  </span>{" "}
+                  · {new Date(a.created_at).toLocaleString()}
                 </p>
-                <p className="text-slate-400 mt-1">{a.message}</p>
+                <p className="text-slate-400 mt-1 leading-relaxed">{a.message}</p>
                 <p className="text-xs text-slate-500 mt-2">
                   Restriction: {a.restriction_reason ?? "—"} · user{" "}
                   <span className="font-mono">{a.user_id.slice(0, 8)}</span>
@@ -300,7 +400,7 @@ export default function AdminPage() {
                       type="button"
                       onClick={() => reviewAppeal(a.id, "appeal_approve")}
                       disabled={appealLoading === a.id}
-                      className="text-xs bg-emerald-600/80 px-3 py-1 rounded-lg disabled:opacity-50"
+                      className={`${chatBtnNeutral} !text-xs !border-emerald-500/30 !text-emerald-200`}
                     >
                       {appealLoading === a.id ? "…" : "Approve & lift"}
                     </button>
@@ -308,7 +408,7 @@ export default function AdminPage() {
                       type="button"
                       onClick={() => reviewAppeal(a.id, "appeal_deny")}
                       disabled={appealLoading === a.id}
-                      className="text-xs bg-white/10 px-3 py-1 rounded-lg disabled:opacity-50"
+                      className={`${chatBtnGhost} !text-xs`}
                     >
                       Deny
                     </button>
@@ -317,18 +417,19 @@ export default function AdminPage() {
               </div>
             ))}
             {appeals.length === 0 && (
-              <p className="text-slate-500">No appeals yet.</p>
+              <p className="text-sm text-slate-500">No appeals yet.</p>
             )}
-          </div>
-        </section>
+          </AdminCard>
 
-        <section className="mt-10">
-          <h2 className="text-lg font-semibold text-red-300">Active restrictions</h2>
-          <ul className="mt-4 space-y-2 text-sm">
+          <AdminCard
+            title="Active restrictions"
+            count={flagged.length}
+            accent="text-red-300"
+          >
             {flagged.map((f) => (
-              <li
+              <div
                 key={f.user_id}
-                className="rounded-xl border border-white/10 bg-white/5 p-3"
+                className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm"
               >
                 <p className="font-mono text-slate-300 text-xs">{f.user_id}</p>
                 <p className="text-slate-400 mt-1">
@@ -342,12 +443,12 @@ export default function AdminPage() {
                       ? `Restricted until ${new Date(f.restricted_until).toLocaleString()}`
                       : "Restricted"}
                 </p>
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-3">
                   <button
                     type="button"
                     onClick={() => unflagUser(f.user_id)}
                     disabled={unflagging === f.user_id}
-                    className="text-xs bg-emerald-600/70 px-2 py-0.5 rounded font-sans disabled:opacity-50"
+                    className={`${chatBtnNeutral} !text-xs !border-emerald-500/30 !text-emerald-200`}
                   >
                     {unflagging === f.user_id ? "Unflagging…" : "Unflag"}
                   </button>
@@ -355,19 +456,19 @@ export default function AdminPage() {
                     type="button"
                     onClick={() => banUser(f.user_id)}
                     disabled={banning === f.user_id}
-                    className="text-xs bg-red-600/60 px-2 py-0.5 rounded font-sans disabled:opacity-50"
+                    className={`${chatBtnWarn} !text-xs !border-red-500/40 !text-red-200`}
                   >
                     {banning === f.user_id ? "Banning…" : "Permanent ban"}
                   </button>
                 </div>
-              </li>
+              </div>
             ))}
             {flagged.length === 0 && (
-              <li className="text-slate-500">None</li>
+              <p className="text-sm text-slate-500">None</p>
             )}
-          </ul>
-        </section>
-      </div>
-    </main>
+          </AdminCard>
+        </div>
+      </main>
+    </div>
   );
 }

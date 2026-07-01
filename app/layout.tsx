@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { AgeGate } from "@/components/AgeGate";
 import { AuthProvider } from "@/components/AuthProvider";
+import { ConfirmProvider } from "@/components/ConfirmProvider";
 import { CookieConsent } from "@/components/CookieConsent";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { FriendActivityNotifier } from "@/components/FriendActivityNotifier";
@@ -83,16 +84,18 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-slate-950 text-white">
         <AuthProvider>
           <NotificationProvider>
-            <AgeGate>
-              <PageBottomPad>{children}</PageBottomPad>
-              <RouteAwareFooter />
-              <CookieConsent />
-              <InstallPrompt />
-              <FriendMessageNotifier />
-              <FriendActivityNotifier />
-              <NotificationBell />
-              <WebPushManager />
-            </AgeGate>
+            <ConfirmProvider>
+              <AgeGate>
+                <PageBottomPad>{children}</PageBottomPad>
+                <RouteAwareFooter />
+                <CookieConsent />
+                <InstallPrompt />
+                <FriendMessageNotifier />
+                <FriendActivityNotifier />
+                <NotificationBell />
+                <WebPushManager />
+              </AgeGate>
+            </ConfirmProvider>
           </NotificationProvider>
         </AuthProvider>
       </body>

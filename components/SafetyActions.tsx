@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { AppModal } from "@/components/AppModal";
+import { useConfirm } from "@/components/ConfirmProvider";
 import {
   chatBtnBlock,
   chatBtnGhost,
@@ -15,6 +17,7 @@ type SafetyActionsProps = {
 };
 
 export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
+  const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("harassment");
   const [details, setDetails] = useState("");
@@ -40,7 +43,14 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
   }
 
   async function blockUser() {
-    if (!confirm("Block this user and end the chat?")) return;
+    const ok = await confirm({
+      title: "Block user?",
+      message: "Block this user and end the chat?",
+      confirmLabel: "Block",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     setLoading(true);
     const res = await fetch("/api/block", {
       method: "POST",
@@ -63,56 +73,48 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
       </button>
       <button
         type="button"
-        onClick={blockUser}
+        onClick={() => void blockUser()}
         disabled={loading}
         className={chatBtnBlock}
       >
         Block
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="bg-slate-900 border border-amber-500/30 p-6 rounded-2xl max-w-sm w-full"
-            onClick={(e) => e.stopPropagation()}
+      <AppModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Report user"
+        titleVisible
+        titleClassName="text-lg font-bold text-amber-300 mb-3"
+        panelClassName="w-full max-w-sm rounded-2xl border border-amber-500/30 bg-slate-900 p-6 shadow-xl"
+      >
+        <ReportReasonFields
+          reason={reason}
+          onReasonChange={setReason}
+          details={details}
+          onDetailsChange={setDetails}
+          selectClassName="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white"
+          textareaClassName="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white resize-none"
+        />
+        {status && <p className="text-sm text-slate-300 mb-3">{status}</p>}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void submitReport()}
+            disabled={loading}
+            className={`${chatBtnWarn} flex-1`}
           >
-            <h3 className="text-lg font-bold text-amber-300 mb-3">
-              Report user
-            </h3>
-            <ReportReasonFields
-              reason={reason}
-              onReasonChange={setReason}
-              details={details}
-              onDetailsChange={setDetails}
-              selectClassName="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white"
-              textareaClassName="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm mb-3 text-white resize-none"
-            />
-            {status && (
-              <p className="text-sm text-slate-300 mb-3">{status}</p>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={submitReport}
-                disabled={loading}
-                className={`${chatBtnWarn} flex-1`}
-              >
-                Submit report
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className={chatBtnGhost}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+            Submit report
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className={chatBtnGhost}
+          >
+            Cancel
+          </button>
         </div>
-      )}
+      </AppModal>
     </>
   );
 }

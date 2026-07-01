@@ -1,5 +1,6 @@
 "use client";
 
+import { AppModal } from "@/components/AppModal";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import type {
   PartyMemberView,
@@ -122,31 +123,37 @@ export function PartyEndConfirmModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div className="max-w-sm w-full rounded-2xl border border-purple-500/30 bg-slate-900 p-6 space-y-4 shadow-xl">
-        <h3 className="text-lg font-bold text-white">End party?</h3>
-        <p className="text-sm text-slate-400 leading-relaxed">
-          Everyone will leave the lobby and video. This can&apos;t be undone.
-        </p>
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className="w-full rounded-xl bg-red-600/90 hover:bg-red-600 text-white font-bold py-2.5 text-sm disabled:opacity-50"
-          >
-            {busy ? "Ending…" : "End party for everyone"}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="w-full rounded-xl border border-slate-600 text-slate-300 py-2.5 text-sm hover:text-white"
-          >
-            Keep playing
-          </button>
-        </div>
+    <AppModal
+      open={open}
+      onClose={onCancel}
+      title="End party?"
+      titleVisible
+      titleClassName="text-lg font-bold text-white"
+      panelClassName="max-w-sm w-full rounded-2xl border border-purple-500/30 bg-slate-900 p-6 space-y-4 shadow-xl"
+      closeOnBackdrop={!busy}
+      closeOnEscape={!busy}
+    >
+      <p className="text-sm text-slate-400 leading-relaxed">
+        Everyone will leave the lobby and video. This can&apos;t be undone.
+      </p>
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={busy}
+          className="w-full rounded-xl bg-red-600/90 hover:bg-red-600 text-white font-bold py-2.5 text-sm disabled:opacity-50"
+        >
+          {busy ? "Ending…" : "End party for everyone"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="w-full rounded-xl border border-slate-600 text-slate-300 py-2.5 text-sm hover:text-white disabled:opacity-50"
+        >
+          Keep playing
+        </button>
       </div>
-    </div>
+    </AppModal>
   );
 }

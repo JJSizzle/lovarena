@@ -18,6 +18,7 @@ import {
 } from "@/lib/webrtc/media-constraints";
 import { VideoPanel } from "./video-panel";
 import { useAuth } from "@/components/AuthProvider";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { SafetyActions } from "@/components/SafetyActions";
 import { MediaPermissionGate } from "@/components/MediaPermissionGate";
@@ -42,6 +43,7 @@ import { PostChatFeedback } from "@/components/PostChatFeedback";
 import { RulesReminder } from "@/components/RulesReminder";
 import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
 import { TranslateToolbar } from "@/components/TranslateToolbar";
+import { AppModal } from "@/components/AppModal";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { isOnboardingComplete } from "@/lib/profile-orientation";
 import { formatPartnerLine } from "@/lib/profile-age";
@@ -76,6 +78,7 @@ function appendMessage(list: Message[], msg: Message): Message[] {
 
 export default function ChatPage() {
   const router = useRouter();
+  const { confirm } = useConfirm();
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const userId = profile?.id ?? "";
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -988,13 +991,13 @@ export default function ChatPage() {
   }
 
   async function handleRemovePartnerFriend(profile: FriendProfileView) {
-    if (
-      !confirm(
-        `Remove ${profile.username} from your friends? You can add them again from a future match.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Remove friend?",
+      message: `Remove ${profile.username} from your friends? You can add them again from a future match.`,
+      confirmLabel: "Remove",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     const res = await fetch("/api/friends", {
       method: "DELETE",
@@ -1015,13 +1018,13 @@ export default function ChatPage() {
   }
 
   async function handleBlockPartner(profile: FriendProfileView) {
-    if (
-      !confirm(
-        `Block ${profile.username}? They won't be matched with you again.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Block user?",
+      message: `Block ${profile.username}? They won't be matched with you again.`,
+      confirmLabel: "Block",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     const res = await fetch("/api/blocks", {
       method: "POST",
@@ -1495,6 +1498,7 @@ export default function ChatPage() {
                   : "Stranger left — press Next"
                 : "Waiting for match..."
           }
+          aria-label="Message to stranger"
           className="flex-1 rounded-lg bg-slate-950/60 border border-white/10 px-3 py-2 text-sm outline-none focus:border-fuchsia-500/40 disabled:opacity-50 text-white"
         />
         <button
@@ -1508,43 +1512,44 @@ export default function ChatPage() {
       </form>
 
       {showIceBreakerPopup && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
-          <div
-            className="bg-slate-900 border-2 border-fuchsia-500 p-8 rounded-3xl max-w-sm w-full text-center shadow-[0_0_40px_rgba(217,70,239,0.3)] transform scale-100 transition-all"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-4xl mb-3 animate-pulse">🔮</div>
-            <h3 className="text-fuchsia-400 font-extrabold text-xl tracking-wide mb-4">
-              Break the Ice!
-            </h3>
-            <p className="text-slate-100 text-base md:text-lg font-medium italic leading-relaxed mb-6 px-1">
-              &ldquo;{iceBreakerQuestion}&rdquo;
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={useIceBreakerQuestion}
-                className={chatBtnSend}
-              >
-                Send to chat
-              </button>
-              <button
-                type="button"
-                onClick={generateIceBreaker}
-                className={chatBtnFun}
-              >
-                New question
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowIceBreakerPopup(false)}
-                className={`${chatBtnGhost} w-full`}
-              >
-                Dismiss
-              </button>
-            </div>
+        <AppModal
+          open
+          onClose={() => setShowIceBreakerPopup(false)}
+          title="Break the Ice!"
+          titleVisible
+          titleClassName="text-fuchsia-400 font-extrabold text-xl tracking-wide mb-4 text-center"
+          panelClassName="bg-slate-900 border-2 border-fuchsia-500 p-8 rounded-3xl max-w-sm w-full text-center shadow-[0_0_40px_rgba(217,70,239,0.3)]"
+        >
+          <div className="text-4xl mb-3 animate-pulse" aria-hidden>
+            🔮
           </div>
-        </div>
+          <p className="text-slate-100 text-base md:text-lg font-medium italic leading-relaxed mb-6 px-1">
+            &ldquo;{iceBreakerQuestion}&rdquo;
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={useIceBreakerQuestion}
+              className={chatBtnSend}
+            >
+              Send to chat
+            </button>
+            <button
+              type="button"
+              onClick={generateIceBreaker}
+              className={chatBtnFun}
+            >
+              New question
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowIceBreakerPopup(false)}
+              className={`${chatBtnGhost} w-full`}
+            >
+              Dismiss
+            </button>
+          </div>
+        </AppModal>
       )}
     </main>
 

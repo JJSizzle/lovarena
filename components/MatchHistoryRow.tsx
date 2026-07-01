@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import {
   chatBtnBlock,
   chatBtnGhost,
@@ -33,6 +34,7 @@ export function MatchHistoryRow({
   onFriendStatusChange,
   onRemoved,
 }: MatchHistoryRowProps) {
+  const { confirm } = useConfirm();
   const [reportOpen, setReportOpen] = useState(false);
   const [reason, setReason] = useState("harassment");
   const [details, setDetails] = useState("");
@@ -40,9 +42,13 @@ export function MatchHistoryRow({
   const [loading, setLoading] = useState(false);
 
   async function blockPartner() {
-    if (!confirm(`Block ${partnerUsername}? They won't be matched with you again.`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Block user?",
+      message: `Block ${partnerUsername}? They won't be matched with you again.`,
+      confirmLabel: "Block",
+      variant: "danger",
+    });
+    if (!ok) return;
     setLoading(true);
     const res = await fetch("/api/blocks", {
       method: "POST",
@@ -118,13 +124,13 @@ export function MatchHistoryRow({
   }
 
   async function handleRemoveFriend() {
-    if (
-      !confirm(
-        `Remove ${partnerUsername} from your friends? You can add them again from a future match.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Remove friend?",
+      message: `Remove ${partnerUsername} from your friends? You can add them again from a future match.`,
+      confirmLabel: "Remove",
+      variant: "danger",
+    });
+    if (!ok) return;
     setLoading(true);
     setStatus(null);
     const res = await fetch("/api/friends", {

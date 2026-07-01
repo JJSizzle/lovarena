@@ -7,6 +7,7 @@ import { useTypingIndicator } from "@/lib/hooks/useTypingIndicator";
 import { dmTypingChannelId } from "@/lib/dm-thread";
 import { chatBtnLove, chatBtnBlock, chatBtnGhost } from "@/lib/chat-buttons";
 import { useAuth } from "@/components/AuthProvider";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { TranslatedMessageBubble } from "@/components/TranslatedMessageBubble";
 import { TranslateToolbar } from "@/components/TranslateToolbar";
 import { markSenderRead } from "@/lib/notifications/seen-state";
@@ -62,6 +63,7 @@ export function FriendsPanel({
   onViewProfile,
 }: FriendsPanelProps) {
   const { profile, refreshProfile } = useAuth();
+  const { confirm } = useConfirm();
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -232,13 +234,13 @@ export function FriendsPanel({
   }
 
   async function handleRemove() {
-    if (
-      !confirm(
-        `Remove ${friendUsername}? You can add them again from a future match.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Remove friend?",
+      message: `Remove ${friendUsername}? You can add them again from a future match.`,
+      confirmLabel: "Remove",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setRemoving(true);
     setError(null);

@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { CopyInviteButton, PartyChat } from "@/components/party/PartyChat";
 import { PartyGameView, PartyHangoutView, PartyLobby } from "@/components/party/PartyViews";
@@ -23,6 +24,7 @@ function PartyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, profile, loading } = useAuth();
+  const { confirm } = useConfirm();
   const seasonal = getSeasonalTheme();
 
   const [party, setParty] = useState<PartyState | null>(null);
@@ -295,12 +297,15 @@ function PartyPageContent() {
   async function handleKick(memberId: string) {
     if (!party) return;
     const member = party.members.find((m) => m.id === memberId);
-    if (
-      !member ||
-      !confirm(`Remove ${member.username} from the party?`)
-    ) {
-      return;
-    }
+    if (!member) return;
+
+    const ok = await confirm({
+      title: "Remove from party?",
+      message: `Remove ${member.username} from the party?`,
+      confirmLabel: "Remove",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setBusy(true);
     setError(null);
