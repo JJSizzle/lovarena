@@ -8,8 +8,12 @@ import {
   enforceSevereViolation,
   getRestrictionApiPayload,
 } from "@/lib/moderation/enforce-violation";
-import { scanMessageForSevereViolation } from "@/lib/moderation/scan-message";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { moderateMessageContent } from "@/lib/moderation/moderate-message";
+import {
+  applyTieredRateLimit,
+  MESSAGE_RATE_TIERS,
+} from "@/lib/rate-limit-tiers";
+import { clientIp } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -56,13 +60,14 @@ export async function POST(req: NextRequest) {
     }
 
     const ip = clientIp(req);
-    const rl = await rateLimit(`msg:${profile.id}:${ip}`, 60, 60);
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { error: "Too many messages. Slow down." },
-        { status: 429 }
-      );
-    }
+    const rl = await applyTieredRateLimit(
+      "msg",
+      profile.id,
+      ip,
+      profile.created_at,
+      MESSAGE_RATE_TIERS
+    );
+    if (!rl.allowed) return rl.response;
 
     const membership = await assertRoomMember(roomId, profile.id);
     if ("error" in membership) return membership.error;
@@ -86,19 +91,23 @@ export async function POST(req: NextRequest) {
     }
 
     const text = content.trim();
-    const scan = scanMessageForSevereViolation(text);
+    const moderation = moderateMessageContent(text);
 
-    if (scan.violation) {
-      await enforceSevereViolation(supabase, profile.id, roomId);
-      return NextResponse.json(
-        {
-          error:
-            "Message blocked. This chat has been ended due to a severe policy violation.",
-          violation: true,
-          sessionTerminated: true,
-        },
-        { status: 403 }
-      );
+    if (!moderation.allowed) {
+      if (moderation.kind === "severe") {
+        await enforceSevereViolation(supabase, profile.id, roomId);
+        return NextResponse.json(
+          {
+            error:
+              "Message blocked. This chat has been ended due to a severe policy violation.",
+            violation: true,
+            sessionTerminated: true,
+          },
+          { status: 403 }
+        );
+      }
+
+      return NextResponse.json({ error: moderation.userMessage }, { status: 400 });
     }
 
     const { data, error } = await supabase

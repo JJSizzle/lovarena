@@ -9,6 +9,7 @@ import { sendEmailViaResendDetailed } from "@/lib/email/send-email";
 import { captureServerError } from "@/lib/capture-error";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { verifyTurnstileToken } from "@/lib/security/turnstile";
 
 const TOPIC_LABELS: Record<ContactTopic, string> = {
   general: "General support",
@@ -41,7 +42,12 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const { topic, email, message, name } = await req.json();
+    const { topic, email, message, name, turnstileToken } = await req.json();
+
+    const captcha = await verifyTurnstileToken(turnstileToken, ip);
+    if (!captcha.ok) {
+      return NextResponse.json({ error: captcha.error }, { status: 400 });
+    }
 
     if (!isContactTopic(topic)) {
       return NextResponse.json({ error: "Invalid topic." }, { status: 400 });

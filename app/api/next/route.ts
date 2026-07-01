@@ -3,7 +3,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
 import { processQualifiedChat } from "@/lib/referral/process-qualified-chat";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import {
+  applyTieredRateLimit,
+  NEXT_RATE_TIERS,
+} from "@/lib/rate-limit-tiers";
+import { clientIp } from "@/lib/rate-limit";
 
 import { isValidUsStateCode } from "@/lib/us-states";
 
@@ -17,13 +21,14 @@ export async function POST(req: NextRequest) {
       await req.json();
 
     const ip = clientIp(req);
-    const rl = await rateLimit(`next:${profile.id}:${ip}`, 20, 60);
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { error: "Too many skip requests. Please wait." },
-        { status: 429 }
-      );
-    }
+    const rl = await applyTieredRateLimit(
+      "next",
+      profile.id,
+      ip,
+      profile.created_at,
+      NEXT_RATE_TIERS
+    );
+    if (!rl.allowed) return rl.response;
 
     const mode = matchMode === "regional" ? "regional" : "worldwide";
     let normalizedState: string | null = null;

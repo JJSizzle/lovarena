@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { assertPartyMember } from "@/lib/party/party-auth";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { moderateMessageContent } from "@/lib/moderation/moderate-message";
+import { applyTimedRestriction } from "@/lib/moderation/user-restriction";
+import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
+import {
+  applyTieredRateLimit,
+  PARTY_MESSAGE_RATE_TIERS,
+} from "@/lib/rate-limit-tiers";
+import { clientIp } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -62,10 +68,14 @@ export async function POST(req: NextRequest) {
     if ("error" in auth) return auth.error;
 
     const ip = clientIp(req);
-    const rl = await rateLimit(`party-msg:${auth.profile.id}:${ip}`, 60, 3600);
-    if (!rl.allowed) {
-      return rateLimitResponse(rl.retryAfterSeconds);
-    }
+    const rl = await applyTieredRateLimit(
+      "party-msg",
+      auth.profile.id,
+      ip,
+      auth.profile.created_at,
+      PARTY_MESSAGE_RATE_TIERS
+    );
+    if (!rl.allowed) return rl.response;
 
     const { partyId, content } = await req.json();
     if (!partyId) {
@@ -84,6 +94,29 @@ export async function POST(req: NextRequest) {
     if ("error" in membership) return membership.error;
 
     const supabase = createAdminClient();
+
+    const restriction = await getRestrictionApiPayload(supabase, auth.profile.id);
+    if (restriction) {
+      return NextResponse.json({ ...restriction, violation: true }, { status: 403 });
+    }
+
+    const moderation = moderateMessageContent(text);
+    if (!moderation.allowed) {
+      if (moderation.kind === "severe") {
+        await applyTimedRestriction(
+          supabase,
+          auth.profile.id,
+          "severe_hate_speech_or_slur"
+        );
+        return NextResponse.json(
+          { error: moderation.userMessage, violation: true },
+          { status: 403 }
+        );
+      }
+
+      return NextResponse.json({ error: moderation.userMessage }, { status: 400 });
+    }
+
     const { data: inserted, error } = await supabase
       .from("party_messages")
       .insert({

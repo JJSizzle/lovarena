@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 type ContactTopic = "general" | "safety" | "privacy" | "legal";
 
@@ -11,11 +12,14 @@ const TOPICS: { value: ContactTopic; label: string }[] = [
   { value: "legal", label: "Legal / DMCA" },
 ];
 
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
+
 export function ContactForm() {
   const [topic, setTopic] = useState<ContactTopic>("general");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">(
     "idle"
   );
@@ -26,11 +30,23 @@ export function ContactForm() {
     setStatus("loading");
     setError(null);
 
+    if (turnstileSiteKey && !turnstileToken) {
+      setStatus("error");
+      setError("Complete the captcha check.");
+      return;
+    }
+
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, name, email, message }),
+        body: JSON.stringify({
+          topic,
+          name,
+          email,
+          message,
+          turnstileToken: turnstileToken || undefined,
+        }),
       });
       const data = (await res.json()) as { error?: string };
 
@@ -40,6 +56,7 @@ export function ContactForm() {
 
       setStatus("sent");
       setMessage("");
+      setTurnstileToken("");
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Could not send message");
@@ -118,6 +135,14 @@ export function ContactForm() {
           className="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2.5 text-sm text-white resize-y"
         />
       </div>
+
+      {turnstileSiteKey ? (
+        <TurnstileWidget
+          siteKey={turnstileSiteKey}
+          onToken={setTurnstileToken}
+          className="min-h-[65px]"
+        />
+      ) : null}
 
       {error ? (
         <p className="text-sm text-rose-300">{error}</p>

@@ -40,5 +40,19 @@ Lovarena — Ops setup (Batch C)
    - Visit /contact → send a test message
    - Trigger a client error → confirm Sentry event
 
+6. Cloudflare Turnstile (login + contact captcha)
+   - https://dash.cloudflare.com → Turnstile → Add site (lovarena.app)
+   - Vercel → Production:
+       NEXT_PUBLIC_TURNSTILE_SITE_KEY=...
+       TURNSTILE_SECRET_KEY=...
+   - Redeploy → /api/health → turnstileEnabled: true
+   - Test /login and /contact show captcha
+
+7. Avatar moderation (Sightengine)
+   - https://sightengine.com → API credentials
+   - Vercel → Production:
+       SIGHTENGINE_API_USER=...
+       SIGHTENGINE_API_SECRET=...
+   - Redeploy → /api/health → sightengineEnabled: true
 Health check: https://lovarena.app/api/health
 `);

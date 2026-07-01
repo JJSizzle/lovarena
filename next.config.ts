@@ -17,11 +17,12 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co",
   "media-src 'self' blob:",
   "font-src 'self'",
+  "frame-src 'self' https://challenges.cloudflare.com",
   `connect-src 'self' ${supabaseConnectSources()} https://lovarena.app https://*.lovarena.app stun: stun:* turn: turn:* https://accounts.google.com`,
 ].join("; ");
 

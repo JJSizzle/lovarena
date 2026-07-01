@@ -19,6 +19,7 @@ import { validateUsername } from "@/lib/username";
 import { UsernameInput } from "@/components/UsernameInput";
 import { REFERRAL_STORAGE_KEY } from "@/lib/referral";
 import { ParticleBackground } from "@/components/ParticleBackground";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -40,6 +41,11 @@ export default function LoginForm() {
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
   const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
   const [signupAge, setSignupAge] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+
+  const turnstileSiteKey =
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
+  const captchaRequired = Boolean(turnstileSiteKey);
 
   const seasonal = getSeasonalTheme();
   const inputClass =
@@ -94,6 +100,24 @@ export default function LoginForm() {
 
   function emailRedirectUrl() {
     return authConfirmUrl(next, clientOrigin());
+  }
+
+  async function verifyCaptchaBeforeAuth() {
+    if (!captchaRequired) return;
+
+    if (!turnstileToken) {
+      throw new Error("Complete the captcha check.");
+    }
+
+    const res = await fetch("/api/auth/verify-turnstile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: turnstileToken }),
+    });
+    const data = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      throw new Error(data.error ?? "Captcha verification failed.");
+    }
   }
 
   async function ensureProfile(
@@ -206,6 +230,8 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
+      await verifyCaptchaBeforeAuth();
+
       if (mode === "signup") {
         if (!acceptedTerms) {
           setError("Accept the Terms and Privacy Policy to sign up.");
@@ -497,6 +523,13 @@ export default function LoginForm() {
               {error}
             </p>
           )}
+          {captchaRequired ? (
+            <TurnstileWidget
+              siteKey={turnstileSiteKey}
+              onToken={setTurnstileToken}
+              className="min-h-[65px]"
+            />
+          ) : null}
           {mode === "login" && (error?.includes("not confirmed") || message?.includes("confirmation")) && (
             <button
               type="button"

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { scanMessageForSevereViolation } from "@/lib/moderation/scan-message";
+import { moderateMessageContent } from "@/lib/moderation/moderate-message";
 import {
   applyTimedRestriction,
   getRestrictionApiPayload,
@@ -113,21 +113,25 @@ export async function POST(req: NextRequest) {
     }
 
     const text = content.trim();
-    const scan = scanMessageForSevereViolation(text);
+    const moderation = moderateMessageContent(text);
 
-    if (scan.violation) {
-      await applyTimedRestriction(
-        supabase,
-        user.id,
-        "severe_hate_speech_or_slur"
-      );
-      return NextResponse.json(
-        {
-          error: "Message blocked due to policy violation.",
-          violation: true,
-        },
-        { status: 403 }
-      );
+    if (!moderation.allowed) {
+      if (moderation.kind === "severe") {
+        await applyTimedRestriction(
+          supabase,
+          user.id,
+          "severe_hate_speech_or_slur"
+        );
+        return NextResponse.json(
+          {
+            error: "Message blocked due to policy violation.",
+            violation: true,
+          },
+          { status: 403 }
+        );
+      }
+
+      return NextResponse.json({ error: moderation.userMessage }, { status: 400 });
     }
 
     const { data, error } = await supabase

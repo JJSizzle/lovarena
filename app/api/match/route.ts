@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import {
+  applyIpRateLimit,
+  applyTieredRateLimit,
+  MATCH_IP_RATE,
+  MATCH_RATE_TIERS,
+} from "@/lib/rate-limit-tiers";
+import { clientIp } from "@/lib/rate-limit";
 
 import { isValidUsStateCode } from "@/lib/us-states";
 
@@ -16,13 +22,18 @@ export async function POST(req: NextRequest) {
       await req.json();
 
     const ip = clientIp(req);
-    const rl = await rateLimit(`match:${profile.id}:${ip}`, 30, 60);
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { error: "Too many match requests. Please wait a minute." },
-        { status: 429 }
-      );
-    }
+
+    const ipRl = await applyIpRateLimit("match-ip", ip, MATCH_IP_RATE);
+    if (!ipRl.allowed) return ipRl.response;
+
+    const rl = await applyTieredRateLimit(
+      "match",
+      profile.id,
+      ip,
+      profile.created_at,
+      MATCH_RATE_TIERS
+    );
+    if (!rl.allowed) return rl.response;
 
     const mode = matchMode === "regional" ? "regional" : "worldwide";
     if (mode === "regional" && !countryCode) {

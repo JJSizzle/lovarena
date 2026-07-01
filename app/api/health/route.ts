@@ -9,6 +9,10 @@ import {
   isModerationAlertsConfigured,
 } from "@/lib/email/resend-config";
 import { isWebPushConfigured } from "@/lib/notifications/vapid-config";
+import {
+  isSightengineConfigured,
+  isTurnstileConfigured,
+} from "@/lib/security/turnstile";
 
 function buildHints(env: {
   hasServiceRoleKey: boolean;
@@ -18,6 +22,8 @@ function buildHints(env: {
   moderationAlertsEnabled: boolean;
   contactFormEnabled: boolean;
   hasCronSecret: boolean;
+  turnstileEnabled: boolean;
+  sightengineEnabled: boolean;
 }): string[] {
   const hints: string[] = [];
 
@@ -55,6 +61,18 @@ function buildHints(env: {
     hints.push("CRON_SECRET missing — daily moderation auto-review cron won't authenticate.");
   }
 
+  if (!env.turnstileEnabled) {
+    hints.push(
+      "Turnstile captcha off — add NEXT_PUBLIC_TURNSTILE_SITE_KEY + TURNSTILE_SECRET_KEY (Cloudflare dashboard)."
+    );
+  }
+
+  if (!env.sightengineEnabled) {
+    hints.push(
+      "Avatar photo moderation off — add SIGHTENGINE_API_USER + SIGHTENGINE_API_SECRET."
+    );
+  }
+
   return hints;
 }
 
@@ -76,13 +94,23 @@ export async function GET() {
     moderationAlertsEnabled: isModerationAlertsConfigured(),
     contactFormEnabled: isContactFormConfigured(),
     hasCronSecret: hasCronSecret(),
+    turnstileEnabled: isTurnstileConfigured(),
+    sightengineEnabled: isSightengineConfigured(),
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? null,
   };
 
   const hints = buildHints(env);
 
+  const securityOk =
+    env.hasSupabaseUrl &&
+    env.hasAnonKey &&
+    env.hasServiceRoleKey &&
+    env.turnstileEnabled &&
+    env.moderationAlertsEnabled;
+
   return NextResponse.json({
     ok: env.hasSupabaseUrl && env.hasAnonKey && env.hasServiceRoleKey,
+    securityOk,
     env,
     hints,
     hint: hints[0] ?? null,
