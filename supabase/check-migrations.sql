@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 17 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 18 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -273,6 +273,27 @@ select migration, status from (
           and p.proname = 'find_or_create_match'
           and pg_get_function_identity_arguments(p.oid) like '%prefer_shared_languages%'
       ) then '❌ find_or_create_match language param missing — run prefer-shared-languages.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 18, 'dm-read-state',
+    case
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'dm_read_cursors'
+      ) then '❌ dm_read_cursors missing — run dm-read-state.sql'
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'push_subscriptions'
+      ) then '❌ push_subscriptions missing — run dm-read-state.sql'
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'profiles'
+          and column_name = 'read_receipts_enabled'
+      ) then '❌ read_receipts_enabled missing — run dm-read-state.sql'
       else '✅ applied'
     end
 ) checks

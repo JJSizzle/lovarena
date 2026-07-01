@@ -23,6 +23,10 @@ import { soundsEnabled, setSoundsEnabled } from "@/lib/sounds";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { AppPageHeader } from "@/components/AppPageHeader";
 import { BetaNotice } from "@/components/BetaNotice";
+import {
+  subscribeToWebPush,
+  unsubscribeFromWebPush,
+} from "@/components/WebPushManager";
 
 function SettingRow({
   title,
@@ -82,6 +86,10 @@ export default function SettingsPage() {
   const [primaryLanguage, setPrimaryLanguage] = useState("English");
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
+  const [webPushEnabled, setWebPushEnabled] = useState(true);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushNotice, setPushNotice] = useState<string | null>(null);
   const [soundEffects, setSoundEffects] = useState(true);
   const [allowFriendRequests, setAllowFriendRequests] = useState(true);
   const [allowMutualSpark, setAllowMutualSpark] = useState(true);
@@ -110,6 +118,8 @@ export default function SettingsPage() {
     setPrimaryLanguage(profile.primary_language ?? "English");
     setAutoTranslate(profile.auto_translate ?? false);
     setNotificationsEnabled(profile.notifications_enabled ?? true);
+    setReadReceiptsEnabled(profile.read_receipts_enabled !== false);
+    setWebPushEnabled(profile.web_push_enabled !== false);
     setAllowFriendRequests(profile.allow_friend_requests !== false);
     setAllowMutualSpark(profile.allow_mutual_spark !== false);
   }, [profile]);
@@ -139,6 +149,8 @@ export default function SettingsPage() {
           primary_language: primaryLanguage,
           auto_translate: autoTranslate,
           notifications_enabled: notificationsEnabled,
+          read_receipts_enabled: readReceiptsEnabled,
+          web_push_enabled: webPushEnabled,
           allow_friend_requests: allowFriendRequests,
           allow_mutual_spark: allowMutualSpark,
         }),
@@ -358,6 +370,68 @@ export default function SettingsPage() {
                 onChange={setNotificationsEnabled}
               />
             </SettingRow>
+            <SettingRow
+              title="Read receipts"
+              description="Let friends see when you've read their DMs. When off, you won't send or receive seen markers."
+            >
+              <Toggle
+                checked={readReceiptsEnabled}
+                onChange={setReadReceiptsEnabled}
+              />
+            </SettingRow>
+            <SettingRow
+              title="Browser notifications"
+              description="Alerts for friend requests and DMs when this tab is closed. Works best on desktop Chrome/Android."
+            >
+              <div className="flex flex-col items-end gap-2">
+                <Toggle
+                  checked={webPushEnabled}
+                  onChange={async (next) => {
+                    setPushNotice(null);
+                    if (!next) {
+                      setWebPushEnabled(false);
+                      await unsubscribeFromWebPush();
+                      return;
+                    }
+                    setPushBusy(true);
+                    const result = await subscribeToWebPush();
+                    setPushBusy(false);
+                    if (result.ok) {
+                      setWebPushEnabled(true);
+                      setPushNotice("Browser notifications enabled.");
+                    } else {
+                      setWebPushEnabled(false);
+                      setPushNotice(result.error ?? "Could not enable push.");
+                    }
+                  }}
+                  disabled={pushBusy}
+                />
+                {!webPushEnabled && (
+                  <button
+                    type="button"
+                    disabled={pushBusy}
+                    onClick={async () => {
+                      setPushNotice(null);
+                      setPushBusy(true);
+                      const result = await subscribeToWebPush();
+                      setPushBusy(false);
+                      if (result.ok) {
+                        setWebPushEnabled(true);
+                        setPushNotice("Browser notifications enabled.");
+                      } else {
+                        setPushNotice(result.error ?? "Could not enable push.");
+                      }
+                    }}
+                    className="text-[10px] font-semibold text-fuchsia-400 hover:text-fuchsia-300"
+                  >
+                    {pushBusy ? "Enabling…" : "Enable push"}
+                  </button>
+                )}
+              </div>
+            </SettingRow>
+            {pushNotice && (
+              <p className="text-[11px] text-slate-400 -mt-1">{pushNotice}</p>
+            )}
           </section>
 
           {message && (

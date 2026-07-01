@@ -9,6 +9,8 @@ import {
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 import { notifyFriendMessageEmail } from "@/lib/notifications/friend-message-email";
+import { sendWebPushToUser } from "@/lib/notifications/web-push";
+import { getPeerReadReceiptAt } from "@/lib/dm/read-cursors";
 
 export async function GET(req: NextRequest) {
   try {
@@ -54,7 +56,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ messages: data });
+    const peerLastReadAt = await getPeerReadReceiptAt(
+      supabase,
+      friendId,
+      user.id
+    );
+
+    return NextResponse.json({ messages: data, peerLastReadAt });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load messages";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -147,6 +155,14 @@ export async function POST(req: NextRequest) {
       senderId: user.id,
       senderUsername: senderProfile?.username ?? "A friend",
       preview: text,
+    });
+
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lovarena.app";
+    void sendWebPushToUser(supabase, friendId, {
+      title: `${senderProfile?.username ?? "A friend"} messaged you`,
+      body: text.length > 100 ? `${text.slice(0, 97)}…` : text,
+      url: `${site}/friends?chat=${encodeURIComponent(user.id)}`,
+      tag: `dm-${user.id}`,
     });
 
     return NextResponse.json({ message: data });

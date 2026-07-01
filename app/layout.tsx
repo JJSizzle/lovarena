@@ -10,6 +10,7 @@ import { FriendMessageNotifier } from "@/components/FriendMessageNotifier";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationProvider } from "@/components/NotificationProvider";
 import { SiteFooter } from "@/components/SiteFooter";
+import { WebPushManager } from "@/components/WebPushManager";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -83,6 +84,7 @@ export default function RootLayout({
               <FriendMessageNotifier />
               <FriendActivityNotifier />
               <NotificationBell />
+              <WebPushManager />
             </AgeGate>
           </NotificationProvider>
         </AuthProvider>

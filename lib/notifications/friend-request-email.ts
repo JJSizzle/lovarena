@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
+import { sendWebPushToUser } from "@/lib/notifications/web-push";
 
 async function getUserEmail(userId: string): Promise<string | null> {
   const supabase = createAdminClient();
@@ -54,10 +55,18 @@ export async function notifyFriendRequestReceived(params: {
   );
   if (!rl.allowed) return;
 
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lovarena.app";
+
+  const supabase = createAdminClient();
+  void sendWebPushToUser(supabase, params.receiverId, {
+    title: "New friend request",
+    body: `${params.senderUsername} wants to be friends`,
+    url: `${site}/friends`,
+    tag: `friend-req-${params.senderId}`,
+  });
+
   const email = await getUserEmail(params.receiverId);
   if (!email) return;
-
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lovarena.app";
 
   await sendEmail(
     email,
@@ -87,10 +96,18 @@ export async function notifyFriendRequestAccepted(params: {
   );
   if (!rl.allowed) return;
 
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lovarena.app";
+
+  const supabase = createAdminClient();
+  void sendWebPushToUser(supabase, params.requesterId, {
+    title: "Friend request accepted",
+    body: `${params.accepterUsername} is now your friend`,
+    url: `${site}/friends?chat=${encodeURIComponent(params.accepterId)}`,
+    tag: `friend-accept-${params.accepterId}`,
+  });
+
   const email = await getUserEmail(params.requesterId);
   if (!email) return;
-
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lovarena.app";
 
   await sendEmail(
     email,

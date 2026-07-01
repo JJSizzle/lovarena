@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
+import { isDmUnreadServer } from "@/lib/dm/read-cursors";
 
 export async function GET() {
   try {
@@ -89,17 +90,27 @@ export async function GET() {
       (senderProfiles ?? []).map((p) => [p.id, p] as const)
     );
 
-    const messages = [...latestBySender.values()]
-      .map((thread) => {
-        const profile = senderById.get(thread.senderId);
-        if (!profile) return null;
-        return {
-          ...thread,
-          username: profile.username,
-          avatarUrl: profile.avatar_url,
-          avatarEmoji: profile.avatar_emoji,
-        };
-      })
+    const messages = (
+      await Promise.all(
+        [...latestBySender.values()].map(async (thread) => {
+          const profile = senderById.get(thread.senderId);
+          if (!profile) return null;
+          const unread = await isDmUnreadServer(
+            supabase,
+            myId,
+            thread.senderId,
+            thread.createdAt
+          );
+          if (!unread) return null;
+          return {
+            ...thread,
+            username: profile.username,
+            avatarUrl: profile.avatar_url,
+            avatarEmoji: profile.avatar_emoji,
+          };
+        })
+      )
+    )
       .filter(Boolean)
       .sort(
         (a, b) =>

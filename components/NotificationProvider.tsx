@@ -11,7 +11,6 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { isDmUnread } from "@/lib/notifications/seen-state";
 
 export type FriendRequestNotification = {
   id: string;
@@ -53,7 +52,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     friendRequests: [],
     messages: [],
   });
-  const [seenTick, setSeenTick] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!profile?.id) {
@@ -81,12 +79,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function onSeen() {
-      setSeenTick((n) => n + 1);
+      void refresh();
     }
     window.addEventListener("lovarena:notifications-seen", onSeen);
     return () =>
       window.removeEventListener("lovarena:notifications-seen", onSeen);
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -130,6 +128,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           void refresh();
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "dm_read_cursors",
+          filter: `user_id=eq.${profile.id}`,
+        },
+        () => {
+          void refresh();
+        }
+      )
       .subscribe();
 
     const poll = setInterval(() => void refresh(), 60_000);
@@ -140,11 +150,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     };
   }, [profile?.id, refresh]);
 
-  const unreadMessages = useMemo(
-    () =>
-      data.messages.filter((msg) => isDmUnread(msg.senderId, msg.createdAt)),
-    [data.messages, seenTick]
-  );
+  const unreadMessages = data.messages;
 
   const value = useMemo<NotificationContextValue>(
     () => ({

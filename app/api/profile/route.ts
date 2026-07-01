@@ -18,7 +18,7 @@ import { isValidCountryCode } from "@/lib/countries";
 import { isValidUsStateCode } from "@/lib/us-states";
 
 const PROFILE_FIELDS =
-  "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, allow_friend_requests, allow_mutual_spark, chat_streak, positive_ratings, qualified_referrals, referred_by, primary_language, auto_translate, country_code, state_code, created_at";
+  "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, read_receipts_enabled, web_push_enabled, face_blur_default, voice_only_default, allow_friend_requests, allow_mutual_spark, chat_streak, positive_ratings, qualified_referrals, referred_by, primary_language, auto_translate, country_code, state_code, created_at";
 
 async function isUsernameTaken(
   supabase: ReturnType<typeof createAdminClient>,
@@ -151,6 +151,12 @@ export async function PATCH(req: NextRequest) {
     }
     if ("notifications_enabled" in body) {
       updates.notifications_enabled = Boolean(body.notifications_enabled);
+    }
+    if ("read_receipts_enabled" in body) {
+      updates.read_receipts_enabled = Boolean(body.read_receipts_enabled);
+    }
+    if ("web_push_enabled" in body) {
+      updates.web_push_enabled = Boolean(body.web_push_enabled);
     }
     if ("face_blur_default" in body) {
       updates.face_blur_default = Boolean(body.face_blur_default);

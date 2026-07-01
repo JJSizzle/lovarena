@@ -31,6 +31,8 @@ export type Profile = {
   reputation_score: number;
   referral_code: string | null;
   notifications_enabled: boolean;
+  read_receipts_enabled: boolean;
+  web_push_enabled: boolean;
   face_blur_default: boolean;
   voice_only_default: boolean;
   allow_friend_requests?: boolean;
@@ -75,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, face_blur_default, voice_only_default, allow_friend_requests, allow_mutual_spark, chat_streak, positive_ratings, qualified_referrals, referred_by, primary_language, auto_translate, country_code, state_code, created_at"
+        "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, read_receipts_enabled, web_push_enabled, face_blur_default, voice_only_default, allow_friend_requests, allow_mutual_spark, chat_streak, positive_ratings, qualified_referrals, referred_by, primary_language, auto_translate, country_code, state_code, created_at"
       )
       .eq("id", authUser.id)
       .maybeSingle();

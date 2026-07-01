@@ -19,6 +19,25 @@ type PrivateMessage = {
   created_at: string;
 };
 
+function lastReadSentMessageId(
+  messages: PrivateMessage[],
+  myId: string,
+  peerLastReadAt: string | null
+): string | null {
+  if (!peerLastReadAt) return null;
+  let lastId: string | null = null;
+  for (const msg of messages) {
+    if (msg.sender_id === myId && msg.created_at <= peerLastReadAt) {
+      lastId = msg.id;
+    }
+  }
+  return lastId;
+}
+
+function markThreadRead(friendId: string, at?: string) {
+  markSenderRead(friendId, at);
+}
+
 type FriendsPanelProps = {
   friendId: string;
   friendUsername: string;
@@ -49,6 +68,7 @@ export function FriendsPanel({
   const [removing, setRemoving] = useState(false);
   const [primaryLanguage, setPrimaryLanguage] = useState("English");
   const [autoTranslate, setAutoTranslate] = useState(false);
+  const [peerLastReadAt, setPeerLastReadAt] = useState<string | null>(null);
   const bottomRef = useScrollOnNewMessage(messages, friendId);
   const friendTyping = useTypingIndicator(
     dmTypingChannelId(myId, friendId),
@@ -85,7 +105,7 @@ export function FriendsPanel({
   }
 
   useEffect(() => {
-    markSenderRead(friendId);
+    markThreadRead(friendId);
   }, [friendId]);
 
   useEffect(() => {
@@ -103,12 +123,13 @@ export function FriendsPanel({
           }
           return next === prev ? prev : next;
         });
+        setPeerLastReadAt(data.peerLastReadAt ?? null);
         const loaded = data.messages as PrivateMessage[];
         const latestIncoming = [...loaded]
           .reverse()
           .find((msg) => msg.receiver_id === myId);
         if (latestIncoming) {
-          markSenderRead(friendId, latestIncoming.created_at);
+          markThreadRead(friendId, latestIncoming.created_at);
         }
       }
     }
@@ -131,7 +152,7 @@ export function FriendsPanel({
           const msg = payload.new as PrivateMessage;
           if (msg.receiver_id === myId) {
             setMessages((prev) => appendPrivateMessage(prev, msg));
-            markSenderRead(friendId, msg.created_at);
+            markThreadRead(friendId, msg.created_at);
           }
         }
       )
@@ -150,6 +171,24 @@ export function FriendsPanel({
           }
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "dm_read_cursors",
+          filter: `user_id=eq.${friendId}`,
+        },
+        (payload) => {
+          const row = payload.new as {
+            peer_id?: string;
+            last_read_at?: string;
+          };
+          if (row?.peer_id === myId && row.last_read_at) {
+            setPeerLastReadAt(row.last_read_at);
+          }
+        }
+      )
       .subscribe();
 
     const poll = setInterval(load, 5000);
@@ -159,6 +198,12 @@ export function FriendsPanel({
       supabase.removeChannel(channel);
     };
   }, [friendId, myId]);
+
+  const seenMessageId = lastReadSentMessageId(
+    messages,
+    myId,
+    profile?.read_receipts_enabled !== false ? peerLastReadAt : null
+  );
 
   async function sendPrivate(e: React.FormEvent) {
     e.preventDefault();
@@ -283,10 +328,11 @@ export function FriendsPanel({
         )}
         {messages.map((msg) => {
           const isMe = msg.sender_id === myId;
+          const showSeen = isMe && msg.id === seenMessageId;
           return (
             <div
               key={msg.id}
-              className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+              className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
             >
               <TranslatedMessageBubble
                 messageId={msg.id}
@@ -300,6 +346,11 @@ export function FriendsPanel({
                     : "bg-white/10 text-slate-100"
                 }`}
               />
+              {showSeen && (
+                <span className="text-[9px] text-slate-500 mt-0.5 mr-1">
+                  Seen
+                </span>
+              )}
             </div>
           );
         })}
