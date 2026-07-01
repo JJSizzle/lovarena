@@ -10,7 +10,8 @@
     "lint": "eslint",
     "icons": "node scripts/generate-pwa-icons.mjs",
     "setup:web-push": "node scripts/generate-web-push-keys.mjs",
-    "setup:ops": "node scripts/print-ops-setup.mjs"
+    "setup:ops": "node scripts/print-ops-setup.mjs",
+    "setup:email-aliases": "node scripts/print-email-aliases-setup.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.62.0",

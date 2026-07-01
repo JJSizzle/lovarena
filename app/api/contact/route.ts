@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   type ContactTopic,
   hasResendApiKey,
+  resolveContactFromEmail,
   resolveContactInbox,
-  resolveTransactionalFromEmail,
 } from "@/lib/email/resend-config";
-import { sendEmailViaResend } from "@/lib/email/send-email";
+import { sendEmailViaResendDetailed } from "@/lib/email/send-email";
 import { captureServerError } from "@/lib/capture-error";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
@@ -80,8 +80,8 @@ export async function POST(req: NextRequest) {
       ? `${trimmedName} <${trimmedEmail}>`
       : trimmedEmail;
 
-    const sent = await sendEmailViaResend({
-      from: resolveTransactionalFromEmail(),
+    const result = await sendEmailViaResendDetailed({
+      from: resolveContactFromEmail(),
       to: [inbox],
       replyTo: trimmedEmail,
       subject: `[Lovarena contact · ${label}]`,
@@ -94,9 +94,14 @@ export async function POST(req: NextRequest) {
       ].join("\n"),
     });
 
-    if (!sent) {
+    if (!result.ok) {
+      const hint = result.reason.toLowerCase().includes("verify")
+        ? " Verify lovarena.app at resend.com/domains and redeploy."
+        : "";
       return NextResponse.json(
-        { error: "Could not send message. Try email instead." },
+        {
+          error: `Could not send message.${hint} You can email support@lovarena.app instead.`,
+        },
         { status: 502 }
       );
     }

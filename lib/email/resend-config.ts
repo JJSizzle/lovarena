@@ -27,22 +27,18 @@ export function resolveAlertsFromEmail(): string {
   );
 }
 
+export function resolveContactFromEmail(): string {
+  return resolveAlertsFromEmail();
+}
+
 export function resolveTransactionalFromEmail(): string {
   return (
     process.env.RESEND_FROM_EMAIL?.trim() || "Lovarena <hello@lovarena.app>"
   );
 }
 
-export function resolveContactInbox(topic: ContactTopic): string | null {
-  const fallback = process.env.ADMIN_ALERT_EMAIL?.trim();
-  const byTopic: Record<ContactTopic, string | undefined> = {
-    general: process.env.CONTACT_SUPPORT_EMAIL?.trim(),
-    safety: process.env.CONTACT_SAFETY_EMAIL?.trim(),
-    privacy: process.env.CONTACT_PRIVACY_EMAIL?.trim(),
-    legal: process.env.CONTACT_LEGAL_EMAIL?.trim(),
-  };
-
-  const email = byTopic[topic] || fallback;
+export function resolveContactInbox(_topic: ContactTopic): string | null {
+  const email = process.env.ADMIN_ALERT_EMAIL?.trim();
   return email?.includes("@") ? email : null;
 }
 

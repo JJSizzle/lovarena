@@ -31,14 +31,9 @@ Lovarena — Ops setup (Batch C)
        CRON_SECRET=...
    - Vercel cron runs /api/cron/review-flags (see vercel.json)
 
-4. Email aliases (receive mail at support@, safety@, etc.)
-   - At your DNS host (Cloudflare, etc.), forward:
-       support@lovarena.app  → your inbox
-       safety@lovarena.app   → same or ADMIN_ALERT_EMAIL inbox
-       privacy@lovarena.app  → your inbox
-       legal@lovarena.app    → your inbox
-   - Contact form uses ADMIN_ALERT_EMAIL unless you set:
-       CONTACT_SUPPORT_EMAIL, CONTACT_SAFETY_EMAIL, etc.
+4. Email aliases (optional — contact form already works without this)
+   - Run:  npm run setup:email-aliases
+   - Easiest: Cloudflare Email Routing (free) → forward all 4 addresses to ADMIN_ALERT_EMAIL
 
 5. Smoke test
    - Submit a test report in chat → Slack and/or email alert
