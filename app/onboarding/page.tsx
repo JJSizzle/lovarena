@@ -182,7 +182,7 @@ function OnboardingForm() {
           href="/"
           className="text-sm text-fuchsia-400 hover:text-fuchsia-300 transition"
         >
-          ← <BrandMark />
+          ← <BrandMark tmClassName="text-[0.55em] text-fuchsia-400/80 relative -top-[0.45em]" />
         </Link>
         <p className="mt-4 text-xs text-purple-300/70">
           Step {stepIndex} of 3

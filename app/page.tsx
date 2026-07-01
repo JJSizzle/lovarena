@@ -152,8 +152,8 @@ export default function HomePage() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <Link href="/" className="inline-flex items-center gap-2 hover:opacity-90 transition">
-              <h1 className="text-xl sm:text-3xl font-extrabold tracking-wider bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]">
-                <BrandMark uppercase />
+              <h1 className="text-xl sm:text-3xl font-extrabold tracking-wider drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]">
+                <BrandMark uppercase gradient />
               </h1>
               <BetaBadge size="sm" className="translate-y-px sm:translate-y-0.5" />
             </Link>
