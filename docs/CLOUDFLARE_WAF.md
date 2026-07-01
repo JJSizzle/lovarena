@@ -12,10 +12,27 @@ Put **lovarena.app** behind Cloudflare for DDoS protection, bot filtering, and e
 1. Sign up / log in at [dash.cloudflare.com](https://dash.cloudflare.com)
 2. **Add a site** → enter `lovarena.app`
 3. Choose **Free** plan
-4. Cloudflare scans existing DNS — confirm records point to Vercel:
-   - `@` and `www` → CNAME to `cname.vercel-dns.com` (or your Vercel target)
+4. Cloudflare scans existing DNS. **You may not see a CNAME** — that is normal for Vercel:
+   - **`@` (lovarena.app)** → **A** record → `76.76.21.21` (Vercel)
+   - **`www`** → **CNAME** → `cname.vercel-dns.com` (optional but recommended)
+   - If Cloudflare imported different A records (e.g. `216.198.79.x`), keep those **or** replace with `76.76.21.21` — match what **Vercel → Domains → lovarena.app** shows.
 5. Update nameservers at your registrar to Cloudflare’s pair
 6. Wait until status shows **Active**
+
+---
+
+## DNS records in Cloudflare (if the scan is empty)
+
+Add these manually under **DNS → Records**:
+
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| **A** | `@` | `76.76.21.21` | Proxied (orange cloud) |
+| **CNAME** | `www` | `cname.vercel-dns.com` | Proxied (orange cloud) |
+
+**Why no CNAME on `@`?** Root domains usually use an **A record**, not CNAME. Only `www` gets a CNAME to Vercel.
+
+Confirm exact values in **Vercel → Project → Settings → Domains → lovarena.app** — use whatever Vercel lists there.
 
 ---
 
