@@ -297,7 +297,7 @@ export function usePartyWebRTC(
         stream = await ensureLocalStream();
       }
 
-      let track = stream.getVideoTracks()[0];
+      const track = stream.getVideoTracks()[0];
       const turningOn = !track || !track.enabled || track.readyState === "ended";
 
       if (turningOn && (!track || track.readyState === "ended")) {
@@ -332,6 +332,7 @@ export function usePartyWebRTC(
     } finally {
       togglingVideoRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- WebRTC stream lifecycle
   }, [active]);
 
   const toggleAudio = useCallback(() => {
@@ -508,6 +509,7 @@ export function usePartyWebRTC(
       cancelled = true;
       teardownAll();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- party WebRTC reconnect lifecycle
   }, [active, partyId, userId, sortedPeerIds.join(","), mediaRetryKey, syncRemoteStreamsState, stopMedia, teardownAll, teardownPeer]);
 
   return {

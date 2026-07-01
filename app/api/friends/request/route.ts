@@ -17,7 +17,6 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 import {
   allowsFriendRequests,
-  allowsMutualSpark,
 } from "@/lib/social-privacy";
 
 export async function POST(req: NextRequest) {

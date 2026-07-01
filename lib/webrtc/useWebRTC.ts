@@ -117,7 +117,9 @@ export function useWebRTC(
   const [mediaRetryKey, setMediaRetryKey] = useState(0);
   const [previewKey, setPreviewKey] = useState(0);
 
-  voiceOnlyRef.current = voiceOnly;
+  useEffect(() => {
+    voiceOnlyRef.current = voiceOnly;
+  }, [voiceOnly]);
 
   const bindLocalPreview = useCallback((el: HTMLVideoElement | null) => {
     localVideoRef.current = el;
@@ -295,7 +297,7 @@ export function useWebRTC(
         stream = await ensureLocalStream();
       }
 
-      let track = stream.getVideoTracks()[0];
+      const track = stream.getVideoTracks()[0];
       const turningOn = !track || !track.enabled || track.readyState === "ended";
 
       if (turningOn && (!track || track.readyState === "ended")) {
@@ -331,6 +333,7 @@ export function useWebRTC(
     } finally {
       togglingVideoRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- WebRTC stream lifecycle
   }, [active]);
 
   const toggleAudio = useCallback(() => {
@@ -528,6 +531,7 @@ export function useWebRTC(
       cancelled = true;
       teardownPeerConnection();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- WebRTC reconnect lifecycle
   }, [
     active,
     roomId,

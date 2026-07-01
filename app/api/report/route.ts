@@ -6,7 +6,6 @@ import {
   requireAuthProfile,
 } from "@/lib/auth/api-auth";
 import { maybeAutoRestrictFromReports } from "@/lib/moderation/auto-flag-reports";
-import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
 import { areFriends } from "@/lib/party/party-auth";
 import {
   applyReportReputationPenalty,

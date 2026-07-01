@@ -1,5 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
-
 const MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
 

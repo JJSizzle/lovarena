@@ -13,7 +13,7 @@ type Props = {
 };
 
 export function AvatarUpload({
-  userId,
+  userId: _userId,
   avatarUrl,
   avatarEmoji,
   onUploaded,

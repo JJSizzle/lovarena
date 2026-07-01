@@ -458,7 +458,6 @@ export default function ChatPage() {
     if (status !== "matching") return;
 
     let cancelled = false;
-    let interval: ReturnType<typeof setInterval>;
 
     async function tryMatch() {
       try {
@@ -504,8 +503,8 @@ export default function ChatPage() {
       }
     }
 
-    tryMatch();
-    interval = setInterval(tryMatch, 2000);
+    void tryMatch();
+    const interval = setInterval(tryMatch, 2000);
 
     return () => {
       cancelled = true;
@@ -593,7 +592,7 @@ export default function ChatPage() {
       clearInterval(poll);
       supabase.removeChannel(channel);
     };
-  }, [roomId]);
+  }, [roomId, userId, playMessageSound]);
 
   useEffect(() => {
     setMediaMode("pending");

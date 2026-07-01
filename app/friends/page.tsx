@@ -189,6 +189,7 @@ export default function FriendsPage() {
     }, 80);
 
     return () => window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- scroll when selected friend id changes only
   }, [activeFriend?.id]);
 
   async function handleRequestAction(
