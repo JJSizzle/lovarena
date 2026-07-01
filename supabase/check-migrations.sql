@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 22 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 23 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -12,7 +12,7 @@ select migration, status from (
         select 1 from pg_proc p
         join pg_namespace n on n.oid = p.pronamespace
         where n.nspname = 'public' and p.proname = 'apply_positive_rating'
-          and pg_get_functiondef(p.oid) like '%least(500, reputation_score + 2)%'
+          and pg_get_functiondef(p.oid) like '%least(500, reputation_score + 3)%'
       ) then '✅ applied'
       else '❌ old version (cap 100?) — run reputation-scale.sql'
     end as status
@@ -340,6 +340,19 @@ select migration, status from (
           and table_name = 'profiles'
           and column_name = 'party_host_unlocked'
       ) then '❌ party_host_unlocked missing — run party-host-unlock.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 23, 'thumbs-up-rep-bump',
+    case
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'apply_positive_rating'
+          and pg_get_functiondef(p.oid) like '%reputation_score + 3%'
+      ) then '❌ still +2 — run thumbs-up-rep-bump.sql'
       else '✅ applied'
     end
 ) checks

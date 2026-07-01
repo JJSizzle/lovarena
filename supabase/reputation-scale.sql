@@ -10,7 +10,7 @@ begin
   update profiles
   set
     positive_ratings = positive_ratings + 1,
-    reputation_score = least(500, reputation_score + 2)
+    reputation_score = least(500, reputation_score + 3)
   where id = p_partner_id;
 end;
 $$;

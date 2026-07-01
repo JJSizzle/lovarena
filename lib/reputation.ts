@@ -1,7 +1,7 @@
 export const REP_START = 100;
 export const REP_MAX = 500;
 export const REP_REFERRAL_BONUS = 5;
-export const REP_THUMBS_UP = 2;
+export const REP_THUMBS_UP = 3;
 export const REP_THUMBS_DOWN = 5;
 export const REP_REPORT_PENALTY = 20;
 export const REP_TRUSTED_MIN = 400;
