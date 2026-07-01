@@ -78,23 +78,43 @@ export async function processQualifiedChat(
 
   if (!claimedInvitee) return null;
 
-  const { data: referrer } = await supabase
-    .from("profiles")
-    .select("reputation_score, qualified_referrals")
-    .eq("id", markedComplete.referred_by)
-    .maybeSingle();
+  const { error: referrerBonusError } = await supabase.rpc(
+    "apply_referral_referrer_bonus",
+    {
+      p_referrer_id: markedComplete.referred_by,
+      p_bonus: REFERRAL_REP_BONUS,
+    }
+  );
 
-  if (referrer) {
-    await supabase
-      .from("profiles")
-      .update({
-        qualified_referrals: (referrer.qualified_referrals ?? 0) + 1,
-        reputation_score: addReputation(
-          referrer.reputation_score ?? 100,
-          REFERRAL_REP_BONUS
-        ),
-      })
-      .eq("id", markedComplete.referred_by);
+  if (referrerBonusError) {
+    const missingRpc =
+      referrerBonusError.code === "PGRST202" ||
+      referrerBonusError.message
+        .toLowerCase()
+        .includes("apply_referral_referrer_bonus");
+
+    if (!missingRpc) {
+      console.error("referrer bonus RPC failed:", referrerBonusError.message);
+    } else {
+      const { data: referrer } = await supabase
+        .from("profiles")
+        .select("reputation_score, qualified_referrals")
+        .eq("id", markedComplete.referred_by)
+        .maybeSingle();
+
+      if (referrer) {
+        await supabase
+          .from("profiles")
+          .update({
+            qualified_referrals: (referrer.qualified_referrals ?? 0) + 1,
+            reputation_score: addReputation(
+              referrer.reputation_score ?? 100,
+              REFERRAL_REP_BONUS
+            ),
+          })
+          .eq("id", markedComplete.referred_by);
+      }
+    }
   }
 
   return {

@@ -372,5 +372,17 @@ select migration, status from (
       ) then '❌ subtract_reputation missing — run atomic-integrity.sql'
       else '✅ applied'
     end
+
+  union all
+
+  select 25, 'referral-referrer-bonus',
+    case
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'apply_referral_referrer_bonus'
+      ) then '❌ apply_referral_referrer_bonus missing — run referral-referrer-bonus.sql'
+      else '✅ applied'
+    end
 ) checks
 order by ord;
