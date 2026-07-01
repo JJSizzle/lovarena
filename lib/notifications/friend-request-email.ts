@@ -1,4 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveTransactionalFromEmail } from "@/lib/email/resend-config";
+import { sendEmailViaResend } from "@/lib/email/send-email";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendWebPushToUser } from "@/lib/notifications/web-push";
 
@@ -20,24 +22,11 @@ async function notificationsEnabled(userId: string): Promise<boolean> {
 }
 
 async function sendEmail(to: string, subject: string, lines: string[]) {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) return;
-
-  const from =
-    process.env.RESEND_FROM_EMAIL ?? "Lovarena <hello@lovarena.app>";
-
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject,
-      text: lines.join("\n"),
-    }),
+  await sendEmailViaResend({
+    from: resolveTransactionalFromEmail(),
+    to: [to],
+    subject,
+    text: lines.join("\n"),
   });
 }
 

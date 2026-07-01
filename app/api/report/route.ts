@@ -15,6 +15,7 @@ import {
 } from "@/lib/moderation/report-reputation";
 import { isReportReason, reportReasonLabel } from "@/lib/moderation/report-reasons";
 import { notifyModerators } from "@/lib/moderation/notify-admin";
+import { captureServerError } from "@/lib/capture-error";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -144,6 +145,7 @@ export async function POST(req: NextRequest) {
           "Report submitted for moderator review."),
     });
   } catch (err) {
+    await captureServerError(err, { route: "/api/report" });
     const message = err instanceof Error ? err.message : "Report failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

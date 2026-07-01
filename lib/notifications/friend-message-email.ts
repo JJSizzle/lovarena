@@ -1,4 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasResendApiKey, resolveTransactionalFromEmail } from "@/lib/email/resend-config";
+import { sendEmailViaResend } from "@/lib/email/send-email";
 import { rateLimit } from "@/lib/rate-limit";
 
 type FriendMessageEmailParams = {
@@ -11,8 +13,7 @@ type FriendMessageEmailParams = {
 export async function notifyFriendMessageEmail(
   params: FriendMessageEmailParams
 ): Promise<void> {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) return;
+  if (!hasResendApiKey()) return;
 
   const supabase = createAdminClient();
 
@@ -36,32 +37,23 @@ export async function notifyFriendMessageEmail(
   if (authError || !authData.user?.email) return;
 
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lovarena.app";
-  const from =
-    process.env.RESEND_FROM_EMAIL ?? "Lovarena <hello@lovarena.app>";
   const preview =
     params.preview.length > 120
       ? `${params.preview.slice(0, 117)}…`
       : params.preview;
 
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [authData.user.email],
-      subject: `${params.senderUsername} sent you a message`,
-      text: [
-        `${params.senderUsername} sent you a message on Lovarena:`,
-        "",
-        preview,
-        "",
-        `Open your inbox: ${site}/friends`,
-        "",
-        "Turn off email notifications in Profile → Settings.",
-      ].join("\n"),
-    }),
+  await sendEmailViaResend({
+    from: resolveTransactionalFromEmail(),
+    to: [authData.user.email],
+    subject: `${params.senderUsername} sent you a message`,
+    text: [
+      `${params.senderUsername} sent you a message on Lovarena:`,
+      "",
+      preview,
+      "",
+      `Open your inbox: ${site}/friends`,
+      "",
+      "Turn off email notifications in Profile → Settings.",
+    ].join("\n"),
   });
 }

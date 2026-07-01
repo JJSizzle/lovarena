@@ -1,4 +1,6 @@
+import { ContactForm } from "@/components/ContactForm";
 import { LegalShell } from "@/components/LegalShell";
+import { isContactFormConfigured } from "@/lib/email/resend-config";
 import { SITE_NAME } from "@/lib/site";
 
 export const metadata = {
@@ -6,6 +8,8 @@ export const metadata = {
 };
 
 export default function ContactPage() {
+  const formEnabled = isContactFormConfigured();
+
   return (
     <LegalShell title="Contact & DMCA">
       <p>For support, safety reports, or legal inquiries:</p>
@@ -35,6 +39,16 @@ export default function ContactPage() {
           </a>
         </li>
       </ul>
+
+      {formEnabled ? (
+        <>
+          <h2 className="text-xl font-semibold text-white mt-8">Send a message</h2>
+          <p className="text-slate-400">
+            Or use the form below — we reply to the email you provide.
+          </p>
+          <ContactForm />
+        </>
+      ) : null}
 
       <h2 className="text-xl font-semibold text-white mt-8">DMCA & copyright</h2>
       <p className="mt-3 text-slate-400 leading-relaxed">

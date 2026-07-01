@@ -1,3 +1,12 @@
+import { captureServerError } from "@/lib/capture-error";
+import {
+  hasAdminAlertEmail,
+  hasResendApiKey,
+  hasSlackModerationWebhook,
+  resolveAlertsFromEmail,
+} from "@/lib/email/resend-config";
+import { sendEmailViaResend } from "@/lib/email/send-email";
+
 type ModerationAlert = {
   type:
     | "report"
@@ -31,36 +40,39 @@ export async function notifyModerators(alert: ModerationAlert): Promise<void> {
 
   const tasks: Promise<void>[] = [];
 
-  const slackUrl = process.env.SLACK_MODERATION_WEBHOOK_URL;
-  if (slackUrl) {
+  if (hasSlackModerationWebhook()) {
+    const slackUrl = process.env.SLACK_MODERATION_WEBHOOK_URL!.trim();
     tasks.push(
       fetch(slackUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: lines }),
-      }).then(() => undefined)
+      }).then(async (res) => {
+        if (!res.ok) {
+          await captureServerError(
+            new Error(`Slack moderation webhook failed: ${res.status}`),
+            { alertType: alert.type }
+          );
+        }
+      })
     );
   }
 
-  const resendKey = process.env.RESEND_API_KEY;
-  const alertEmail = process.env.ADMIN_ALERT_EMAIL;
-  if (resendKey && alertEmail) {
-    const from =
-      process.env.RESEND_FROM_EMAIL ?? "Lovarena <alerts@lovarena.app>";
+  if (hasResendApiKey() && hasAdminAlertEmail()) {
+    const alertEmail = process.env.ADMIN_ALERT_EMAIL!.trim();
     tasks.push(
-      fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from,
-          to: [alertEmail],
-          subject: `[Lovarena] ${alert.type}: ${alert.reason}`,
-          text: lines,
-        }),
-      }).then(() => undefined)
+      sendEmailViaResend({
+        from: resolveAlertsFromEmail(),
+        to: [alertEmail],
+        subject: `[Lovarena] ${alert.type}: ${alert.reason}`,
+        text: lines,
+      }).then(async (sent) => {
+        if (!sent) {
+          await captureServerError(new Error("Moderation alert email failed"), {
+            alertType: alert.type,
+          });
+        }
+      })
     );
   }
 
