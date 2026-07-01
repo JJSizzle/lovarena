@@ -135,7 +135,7 @@ export default function HomePage() {
       router.push("/chat");
     } catch (err) {
       setEnterError(
-        err instanceof Error ? err.message : "Could not enter the arena"
+        err instanceof Error ? err.message : "Could not enter Lovarena"
       );
     } finally {
       setEntering(false);
@@ -175,9 +175,9 @@ export default function HomePage() {
             Connect across borders
           </p>
           <h2 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight text-slate-100">
-            Welcome to the{" "}
+            Welcome to{" "}
             <span className="bg-gradient-to-r from-pink-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
-              arena
+              Lovarena
             </span>
           </h2>
           <p className="text-slate-400 text-lg max-w-lg mx-auto leading-relaxed">

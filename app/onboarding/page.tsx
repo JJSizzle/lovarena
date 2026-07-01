@@ -193,7 +193,7 @@ function OnboardingForm() {
         </h1>
         <p className="mt-2 text-sm text-purple-300/70">
           {step === "username" &&
-            "Choose a name strangers will see in the arena."}
+            "Choose a name strangers will see when you match."}
           {step === "profile" &&
             "Age and match preferences help us pair you with the right people."}
           {step === "tags" &&
@@ -275,7 +275,7 @@ function OnboardingForm() {
               disabled={submitting}
               className={submitBtnClass}
             >
-              {submitting ? "Saving…" : "Enter the arena"}
+              {submitting ? "Saving…" : "Enter Lovarena"}
             </button>
             <button
               type="button"

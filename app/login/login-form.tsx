@@ -375,7 +375,7 @@ export default function LoginForm() {
         <p className="mt-2 text-sm text-purple-300/70">
           {mode === "login"
             ? "Sign in to add friends and send private messages."
-            : "Join the arena — video + text chat with real people."}
+            : "Join Lovarena — video + text chat with real people."}
         </p>
 
         {user && (
