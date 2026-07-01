@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
+import { partnerIdsFromFriendshipRows } from "@/lib/friends/are-friends";
 import { removeFriendshipPair } from "@/lib/friends/friend-link-status";
 import { MAX_FRIENDS } from "@/lib/friends/limits";
 
@@ -21,9 +22,7 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const friendIds = (data ?? []).map((row) =>
-      row.user_id === auth.profile.id ? row.friend_id : row.user_id
-    );
+    const friendIds = partnerIdsFromFriendshipRows(auth.profile.id, data ?? []);
 
     const connectionByFriendId = new Map(
       (data ?? []).map((row) => {
