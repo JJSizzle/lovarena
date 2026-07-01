@@ -217,7 +217,7 @@ export function PartyVideoPanel({
               ? renderRemoteTile(focusedRemote, false)
               : null}
           <div className="grid grid-cols-3 gap-1.5">
-            {renderSelfTile(true)}
+            {focusedId !== "self" && renderSelfTile(true)}
             {others
               .filter((m) => m.id !== focusedId)
               .map((m) => renderRemoteTile(m, true))}

@@ -27,6 +27,13 @@ export async function POST(req: NextRequest) {
     if (!rl.allowed) return rl.response;
 
     const mode = matchMode === "regional" ? "regional" : "worldwide";
+    if (mode === "regional" && !countryCode) {
+      return NextResponse.json(
+        { error: "Country required for regional matchmaking" },
+        { status: 400 }
+      );
+    }
+
     let normalizedState: string | null = null;
     if (
       mode === "regional" &&

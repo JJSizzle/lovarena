@@ -34,6 +34,8 @@ export type MessageNotification = {
 type NotificationPayload = {
   friendRequests: FriendRequestNotification[];
   messages: MessageNotification[];
+  incomingFriendRequestCount: number;
+  unreadMessageCount: number;
 };
 
 type NotificationContextValue = {
@@ -51,11 +53,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<NotificationPayload>({
     friendRequests: [],
     messages: [],
+    incomingFriendRequestCount: 0,
+    unreadMessageCount: 0,
   });
 
   const refresh = useCallback(async () => {
     if (!profile?.id) {
-      setData({ friendRequests: [], messages: [] });
+      setData({
+        friendRequests: [],
+        messages: [],
+        incomingFriendRequestCount: 0,
+        unreadMessageCount: 0,
+      });
       return;
     }
 
@@ -66,6 +75,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         setData({
           friendRequests: json.friendRequests ?? [],
           messages: json.messages ?? [],
+          incomingFriendRequestCount:
+            typeof json.incomingFriendRequestCount === "number"
+              ? json.incomingFriendRequestCount
+              : (json.friendRequests ?? []).length,
+          unreadMessageCount:
+            typeof json.unreadMessageCount === "number"
+              ? json.unreadMessageCount
+              : (json.messages ?? []).length,
         });
       }
     } catch {
@@ -156,11 +173,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     () => ({
       friendRequests: data.friendRequests,
       unreadMessages,
-      totalCount: data.friendRequests.length + unreadMessages.length,
-      incomingFriendCount: data.friendRequests.length,
+      totalCount:
+        data.incomingFriendRequestCount + data.unreadMessageCount,
+      incomingFriendCount: data.incomingFriendRequestCount,
       refresh,
     }),
-    [data.friendRequests, unreadMessages, refresh]
+    [
+      data.friendRequests,
+      data.incomingFriendRequestCount,
+      data.unreadMessageCount,
+      unreadMessages,
+      refresh,
+    ]
   );
 
   return (

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useConfirm } from "@/components/ConfirmProvider";
 import dynamic from "next/dynamic";
@@ -146,6 +147,7 @@ export default function FriendsPage() {
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [requestNotice, setRequestNotice] = useState<string | null>(null);
   const [friendsLoaded, setFriendsLoaded] = useState(false);
+  const [friendsLoadError, setFriendsLoadError] = useState<string | null>(null);
   const [friendCount, setFriendCount] = useState(0);
   const [friendLimit, setFriendLimit] = useState(200);
   const chatPanelRef = useRef<HTMLDivElement>(null);
@@ -154,9 +156,11 @@ export default function FriendsPage() {
     const res = await fetch("/api/friends", { cache: "no-store" });
     const data = await res.json();
     if (!res.ok) {
+      setFriendsLoadError(data.error ?? "Could not load friends");
       setFriendsLoaded(true);
       return;
     }
+    setFriendsLoadError(null);
     setFriends(data.friends ?? []);
     setIncomingRequests(data.incomingRequests ?? []);
     setOutgoingRequests(data.outgoingRequests ?? []);
@@ -174,6 +178,43 @@ export default function FriendsPage() {
     if (!user) return;
     loadFriends().catch(() => {});
   }, [user, loadFriends]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`friends-page:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "friendships",
+          filter: `friend_id=eq.${user.id}`,
+        },
+        () => {
+          void loadFriends();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "friendships",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          void loadFriends();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, loadFriends]);
 
   useEffect(() => {
     if (!friendsLoaded || !chatIdFromUrl) return;
@@ -487,7 +528,25 @@ export default function FriendsPage() {
           </section>
         )}
 
-        {!hasConnections && !hasRequests && !hasOutgoing ? (
+        {!friendsLoaded ? (
+          <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-8 text-center">
+            <p className="text-slate-400 text-sm">Loading friends…</p>
+          </div>
+        ) : friendsLoadError ? (
+          <div className="rounded-3xl border border-red-500/30 bg-slate-950/80 p-8 text-center">
+            <p className="text-red-300 text-sm">{friendsLoadError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setFriendsLoaded(false);
+                void loadFriends();
+              }}
+              className={`${chatBtnGhost} mt-4`}
+            >
+              Try again
+            </button>
+          </div>
+        ) : !hasConnections && !hasRequests && !hasOutgoing ? (
           <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-8 text-center">
             <p className="text-4xl mb-3">✨</p>
             <p className="text-slate-300 font-medium">No friends yet</p>

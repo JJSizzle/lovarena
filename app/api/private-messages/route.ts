@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isBlockedEitherWay } from "@/lib/auth/api-auth";
+import { areFriends } from "@/lib/friends/are-friends";
 import { moderateMessageContent } from "@/lib/moderation/moderate-message";
 import {
   applyTimedRestriction,
@@ -33,15 +34,7 @@ export async function GET(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    const { data: friendship } = await supabase
-      .from("friendships")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("friend_id", friendId)
-      .eq("status", "accepted")
-      .maybeSingle();
-
-    if (!friendship) {
+    if (!(await areFriends(user.id, friendId, supabase))) {
       return NextResponse.json({ error: "Not friends" }, { status: 403 });
     }
 
@@ -108,15 +101,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: friendship } = await supabase
-      .from("friendships")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("friend_id", friendId)
-      .eq("status", "accepted")
-      .maybeSingle();
-
-    if (!friendship) {
+    if (!(await areFriends(user.id, friendId, supabase))) {
       return NextResponse.json({ error: "Not friends" }, { status: 403 });
     }
 

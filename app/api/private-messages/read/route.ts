@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isBlockedEitherWay } from "@/lib/auth/api-auth";
+import { areFriends } from "@/lib/friends/are-friends";
 import { markConversationRead } from "@/lib/dm/read-cursors";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
@@ -26,15 +27,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    const { data: friendship } = await supabase
-      .from("friendships")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("friend_id", friendId)
-      .eq("status", "accepted")
-      .maybeSingle();
-
-    if (!friendship) {
+    if (!(await areFriends(user.id, friendId, supabase))) {
       return NextResponse.json({ error: "Not friends" }, { status: 403 });
     }
 

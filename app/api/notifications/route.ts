@@ -3,6 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { isDmUnreadServer } from "@/lib/dm/read-cursors";
 
+const RECENT_DM_SCAN_LIMIT = 500;
+const DM_LIST_DISPLAY_LIMIT = 25;
+
 export async function GET() {
   try {
     const auth = await requireAuthProfile();
@@ -10,6 +13,17 @@ export async function GET() {
 
     const supabase = createAdminClient();
     const myId = auth.profile.id;
+
+    const { count: incomingFriendRequestCount, error: countError } =
+      await supabase
+        .from("friendships")
+        .select("id", { count: "exact", head: true })
+        .eq("friend_id", myId)
+        .eq("status", "pending");
+
+    if (countError) {
+      return NextResponse.json({ error: countError.message }, { status: 500 });
+    }
 
     const { data: pendingIncoming, error: reqError } = await supabase
       .from("friendships")
@@ -55,7 +69,7 @@ export async function GET() {
       .select("id, sender_id, content, created_at")
       .eq("receiver_id", myId)
       .order("created_at", { ascending: false })
-      .limit(40);
+      .limit(RECENT_DM_SCAN_LIMIT);
 
     if (msgError) {
       return NextResponse.json({ error: msgError.message }, { status: 500 });
@@ -90,7 +104,7 @@ export async function GET() {
       (senderProfiles ?? []).map((p) => [p.id, p] as const)
     );
 
-    const messages = (
+    const unreadThreads = (
       await Promise.all(
         [...latestBySender.values()].map(async (thread) => {
           const profile = senderById.get(thread.senderId);
@@ -115,12 +129,16 @@ export async function GET() {
       .sort(
         (a, b) =>
           new Date(b!.createdAt).getTime() - new Date(a!.createdAt).getTime()
-      )
-      .slice(0, 10);
+      );
+
+    const unreadMessageCount = unreadThreads.length;
+    const messages = unreadThreads.slice(0, DM_LIST_DISPLAY_LIMIT);
 
     return NextResponse.json({
       friendRequests,
       messages,
+      incomingFriendRequestCount: incomingFriendRequestCount ?? 0,
+      unreadMessageCount,
     });
   } catch (err) {
     const message =
