@@ -932,6 +932,16 @@ export default function ChatPage() {
 
       setYouClickedConnect(true);
 
+      if (
+        data.error &&
+        data.youClicked &&
+        data.partnerClicked &&
+        !data.matched
+      ) {
+        setConnectNotice(data.error);
+        return;
+      }
+
       if (data.matched && data.connectionType === "mutual_connect") {
         setChatConnectionType("mutual_connect");
         setChatFriendStatus("friends");

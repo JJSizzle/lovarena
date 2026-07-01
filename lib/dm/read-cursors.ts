@@ -34,16 +34,6 @@ export async function markConversationRead(
   peerId: string,
   lastReadAt: string
 ): Promise<boolean> {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("read_receipts_enabled")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (profile?.read_receipts_enabled === false) {
-    return false;
-  }
-
   const existing = await getReadCursor(supabase, userId, peerId);
   if (existing && lastReadAt <= existing) {
     return true;

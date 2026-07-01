@@ -96,15 +96,31 @@ export async function ensureMutualSparkFriendship(
   supabase: SupabaseClient,
   userId: string,
   partnerId: string
-): Promise<void> {
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: existing } = await supabase
+    .from("friendships")
+    .select("id")
+    .eq("status", "accepted")
+    .or(
+      `and(user_id.eq.${userId},friend_id.eq.${partnerId}),and(user_id.eq.${partnerId},friend_id.eq.${userId})`
+    )
+    .limit(1);
+
+  if (existing?.length) {
+    return { ok: true };
+  }
+
   const capacity = await assertFriendCapacityForPair(
     supabase,
     userId,
     partnerId
   );
-  if (!capacity.ok) return;
+  if (!capacity.ok) {
+    return { ok: false, error: capacity.error };
+  }
 
   await acceptFriendshipPair(supabase, userId, partnerId, "mutual_connect");
+  return { ok: true };
 }
 
 export async function removeFriendshipPair(

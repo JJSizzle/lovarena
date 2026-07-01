@@ -86,15 +86,11 @@ export async function GET(req: NextRequest) {
       !!partnerId && !!myClick && partnerClicked;
 
     if (bothSparked && partnerId) {
-      try {
-        await ensureMutualSparkFriendship(
-          supabase,
-          auth.profile.id,
-          partnerId
-        );
-      } catch {
-        // polling will retry
-      }
+      await ensureMutualSparkFriendship(
+        supabase,
+        auth.profile.id,
+        partnerId
+      );
     }
 
     const { data: friendRows } = partnerId
@@ -211,16 +207,39 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    try {
-      await ensureMutualSparkFriendship(
-        supabase,
-        auth.profile.id,
-        partnerId
+    const sparkResult = await ensureMutualSparkFriendship(
+      supabase,
+      auth.profile.id,
+      partnerId
+    );
+
+    if (!sparkResult.ok) {
+      return NextResponse.json({
+        youClicked: true,
+        partnerClicked: true,
+        matched: false,
+        error: sparkResult.error,
+      });
+    }
+
+    const { data: friendRowsAfter } = await supabase
+      .from("friendships")
+      .select("user_id, friend_id, status, connection_type")
+      .or(
+        `and(user_id.eq.${auth.profile.id},friend_id.eq.${partnerId}),and(user_id.eq.${partnerId},friend_id.eq.${auth.profile.id})`
       );
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Could not create friendship";
-      return NextResponse.json({ error: message }, { status: 500 });
+
+    const becameFriends =
+      friendLinkStatus(auth.profile.id, partnerId, friendRowsAfter ?? []) ===
+      "friends";
+
+    if (!becameFriends) {
+      return NextResponse.json({
+        youClicked: true,
+        partnerClicked: true,
+        matched: false,
+        error: "Could not add as friends. Try again from your friends list.",
+      });
     }
 
     const { data: partnerProfile } = await supabase

@@ -34,6 +34,17 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
+
+    const { data: existingFeedback } = await supabase
+      .from("chat_feedback")
+      .select("rating")
+      .eq("room_id", roomId)
+      .eq("rater_id", auth.profile.id)
+      .maybeSingle();
+
+    const ratingChanged =
+      !existingFeedback || existingFeedback.rating !== rating;
+
     const { error } = await supabase.from("chat_feedback").upsert({
       room_id: roomId,
       rater_id: auth.profile.id,
@@ -45,23 +56,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (rating === "up") {
-      await supabase.rpc("apply_positive_rating", { p_partner_id: partnerId });
-    } else {
-      const { data: partnerRow } = await supabase
-        .from("profiles")
-        .select("reputation_score")
-        .eq("id", partnerId)
-        .maybeSingle();
-      await supabase
-        .from("profiles")
-        .update({
-          reputation_score: subtractReputation(
-            partnerRow?.reputation_score ?? 100,
-            REP_THUMBS_DOWN
-          ),
-        })
-        .eq("id", partnerId);
+    if (ratingChanged) {
+      if (rating === "up") {
+        await supabase.rpc("apply_positive_rating", { p_partner_id: partnerId });
+      } else {
+        const { data: partnerRow } = await supabase
+          .from("profiles")
+          .select("reputation_score")
+          .eq("id", partnerId)
+          .maybeSingle();
+        await supabase
+          .from("profiles")
+          .update({
+            reputation_score: subtractReputation(
+              partnerRow?.reputation_score ?? 100,
+              REP_THUMBS_DOWN
+            ),
+          })
+          .eq("id", partnerId);
+      }
     }
 
     return NextResponse.json({ ok: true });

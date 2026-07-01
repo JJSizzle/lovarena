@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isBlockedEitherWay } from "@/lib/auth/api-auth";
 import { moderateMessageContent } from "@/lib/moderation/moderate-message";
 import {
   applyTimedRestriction,
@@ -42,6 +43,13 @@ export async function GET(req: NextRequest) {
 
     if (!friendship) {
       return NextResponse.json({ error: "Not friends" }, { status: 403 });
+    }
+
+    if (await isBlockedEitherWay(user.id, friendId)) {
+      return NextResponse.json(
+        { error: "Cannot message a blocked user." },
+        { status: 403 }
+      );
     }
 
     const { data, error } = await supabase
@@ -110,6 +118,13 @@ export async function POST(req: NextRequest) {
 
     if (!friendship) {
       return NextResponse.json({ error: "Not friends" }, { status: 403 });
+    }
+
+    if (await isBlockedEitherWay(user.id, friendId)) {
+      return NextResponse.json(
+        { error: "Cannot message a blocked user." },
+        { status: 403 }
+      );
     }
 
     const text = content.trim();
