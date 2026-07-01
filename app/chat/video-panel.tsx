@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { RefObject } from "react";
 import { BetaBadge } from "@/components/BetaBadge";
+import { SafetyBadge } from "@/components/SafetyBadge";
 import {
   chatBtnEnd,
   chatBtnFun,
@@ -20,6 +21,8 @@ type VideoPanelProps = {
   status: "matching" | "connected" | "disconnected" | "restricted";
   selfLabel: string;
   partnerLabel?: string | null;
+  partnerSafetyLabel?: string | null;
+  partnerSafetyTone?: "green" | "amber" | "sky" | null;
   matchBadge: string;
   videoEnabled: boolean;
   mediaStarting?: boolean;
@@ -80,6 +83,8 @@ export function VideoPanel({
   status,
   selfLabel,
   partnerLabel,
+  partnerSafetyLabel,
+  partnerSafetyTone,
   matchBadge,
   videoEnabled,
   mediaStarting = false,
@@ -271,6 +276,13 @@ export function VideoPanel({
             {partnerLabel?.trim() ||
               (status === "matching" ? "…" : "Stranger")}
           </p>
+          {partnerSafetyLabel && partnerSafetyTone && status === "connected" && (
+            <SafetyBadge
+              label={partnerSafetyLabel}
+              tone={partnerSafetyTone}
+              className="mt-1"
+            />
+          )}
         </div>
         <div className="text-center min-w-0 flex flex-col items-center gap-1.5">
           <Link
@@ -355,30 +367,50 @@ export function VideoPanel({
         {showConnect &&
           !socialCompact &&
           (socialSpark || friendSlot) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
-            <div className="rounded-xl border border-pink-500/25 bg-pink-500/5 px-3 py-2">
-              <p className="text-[9px] font-bold uppercase tracking-wide text-pink-300 mb-1.5 text-center">
-                ✨ Mutual spark
-              </p>
-              <p className="text-[10px] text-slate-500 mb-2 leading-snug text-center">
-                Feel mutual attraction? Both tap if the chemistry is there.
-              </p>
-              <div className={`${chatToolbar} !gap-1.5`}>
-                {socialSpark}
+          <>
+            <div className="sm:hidden w-full space-y-1.5">
+              {socialSpark && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-pink-500/25 bg-pink-500/5 px-3 py-2">
+                  <span className="text-[9px] font-bold uppercase tracking-wide text-pink-300 shrink-0">
+                    ✨ Spark
+                  </span>
+                  <div className="min-w-0 flex justify-end">{socialSpark}</div>
+                </div>
+              )}
+              {friendSlot && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 px-3 py-2">
+                  <span className="text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 shrink-0">
+                    Friend
+                  </span>
+                  <div className="min-w-0 flex justify-end">{friendSlot}</div>
+                </div>
+              )}
+            </div>
+            <div className="hidden sm:grid grid-cols-2 gap-2 w-full">
+              <div className="rounded-xl border border-pink-500/25 bg-pink-500/5 px-3 py-2">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-pink-300 mb-1.5 text-center">
+                  ✨ Mutual spark
+                </p>
+                <p className="text-[10px] text-slate-500 mb-2 leading-snug text-center">
+                  Feel mutual attraction? Both tap if the chemistry is there.
+                </p>
+                <div className={`${chatToolbar} !gap-1.5`}>
+                  {socialSpark}
+                </div>
+              </div>
+              <div className="rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 px-3 py-2">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 mb-1.5 text-center">
+                  Add friend
+                </p>
+                <p className="text-[10px] text-slate-500 mb-2 leading-snug text-center">
+                  Stay in touch platonically — separate from a romantic spark.
+                </p>
+                <div className={`${chatToolbar} !gap-1.5`}>
+                  {friendSlot}
+                </div>
               </div>
             </div>
-            <div className="rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 px-3 py-2">
-              <p className="text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 mb-1.5 text-center">
-                Add friend
-              </p>
-              <p className="text-[10px] text-slate-500 mb-2 leading-snug text-center">
-                Stay in touch platonically — separate from a romantic spark.
-              </p>
-              <div className={`${chatToolbar} !gap-1.5`}>
-                {friendSlot}
-              </div>
-            </div>
-          </div>
+          </>
         )}
         <div className={`${chatToolbar} !gap-1.5 md:!gap-2`}>{actionControls}</div>
         {showConnect && connectHint && (

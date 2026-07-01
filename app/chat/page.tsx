@@ -109,6 +109,12 @@ export default function ChatPage() {
   const [partnerProfileOpen, setPartnerProfileOpen] = useState(false);
   const [partnerId, setPartnerId] = useState<string | null>(null);
   const [partnerLabel, setPartnerLabel] = useState<string | null>(null);
+  const [partnerSafetyLabel, setPartnerSafetyLabel] = useState<string | null>(
+    null
+  );
+  const [partnerSafetyTone, setPartnerSafetyTone] = useState<
+    "green" | "amber" | "sky" | null
+  >(null);
   const [partnerAllowsFriendRequests, setPartnerAllowsFriendRequests] =
     useState(true);
   const [partnerAllowsMutualSpark, setPartnerAllowsMutualSpark] = useState(true);
@@ -215,6 +221,8 @@ export default function ChatPage() {
           if (typeof d.partnerAllowsMutualSpark === "boolean") {
             setPartnerAllowsMutualSpark(d.partnerAllowsMutualSpark);
           }
+          if (d.safetyLabel) setPartnerSafetyLabel(d.safetyLabel);
+          if (d.safetyTone) setPartnerSafetyTone(d.safetyTone);
         })
         .catch(() => {});
     }
@@ -225,6 +233,8 @@ export default function ChatPage() {
       resetCelebration();
       setPartnerId(null);
       setPartnerLabel(null);
+      setPartnerSafetyLabel(null);
+      setPartnerSafetyTone(null);
       setPartnerAllowsFriendRequests(true);
       setPartnerAllowsMutualSpark(true);
       setSharedTags([]);
@@ -698,6 +708,8 @@ export default function ChatPage() {
     setRoomId(null);
     setPartnerId(null);
     setPartnerLabel(null);
+    setPartnerSafetyLabel(null);
+    setPartnerSafetyTone(null);
     setSharedTags([]);
     setChatFriendStatus("none");
     setChatConnectionType(null);
@@ -1277,6 +1289,8 @@ export default function ChatPage() {
               : "You"
           }
           partnerLabel={partnerLabel}
+          partnerSafetyLabel={partnerSafetyLabel}
+          partnerSafetyTone={partnerSafetyTone}
           matchBadge={roomBadge}
           videoEnabled={videoEnabled}
           mediaStarting={

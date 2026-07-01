@@ -461,16 +461,18 @@ export default function FriendsPage() {
 
         {!hasConnections && !hasRequests && !hasOutgoing ? (
           <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-8 text-center">
-            <p className="text-4xl mb-3">❤️</p>
+            <p className="text-4xl mb-3">✨</p>
             <p className="text-slate-300 font-medium">No friends yet</p>
-            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-              Match in the arena and tap ✨ mutual spark when you both feel it —
-              you&apos;ll land here automatically. Or accept a request below.
-              Privacy toggles live in{" "}
-              <Link href="/settings" className="text-fuchsia-400 hover:text-fuchsia-300">
-                Settings
-              </Link>
-              .
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed max-w-xs mx-auto">
+              When you both tap{" "}
+              <span className="text-pink-300/90">Feel the spark</span> in the
+              arena, you&apos;ll show up here automatically. You can also tap{" "}
+              <span className="text-fuchsia-300/90">Add friend</span> during
+              chat, or accept a request when someone sends one.
+            </p>
+            <p className="text-[10px] text-slate-600 mt-3">
+              Spark and friend requests are separate — use whichever fits the
+              vibe.
             </p>
             <Link
               href="/chat"

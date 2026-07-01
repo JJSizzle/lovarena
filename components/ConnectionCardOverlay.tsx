@@ -3,6 +3,7 @@
 import { countryCodeToFlag } from "@/lib/flags";
 import { formatPartnerLine } from "@/lib/profile-age";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { SafetyBadge } from "@/components/SafetyBadge";
 
 export type ConnectionCardData = {
   matchMode: string;
@@ -67,17 +68,12 @@ export function ConnectionCardOverlay({ data, visible, onDone }: Props) {
             &ldquo;{data.partnerBio}&rdquo;
           </p>
         )}
-        <span
-          className={`inline-block mt-3 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
-            data.safetyTone === "green"
-              ? "bg-emerald-500/20 text-emerald-300"
-              : data.safetyTone === "amber"
-                ? "bg-amber-500/20 text-amber-300"
-                : "bg-sky-500/20 text-sky-300"
-          }`}
-        >
-          🛡 {data.safetyLabel}
-        </span>
+        <SafetyBadge
+          label={data.safetyLabel}
+          tone={data.safetyTone}
+          size="md"
+          className="mt-3"
+        />
         {(data.sharedTags.length > 0 || (data.partnerInterests?.length ?? 0) > 0) && (
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {(data.sharedTags.length > 0
