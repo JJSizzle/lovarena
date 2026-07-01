@@ -13,6 +13,7 @@ import {
   isSightengineConfigured,
   isTurnstileConfigured,
 } from "@/lib/security/turnstile";
+import { isAdminIpAllowlistConfigured } from "@/lib/security/admin-access";
 
 function buildHints(env: {
   hasServiceRoleKey: boolean;
@@ -24,6 +25,7 @@ function buildHints(env: {
   hasCronSecret: boolean;
   turnstileEnabled: boolean;
   sightengineEnabled: boolean;
+  adminIpAllowlistConfigured: boolean;
 }): string[] {
   const hints: string[] = [];
 
@@ -73,6 +75,12 @@ function buildHints(env: {
     );
   }
 
+  if (!env.adminIpAllowlistConfigured && process.env.NODE_ENV === "production") {
+    hints.push(
+      "Admin IP allowlist off — set ADMIN_ALLOWED_IPS on Vercel (comma-separated) to lock /admin to your network."
+    );
+  }
+
   return hints;
 }
 
@@ -96,6 +104,7 @@ export async function GET() {
     hasCronSecret: hasCronSecret(),
     turnstileEnabled: isTurnstileConfigured(),
     sightengineEnabled: isSightengineConfigured(),
+    adminIpAllowlistConfigured: isAdminIpAllowlistConfigured(),
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? null,
   };
 

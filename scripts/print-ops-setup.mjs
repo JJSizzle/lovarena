@@ -54,5 +54,15 @@ Lovarena — Ops setup (Batch C)
        SIGHTENGINE_API_USER=...
        SIGHTENGINE_API_SECRET=...
    - Redeploy → /api/health → sightengineEnabled: true
+
+8. Admin IP allowlist (optional)
+   - Vercel → Production:
+       ADMIN_ALLOWED_IPS=your.public.ip,backup.ip
+   - Redeploy → /admin only works from those IPs
+
+9. Security tier 2 SQL
+   - Supabase SQL Editor → run supabase/security-tier2.sql
+   - Verify check-migrations rows 19–20
+
 Health check: https://lovarena.app/api/health
 `);

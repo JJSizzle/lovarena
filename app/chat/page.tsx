@@ -63,6 +63,9 @@ import type { FriendConnectionType } from "@/lib/friends/connection-type";
 import type { FriendProfileView } from "@/lib/friends/friend-profile-view";
 import { beaconLeaveChat } from "@/lib/chat-leave-beacon";
 
+const turnstileSiteKey =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
+
 type Message = {
   id: string;
   room_id: string;
@@ -107,6 +110,9 @@ export default function ChatPage() {
   const [friendRequestLoading, setFriendRequestLoading] = useState(false);
   const [showMutualConnectCelebration, setShowMutualConnectCelebration] =
     useState(false);
+  const [matchCaptchaBlocked, setMatchCaptchaBlocked] = useState(false);
+  const [matchCaptchaToken, setMatchCaptchaToken] = useState("");
+  const matchTurnstileTokenRef = useRef("");
   const mutualSparkCelebratedRef = useRef(false);
   const [bothRevealed, setBothRevealed] = useState(false);
   const [partnerProfileOpen, setPartnerProfileOpen] = useState(false);
@@ -257,6 +263,39 @@ export default function ChatPage() {
     matchPrefs.matchMode === "regional"
       ? formatRegionalBadge(matchPrefs.countryCode, matchPrefs.stateCode)
       : "GLOBAL ROOM";
+
+  function buildMatchPayload(extra?: Record<string, unknown>) {
+    const body = { ...getMatchRequestBody(), ...extra };
+    const token = matchTurnstileTokenRef.current;
+    if (matchCaptchaBlocked && token) {
+      return { ...body, turnstileToken: token };
+    }
+    return body;
+  }
+
+  function handleMatchCaptchaToken(token: string) {
+    matchTurnstileTokenRef.current = token;
+    setMatchCaptchaToken(token);
+    if (token) {
+      setError(null);
+      setMatchScopeKey((k) => k + 1);
+    }
+  }
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    fetch("/api/match/captcha-status", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.required && !d.satisfied) {
+          setMatchCaptchaBlocked(true);
+        } else {
+          setMatchCaptchaBlocked(false);
+        }
+      })
+      .catch(() => {});
+  }, [profile?.id, profile?.created_at]);
 
   useEffect(() => {
     if (!profile) return;
@@ -456,6 +495,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (!userId || authLoading || !profile?.age_verified) return;
     if (status !== "matching") return;
+    if (matchCaptchaBlocked && !matchCaptchaToken) return;
 
     let cancelled = false;
 
@@ -464,7 +504,7 @@ export default function ChatPage() {
         const res = await fetch("/api/match", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(getMatchRequestBody()),
+          body: JSON.stringify(buildMatchPayload()),
           cache: "no-store",
         });
         const text = await res.text();
@@ -483,6 +523,11 @@ export default function ChatPage() {
             router.replace("/login?next=/chat");
             return;
           }
+          if (data.needsCaptcha) {
+            setMatchCaptchaBlocked(true);
+            matchTurnstileTokenRef.current = "";
+            setMatchCaptchaToken("");
+          }
           if (data.flagged) {
             setStatus("restricted");
             clearInterval(interval);
@@ -492,6 +537,7 @@ export default function ChatPage() {
         }
 
         setError(null);
+        setMatchCaptchaBlocked(false);
         if (data.roomId) {
           setEndedBySelf(false);
           setRoomId(data.roomId);
@@ -510,7 +556,7 @@ export default function ChatPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [userId, authLoading, profile?.age_verified, status, router, matchScopeKey]);
+  }, [userId, authLoading, profile?.age_verified, status, router, matchScopeKey, matchCaptchaBlocked, matchCaptchaToken]);
 
   async function handleExpandRegion() {
     if (status !== "matching" || expandingRegion) return;
@@ -522,7 +568,7 @@ export default function ChatPage() {
       const res = await fetch("/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(getMatchRequestBody()),
+        body: JSON.stringify(buildMatchPayload()),
         cache: "no-store",
       });
       const data = await res.json();
@@ -841,7 +887,7 @@ export default function ChatPage() {
       const r = await fetch("/api/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(getMatchRequestBody()),
+        body: JSON.stringify(buildMatchPayload()),
       });
       const d = await r.json();
       if (d.roomId) {
@@ -1273,6 +1319,9 @@ export default function ChatPage() {
               : undefined
           }
           expanding={expandingRegion}
+          showCaptcha={matchCaptchaBlocked && Boolean(turnstileSiteKey)}
+          turnstileSiteKey={turnstileSiteKey}
+          onCaptchaToken={handleMatchCaptchaToken}
         />
         {status !== "idle" && (
         <VideoPanel

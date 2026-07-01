@@ -8,6 +8,7 @@ import {
 } from "@/lib/match-wait-estimate";
 import { chatBtnGhost, chatBtnWarn } from "@/lib/chat-buttons";
 import { getUsStateName } from "@/lib/us-states";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 const EXPAND_AFTER_SECONDS = 30;
 
@@ -18,6 +19,9 @@ type Props = {
   cancelling?: boolean;
   onExpandToCountry?: () => void;
   expanding?: boolean;
+  showCaptcha?: boolean;
+  turnstileSiteKey?: string;
+  onCaptchaToken?: (token: string) => void;
 };
 
 export function MatchingWaitScreen({
@@ -27,6 +31,9 @@ export function MatchingWaitScreen({
   cancelling,
   onExpandToCountry,
   expanding = false,
+  showCaptcha = false,
+  turnstileSiteKey = "",
+  onCaptchaToken,
 }: Props) {
   const [online, setOnline] = useState<number | null>(null);
   const [inQueue, setInQueue] = useState<number | null>(null);
@@ -88,8 +95,20 @@ export function MatchingWaitScreen({
     <div className="mx-4 mb-4 rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-5 text-center shadow-[0_0_30px_rgba(168,85,247,0.12)]">
       <div className="text-3xl mb-2 animate-pulse">🔮</div>
       <p className="text-fuchsia-300 font-bold text-sm tracking-wide">
-        Finding your match…
+        {showCaptcha ? "Verify before matching" : "Finding your match…"}
       </p>
+      {showCaptcha && turnstileSiteKey && onCaptchaToken && (
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+            New accounts complete a quick check before entering the queue.
+          </p>
+          <TurnstileWidget
+            siteKey={turnstileSiteKey}
+            onToken={onCaptchaToken}
+            className="mx-auto"
+          />
+        </div>
+      )}
       {stateName && (
         <p className="mt-1 text-[11px] text-purple-300/80">
           Same state · {stateName}

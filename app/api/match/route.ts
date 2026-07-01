@@ -8,6 +8,7 @@ import {
   MATCH_IP_RATE,
   MATCH_RATE_TIERS,
 } from "@/lib/rate-limit-tiers";
+import { assertMatchCaptchaAccess } from "@/lib/security/match-captcha";
 import { clientIp } from "@/lib/rate-limit";
 
 import { isValidUsStateCode } from "@/lib/us-states";
@@ -18,10 +19,21 @@ export async function POST(req: NextRequest) {
     if ("error" in auth) return auth.error;
 
     const { profile } = auth;
-    const { matchMode, countryCode, stateCode, preferSharedInterests, preferSharedLanguages } =
+    const { matchMode, countryCode, stateCode, preferSharedInterests, preferSharedLanguages, turnstileToken } =
       await req.json();
 
     const ip = clientIp(req);
+
+    const supabase = createAdminClient();
+
+    const captchaBlock = await assertMatchCaptchaAccess(
+      supabase,
+      profile.id,
+      profile.created_at,
+      turnstileToken,
+      ip
+    );
+    if (captchaBlock) return captchaBlock;
 
     const ipRl = await applyIpRateLimit("match-ip", ip, MATCH_IP_RATE);
     if (!ipRl.allowed) return ipRl.response;
@@ -52,8 +64,6 @@ export async function POST(req: NextRequest) {
     ) {
       normalizedState = String(stateCode).toUpperCase();
     }
-
-    const supabase = createAdminClient();
 
     const restriction = await getRestrictionApiPayload(supabase, profile.id);
     if (restriction) {

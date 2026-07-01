@@ -36,6 +36,35 @@ type RestrictionAppeal = {
   reviewed_at: string | null;
 };
 
+type AuditEntry = {
+  id: string;
+  action: string;
+  target_user_id: string | null;
+  report_id: string | null;
+  appeal_id: string | null;
+  details: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
+  admin_id: string;
+};
+
+function auditActionLabel(action: string): string {
+  switch (action) {
+    case "report_status_update":
+      return "Report updated";
+    case "ban":
+      return "Ban";
+    case "unflag":
+      return "Unflag";
+    case "appeal_approve":
+      return "Appeal approved";
+    case "appeal_deny":
+      return "Appeal denied";
+    default:
+      return action;
+  }
+}
+
 function AdminCard({
   title,
   count,
@@ -86,6 +115,7 @@ export default function AdminPage() {
   const [banning, setBanning] = useState<string | null>(null);
   const [unflagging, setUnflagging] = useState<string | null>(null);
   const [appeals, setAppeals] = useState<RestrictionAppeal[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [appealLoading, setAppealLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,6 +129,7 @@ export default function AdminPage() {
           setReports(d.reports ?? []);
           setFlagged(d.flagged ?? []);
           setAppeals(d.appeals ?? []);
+          setAuditLog(d.auditLog ?? []);
         }
       });
   }, [user, profile]);
@@ -465,6 +496,30 @@ export default function AdminPage() {
             ))}
             {flagged.length === 0 && (
               <p className="text-sm text-slate-500">None</p>
+            )}
+          </AdminCard>
+
+          <AdminCard title="Audit log" count={auditLog.length} accent="text-sky-300">
+            {auditLog.map((entry) => (
+              <div
+                key={entry.id}
+                className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm"
+              >
+                <p className="text-slate-200">
+                  <strong>{auditActionLabel(entry.action)}</strong> ·{" "}
+                  {new Date(entry.created_at).toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-500 mt-1 font-mono leading-relaxed">
+                  admin {entry.admin_id.slice(0, 8)}
+                  {entry.target_user_id
+                    ? ` · user ${entry.target_user_id.slice(0, 8)}`
+                    : ""}
+                  {entry.ip_address ? ` · ${entry.ip_address}` : ""}
+                </p>
+              </div>
+            ))}
+            {auditLog.length === 0 && (
+              <p className="text-sm text-slate-500">No admin actions logged yet.</p>
             )}
           </AdminCard>
         </div>

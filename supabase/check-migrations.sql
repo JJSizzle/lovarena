@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 18 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 20 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -294,6 +294,28 @@ select migration, status from (
           and table_name = 'profiles'
           and column_name = 'read_receipts_enabled'
       ) then '❌ read_receipts_enabled missing — run dm-read-state.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 19, 'security-tier2-admin-audit',
+    case
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'admin_audit_log'
+      ) then '❌ admin_audit_log missing — run security-tier2.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 20, 'security-tier2-match-captcha',
+    case
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'match_captcha_grants'
+      ) then '❌ match_captcha_grants missing — run security-tier2.sql'
       else '✅ applied'
     end
 ) checks

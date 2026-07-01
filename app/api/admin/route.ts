@@ -6,8 +6,20 @@ import { liftRestriction } from "@/lib/moderation/user-restriction";
 import { notifyModerators } from "@/lib/moderation/notify-admin";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import {
+  adminIpForbiddenResponse,
+  isAdminIpAllowed,
+} from "@/lib/security/admin-access";
+import { logAdminAction } from "@/lib/security/admin-audit";
 
-export async function GET() {
+function enforceAdminNetwork(ip: string): NextResponse | null {
+  if (!isAdminIpAllowed(ip)) {
+    return adminIpForbiddenResponse();
+  }
+  return null;
+}
+
+export async function GET(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
@@ -16,10 +28,14 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const ip = clientIp(req);
+    const networkBlock = enforceAdminNetwork(ip);
+    if (networkBlock) return networkBlock;
+
     const supabase = createAdminClient();
     const now = new Date().toISOString();
 
-    const [reports, flagged, openCount, appeals] = await Promise.all([
+    const [reports, flagged, openCount, appeals, auditLog] = await Promise.all([
       supabase
         .from("abuse_reports")
         .select(
@@ -47,6 +63,13 @@ export async function GET() {
         )
         .order("created_at", { ascending: false })
         .limit(50),
+      supabase
+        .from("admin_audit_log")
+        .select(
+          "id, action, target_user_id, report_id, appeal_id, details, ip_address, created_at, admin_id"
+        )
+        .order("created_at", { ascending: false })
+        .limit(40),
     ]);
 
     const appealRows = appeals.data ?? [];
@@ -69,6 +92,7 @@ export async function GET() {
         ...row,
         username: appealUsernameById.get(row.user_id) ?? "User",
       })),
+      auditLog: auditLog.data ?? [],
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Admin fetch failed";
@@ -86,6 +110,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     const ip = clientIp(req);
+    const networkBlock = enforceAdminNetwork(ip);
+    if (networkBlock) return networkBlock;
+
     const rl = await rateLimit(`admin:${auth.profile.id}:${ip}`, 60, 3600);
     if (!rl.allowed) {
       return rateLimitResponse(rl.retryAfterSeconds);
@@ -106,6 +133,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    await logAdminAction(supabase, {
+      adminId: auth.profile.id,
+      action: "report_status_update",
+      ip,
+      reportId,
+      details: { status },
+    });
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Update failed";
@@ -123,6 +158,9 @@ export async function POST(req: NextRequest) {
     }
 
     const ip = clientIp(req);
+    const networkBlock = enforceAdminNetwork(ip);
+    if (networkBlock) return networkBlock;
+
     const rl = await rateLimit(`admin-ban:${auth.profile.id}:${ip}`, 30, 3600);
     if (!rl.allowed) {
       return rateLimitResponse(rl.retryAfterSeconds);
@@ -177,6 +215,14 @@ export async function POST(req: NextRequest) {
         await liftRestriction(supabase, appeal.user_id, "dismissed", "admin_unflag");
       }
 
+      await logAdminAction(supabase, {
+        adminId: auth.profile.id,
+        action: action === "appeal_approve" ? "appeal_approve" : "appeal_deny",
+        ip,
+        targetUserId: appeal.user_id,
+        appealId,
+      });
+
       return NextResponse.json({ ok: true, status: nextStatus });
     }
 
@@ -186,6 +232,12 @@ export async function POST(req: NextRequest) {
 
     if (action === "unflag") {
       await unflagUser(supabase, userId);
+      await logAdminAction(supabase, {
+        adminId: auth.profile.id,
+        action: "unflag",
+        ip,
+        targetUserId: userId,
+      });
       return NextResponse.json({ ok: true });
     }
 
@@ -209,6 +261,15 @@ export async function POST(req: NextRequest) {
       reason: banReason,
       reportedUserId: userId,
       adminId: auth.profile.id,
+    });
+
+    await logAdminAction(supabase, {
+      adminId: auth.profile.id,
+      action: "ban",
+      ip,
+      targetUserId: userId,
+      reportId: reportId ?? null,
+      details: { reason: banReason },
     });
 
     return NextResponse.json({ ok: true });

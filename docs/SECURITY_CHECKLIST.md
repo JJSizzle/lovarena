@@ -48,10 +48,30 @@ Health should report:
 ## App security (shipped in code)
 
 - [ ] **Turnstile** on login (email) + contact form
+- [ ] **Turnstile on match** for accounts < 24h old (one-time grant)
 - [ ] **Message moderation** — severe blocklist + spam filter (stranger, DM, party)
 - [ ] **Tiered rate limits** — stricter for accounts < 24h old; IP cap on match
+- [ ] **Admin audit log** — ban/unflag/appeal/report actions in `admin_audit_log`
+- [ ] **Admin IP allowlist** — optional `ADMIN_ALLOWED_IPS` on Vercel
 - [ ] **Report / block / admin** flows working
 - [ ] **Avatar upload** — Sightengine nudity/offensive/gore scan
+
+## Security tier 2 SQL
+
+Run once in Supabase SQL Editor:
+
+```sql
+-- supabase/security-tier2.sql
+```
+
+Then verify rows 19–20 in `supabase/check-migrations.sql`.
+
+## Admin hardening
+
+1. Supabase Auth → enable MFA on your admin account
+2. Vercel → Production → `ADMIN_ALLOWED_IPS=your.home.ip,your.office.ip`
+3. Optional: Cloudflare WAF rule to restrict `/admin` paths
+4. `/admin` dashboard shows audit log for recent actions
 
 ## Manual smoke (two browsers)
 

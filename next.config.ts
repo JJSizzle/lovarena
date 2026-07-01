@@ -11,6 +11,8 @@ function supabaseConnectSources(): string {
   }
 }
 
+const isProd = process.env.NODE_ENV === "production";
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -22,8 +24,10 @@ const contentSecurityPolicy = [
   "img-src 'self' data: blob: https://*.supabase.co",
   "media-src 'self' blob:",
   "font-src 'self'",
+  "worker-src 'self' blob:",
   "frame-src 'self' https://challenges.cloudflare.com",
   `connect-src 'self' ${supabaseConnectSources()} https://lovarena.app https://*.lovarena.app stun: stun:* turn: turn:* https://accounts.google.com`,
+  ...(isProd ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const nextConfig: NextConfig = {
