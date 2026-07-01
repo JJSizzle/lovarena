@@ -339,7 +339,7 @@ export default function FriendsPage() {
               href="/chat"
               className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
             >
-              Arena →
+              Chat →
             </Link>
           }
           className="mb-5"
@@ -478,7 +478,7 @@ export default function FriendsPage() {
               href="/chat"
               className="inline-block mt-6 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-bold px-6 py-3 text-sm"
             >
-              Enter arena
+              Enter Lovarena
             </Link>
           </div>
         ) : (

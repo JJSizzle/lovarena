@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { AgeGate } from "@/components/AgeGate";
@@ -9,7 +9,7 @@ import { FriendActivityNotifier } from "@/components/FriendActivityNotifier";
 import { FriendMessageNotifier } from "@/components/FriendMessageNotifier";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationProvider } from "@/components/NotificationProvider";
-import { SiteFooter } from "@/components/SiteFooter";
+import { RouteAwareFooter } from "@/components/RouteAwareFooter";
 import { WebPushManager } from "@/components/WebPushManager";
 import "./globals.css";
 
@@ -37,7 +37,6 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     statusBarStyle: "black-translucent",
   },
-  themeColor: "#a855f7",
   openGraph: {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
@@ -66,6 +65,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#a855f7",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -81,7 +84,7 @@ export default function RootLayout({
           <NotificationProvider>
             <AgeGate>
               <div className="flex flex-col min-h-full flex-1">{children}</div>
-              <SiteFooter />
+              <RouteAwareFooter />
               <CookieConsent />
               <InstallPrompt />
               <FriendMessageNotifier />

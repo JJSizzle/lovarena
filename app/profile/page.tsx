@@ -231,7 +231,7 @@ export default function ProfilePage() {
               href="/chat"
               className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
             >
-              Arena →
+              Chat →
             </Link>
           }
         />

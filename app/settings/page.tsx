@@ -124,6 +124,53 @@ export default function SettingsPage() {
     setAllowMutualSpark(profile.allow_mutual_spark !== false);
   }, [profile]);
 
+  async function persistWebPushEnabled(enabled: boolean) {
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ web_push_enabled: enabled }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Could not save notification setting");
+    await refreshProfile();
+  }
+
+  async function handleWebPushToggle(next: boolean) {
+    setPushNotice(null);
+    if (!next) {
+      setWebPushEnabled(false);
+      await unsubscribeFromWebPush();
+      try {
+        await persistWebPushEnabled(false);
+        setPushNotice("Browser notifications turned off.");
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Could not save notification setting"
+        );
+      }
+      return;
+    }
+
+    setPushBusy(true);
+    const result = await subscribeToWebPush();
+    setPushBusy(false);
+    if (!result.ok) {
+      setWebPushEnabled(false);
+      setPushNotice(result.error ?? "Could not enable push.");
+      return;
+    }
+
+    setWebPushEnabled(true);
+    try {
+      await persistWebPushEnabled(true);
+      setPushNotice("Browser notifications enabled.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not save notification setting"
+      );
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -190,7 +237,7 @@ export default function SettingsPage() {
               href="/chat"
               className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
             >
-              Arena →
+              Chat →
             </Link>
           }
         />
@@ -386,42 +433,14 @@ export default function SettingsPage() {
               <div className="flex flex-col items-end gap-2">
                 <Toggle
                   checked={webPushEnabled}
-                  onChange={async (next) => {
-                    setPushNotice(null);
-                    if (!next) {
-                      setWebPushEnabled(false);
-                      await unsubscribeFromWebPush();
-                      return;
-                    }
-                    setPushBusy(true);
-                    const result = await subscribeToWebPush();
-                    setPushBusy(false);
-                    if (result.ok) {
-                      setWebPushEnabled(true);
-                      setPushNotice("Browser notifications enabled.");
-                    } else {
-                      setWebPushEnabled(false);
-                      setPushNotice(result.error ?? "Could not enable push.");
-                    }
-                  }}
+                  onChange={(next) => void handleWebPushToggle(next)}
                   disabled={pushBusy}
                 />
                 {!webPushEnabled && (
                   <button
                     type="button"
                     disabled={pushBusy}
-                    onClick={async () => {
-                      setPushNotice(null);
-                      setPushBusy(true);
-                      const result = await subscribeToWebPush();
-                      setPushBusy(false);
-                      if (result.ok) {
-                        setWebPushEnabled(true);
-                        setPushNotice("Browser notifications enabled.");
-                      } else {
-                        setPushNotice(result.error ?? "Could not enable push.");
-                      }
-                    }}
+                    onClick={() => void handleWebPushToggle(true)}
                     className="text-[10px] font-semibold text-fuchsia-400 hover:text-fuchsia-300"
                   >
                     {pushBusy ? "Enabling…" : "Enable push"}

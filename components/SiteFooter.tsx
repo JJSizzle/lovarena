@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BetaBadge } from "@/components/BetaBadge";
 
 const exploreLinks = [
-  { href: "/chat", label: "Enter Arena" },
+  { href: "/chat", label: "Enter Lovarena" },
   { href: "/party", label: "Party" },
   { href: "/friends", label: "Friends" },
   { href: "/blog/stay-safe", label: "Safety tips" },

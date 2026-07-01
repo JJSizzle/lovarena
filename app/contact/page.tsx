@@ -29,10 +29,7 @@ export default function ContactPage() {
           Direct email addresses (optional)
         </summary>
         <p className="mt-3 text-sm text-slate-500">
-          These work once you set up free forwarding (about 5 minutes). Run{" "}
-          <code className="text-fuchsia-300">npm run setup:email-aliases</code>{" "}
-          locally for step-by-step Cloudflare or ImprovMX instructions. Until
-          then, use the form above.
+          Prefer email? Reach us at the addresses below.
         </p>
         <ul className="list-none space-y-2 mt-4 text-sm">
           <li>

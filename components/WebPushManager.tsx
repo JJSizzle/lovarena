@@ -33,7 +33,7 @@ export async function subscribeToWebPush(): Promise<{
     return {
       ok: false,
       error:
-        "Push isn't configured on the server yet. Run npm run setup:web-push, add WEB_PUSH_VAPID_CREDENTIALS to Vercel, and redeploy.",
+        "Browser notifications aren't available right now. Try again later or use email alerts in Settings.",
     };
   }
 

@@ -398,7 +398,7 @@ export default function LoginForm() {
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Log in
+            Sign in
           </button>
           <button
             type="button"
@@ -515,7 +515,7 @@ export default function LoginForm() {
             {loading
               ? "Please wait…"
               : mode === "login"
-                ? "Log in"
+                ? "Sign in"
                 : "Create account"}
           </button>
         </form>
