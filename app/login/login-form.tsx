@@ -22,6 +22,7 @@ import { ParticleBackground } from "@/components/ParticleBackground";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { MfaCodeInput } from "@/components/MfaCodeInput";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { SITE_MARK } from "@/lib/site";
 import { useAuth } from "@/components/AuthProvider";
 import {
   getPrimaryVerifiedTotpFactorId,
@@ -418,7 +419,7 @@ export default function LoginForm() {
           href="/"
           className="text-sm text-fuchsia-400 hover:text-fuchsia-300 transition"
         >
-          ← Lovarena
+          ← {SITE_MARK}
         </Link>
         <h1 className="mt-4 text-2xl font-bold bg-gradient-to-r from-pink-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
           {mfaStep

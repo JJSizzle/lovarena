@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { SITE_MARK } from "@/lib/site";
 
 export function AuthPageShell({
   title,
@@ -28,7 +29,7 @@ export function AuthPageShell({
           href="/"
           className="text-sm text-fuchsia-400 hover:text-fuchsia-300 transition"
         >
-          ← Lovarena
+          ← {SITE_MARK}
         </Link>
         <h1 className="mt-4 text-2xl font-bold bg-gradient-to-r from-pink-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
           {title}

@@ -1,5 +1,5 @@
 import { LegalShell } from "@/components/LegalShell";
-import { SITE_NAME } from "@/lib/site";
+import { SITE_NAME, SITE_MARK } from "@/lib/site";
 
 export const metadata = {
   title: "Community Guidelines",
@@ -9,8 +9,9 @@ export default function CommunityPage() {
   return (
     <LegalShell title="Community Guidelines">
       <p>
-        {SITE_NAME} is built for respectful adult conversation. These rules
-        apply to stranger chat, video, and private messages.
+        {SITE_MARK} (&quot;{SITE_NAME}&quot;) is built for respectful adult
+        conversation. These rules apply to stranger chat, video, and private
+        messages.
       </p>
 
       <h2 className="text-xl font-semibold text-white mt-8">Be respectful</h2>

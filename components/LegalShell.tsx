@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE_MARK } from "@/lib/site";
 
 export function LegalShell({
   title,
@@ -11,7 +12,7 @@ export function LegalShell({
     <main className="min-h-screen bg-[#070b14] text-slate-200">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <Link href="/" className="text-sm text-sky-400 hover:text-sky-300">
-          ← Lovarena
+          ← {SITE_MARK}
         </Link>
         <h1 className="mt-6 text-3xl font-bold text-white">{title}</h1>
         <p className="mt-2 text-sm text-slate-500">

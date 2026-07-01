@@ -1,5 +1,5 @@
 import { LegalShell } from "@/components/LegalShell";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_MARK, SITE_URL } from "@/lib/site";
 
 export const metadata = {
   title: "Privacy Policy",
@@ -9,8 +9,9 @@ export default function PrivacyPage() {
   return (
     <LegalShell title="Privacy Policy">
       <p>
-        This Privacy Policy explains how {SITE_NAME} ({SITE_URL}) collects, uses,
-        and protects information when you use our video and text chat service.
+        This Privacy Policy explains how {SITE_MARK} (&quot;{SITE_NAME}&quot;,
+        {SITE_URL}) collects, uses, and protects information when you use our
+        video and text chat service.
       </p>
 
       <h2 className="text-xl font-semibold text-white mt-8">Information we collect</h2>
