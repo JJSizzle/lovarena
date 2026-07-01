@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth/api-auth";
 import { processQualifiedChat } from "@/lib/referral/process-qualified-chat";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 async function clearSession(supabase: ReturnType<typeof createAdminClient>, userId: string) {
   await supabase.from("waiting_users").delete().eq("user_id", userId);
@@ -31,10 +32,7 @@ export async function POST(req: NextRequest) {
     const ip = clientIp(req);
     const rl = await rateLimit(`leave:${auth.profile.id}:${ip}`, 30, 60);
     if (!rl.allowed) {
-      return NextResponse.json(
-        { error: "Too many requests. Please wait." },
-        { status: 429 }
-      );
+      return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const supabase = createAdminClient();

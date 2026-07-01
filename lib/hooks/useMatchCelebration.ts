@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import type { ConnectionCardData } from "@/components/ConnectionCardOverlay";
+import { useAuth } from "@/components/AuthProvider";
 import {
   playConnectSound,
   playMatchCountdownTick,
@@ -11,6 +12,7 @@ import {
 import { getMatchPrefs } from "@/lib/match-prefs";
 
 export function useMatchCelebration() {
+  const { refreshProfile } = useAuth();
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showCard, setShowCard] = useState(false);
   const [cardData, setCardData] = useState<ConnectionCardData | null>(null);
@@ -23,7 +25,11 @@ export function useMatchCelebration() {
     lastRoomRef.current = roomId;
 
     playConnectSound();
-    fetch("/api/streak", { method: "POST" }).catch(() => {});
+    void fetch("/api/streak", { method: "POST" })
+      .then((res) => {
+        if (res.ok) void refreshProfile();
+      })
+      .catch(() => {});
 
     const prefs = getMatchPrefs();
     let step = 3;
@@ -75,7 +81,7 @@ export function useMatchCelebration() {
     } catch {
       // skip card
     }
-  }, []);
+  }, [refreshProfile]);
 
   const resetCelebration = useCallback(() => {
     lastRoomRef.current = null;

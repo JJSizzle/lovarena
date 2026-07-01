@@ -307,6 +307,9 @@ export default function ChatPage() {
   async function saveTranslationPrefs(
     updates: Partial<{ primary_language: string; auto_translate: boolean }>
   ) {
+    const prevLanguage = primaryLanguage;
+    const prevAutoTranslate = autoTranslate;
+
     if (updates.primary_language != null) {
       setPrimaryLanguage(updates.primary_language);
     }
@@ -314,14 +317,16 @@ export default function ChatPage() {
       setAutoTranslate(updates.auto_translate);
     }
     try {
-      await fetch("/api/profile", {
+      const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
+      if (!res.ok) throw new Error("Save failed");
       await refreshProfile();
     } catch {
-      // local UI still updated
+      setPrimaryLanguage(prevLanguage);
+      setAutoTranslate(prevAutoTranslate);
     }
   }
 
@@ -711,12 +716,18 @@ export default function ChatPage() {
       return;
     }
 
+    const disconnectGraceMs =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 1023px)").matches
+        ? 8000
+        : 3000;
+
     const timer = setTimeout(() => {
       if (statusRef.current !== "connected") return;
       stopMedia();
       setEndedBySelf(false);
       setStatus("disconnected");
-    }, 3000);
+    }, disconnectGraceMs);
 
     return () => clearTimeout(timer);
   }, [connectionState, status, roomId, stopMedia]);

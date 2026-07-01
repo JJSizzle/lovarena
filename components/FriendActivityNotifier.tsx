@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { playMessageSound } from "@/lib/sounds";
+import { useToastBottomOffset } from "@/lib/hooks/useToastBottomOffset";
 
 type ActivityToast = {
   id: string;
@@ -49,6 +50,7 @@ async function usernameFor(
 export function FriendActivityNotifier() {
   const { profile } = useAuth();
   const pathname = usePathname();
+  const toastOffset = useToastBottomOffset();
   const [toast, setToast] = useState<ActivityToast | null>(null);
   const pathnameRef = useRef(pathname);
 
@@ -128,6 +130,7 @@ export function FriendActivityNotifier() {
           event: "INSERT",
           schema: "public",
           table: "friendships",
+          filter: `friend_id=eq.${myId}`,
         },
         (payload) => {
           void handleRow(
@@ -148,6 +151,49 @@ export function FriendActivityNotifier() {
           event: "UPDATE",
           schema: "public",
           table: "friendships",
+          filter: `friend_id=eq.${myId}`,
+        },
+        (payload) => {
+          void handleRow(
+            payload.new as {
+              id: string;
+              user_id: string;
+              friend_id: string;
+              status: string;
+              connection_type?: string | null;
+            },
+            "UPDATE"
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "friendships",
+          filter: `user_id=eq.${myId}`,
+        },
+        (payload) => {
+          void handleRow(
+            payload.new as {
+              id: string;
+              user_id: string;
+              friend_id: string;
+              status: string;
+              connection_type?: string | null;
+            },
+            "INSERT"
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "friendships",
+          filter: `user_id=eq.${myId}`,
         },
         (payload) => {
           void handleRow(
@@ -178,7 +224,9 @@ export function FriendActivityNotifier() {
   if (!toast) return null;
 
   return (
-    <div className="fixed bottom-36 left-1/2 z-[100] w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 animate-fade-in">
+    <div
+      className={`fixed ${toastOffset.activity} left-1/2 z-[100] w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 animate-fade-in`}
+    >
       <div className="rounded-2xl border border-fuchsia-500/40 bg-slate-900/95 backdrop-blur-xl p-4 shadow-xl shadow-fuchsia-500/10">
         <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-300">
           {toast.title}

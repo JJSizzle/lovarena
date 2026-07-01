@@ -14,6 +14,7 @@ export function PartyChat({ partyId, enabled }: Props) {
   const [messages, setMessages] = useState<PartyMessageView[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useScrollOnNewMessage(messages, partyId, scrollRef);
 
@@ -44,6 +45,7 @@ export function PartyChat({ partyId, enabled }: Props) {
     if (!text || sending) return;
 
     setSending(true);
+    setSendError(null);
     try {
       const res = await fetch("/api/party/messages", {
         method: "POST",
@@ -54,7 +56,13 @@ export function PartyChat({ partyId, enabled }: Props) {
       if (res.ok && data.message) {
         setMessages((prev) => [...prev, data.message]);
         setDraft("");
+      } else {
+        setSendError(data.error ?? "Could not send message");
+        setDraft(text);
       }
+    } catch {
+      setSendError("Could not send message");
+      setDraft(text);
     } finally {
       setSending(false);
     }
@@ -110,7 +118,11 @@ export function PartyChat({ partyId, enabled }: Props) {
         })}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={handleSend} className="flex gap-2 p-2 border-t border-white/5">
+      <form onSubmit={handleSend} className="flex flex-col gap-1.5 p-2 border-t border-white/5">
+        {sendError && (
+          <p className="text-[10px] text-red-400 px-1">{sendError}</p>
+        )}
+        <div className="flex gap-2">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -126,6 +138,7 @@ export function PartyChat({ partyId, enabled }: Props) {
         >
           Send
         </button>
+        </div>
       </form>
     </div>
   );

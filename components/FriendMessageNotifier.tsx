@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { playMessageSound } from "@/lib/sounds";
 import { markSenderRead } from "@/lib/notifications/seen-state";
+import { useToastBottomOffset } from "@/lib/hooks/useToastBottomOffset";
 
 type Toast = {
   id: string;
@@ -19,6 +20,7 @@ type Toast = {
 export function FriendMessageNotifier() {
   const { profile } = useAuth();
   const pathname = usePathname();
+  const toastOffset = useToastBottomOffset();
   const [toast, setToast] = useState<Toast | null>(null);
   const baseTitle = useRef<string>("");
   const blinkRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -127,7 +129,9 @@ export function FriendMessageNotifier() {
   }
 
   return (
-    <div className="fixed bottom-20 left-1/2 z-[100] w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 animate-fade-in">
+    <div
+      className={`fixed ${toastOffset.message} left-1/2 z-[100] w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 animate-fade-in`}
+    >
       <div className="rounded-2xl border border-pink-500/40 bg-slate-900/95 backdrop-blur-xl p-4 shadow-xl shadow-pink-500/10">
         <p className="text-xs font-semibold uppercase tracking-wide text-pink-400">
           New message

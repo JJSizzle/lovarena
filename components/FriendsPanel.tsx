@@ -88,6 +88,9 @@ export function FriendsPanel({
   async function saveTranslationPrefs(
     updates: Partial<{ primary_language: string; auto_translate: boolean }>
   ) {
+    const prevLanguage = primaryLanguage;
+    const prevAutoTranslate = autoTranslate;
+
     if (updates.primary_language != null) {
       setPrimaryLanguage(updates.primary_language);
     }
@@ -95,14 +98,16 @@ export function FriendsPanel({
       setAutoTranslate(updates.auto_translate);
     }
     try {
-      await fetch("/api/profile", {
+      const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
+      if (!res.ok) throw new Error("Save failed");
       await refreshProfile();
     } catch {
-      // local UI still updated
+      setPrimaryLanguage(prevLanguage);
+      setAutoTranslate(prevAutoTranslate);
     }
   }
 

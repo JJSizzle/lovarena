@@ -16,6 +16,7 @@ import { isReportReason, reportReasonLabel } from "@/lib/moderation/report-reaso
 import { notifyModerators } from "@/lib/moderation/notify-admin";
 import { captureServerError } from "@/lib/capture-error";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,10 +26,7 @@ export async function POST(req: NextRequest) {
     const ip = clientIp(req);
     const rl = await rateLimit(`report:${auth.profile.id}:${ip}`, 10, 3600);
     if (!rl.allowed) {
-      return NextResponse.json(
-        { error: "Too many reports. Try again later." },
-        { status: 429 }
-      );
+      return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const { roomId, reportedUserId: reportedUserIdInput, reason, details } =
