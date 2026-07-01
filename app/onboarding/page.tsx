@@ -22,8 +22,8 @@ import {
 import { isPlaceholderUsername, validateUsername } from "@/lib/username";
 import { parseAgeInput } from "@/lib/profile-age";
 import { AdaptiveParticleBackground } from "@/components/AdaptiveParticleBackground";
+import { BrandMark } from "@/components/BrandMark";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
-import { SITE_MARK } from "@/lib/site";
 
 type Step = "username" | "profile" | "tags";
 
@@ -182,7 +182,7 @@ function OnboardingForm() {
           href="/"
           className="text-sm text-fuchsia-400 hover:text-fuchsia-300 transition"
         >
-          ← {SITE_MARK}
+          ← <BrandMark />
         </Link>
         <p className="mt-4 text-xs text-purple-300/70">
           Step {stepIndex} of 3

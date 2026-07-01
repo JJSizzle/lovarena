@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BetaBadge } from "@/components/BetaBadge";
-import { SITE_MARK } from "@/lib/site";
+import { BrandMark } from "@/components/BrandMark";
 
 const exploreLinks = [
   { href: "/chat", label: "Enter Lovarena" },
@@ -29,7 +29,7 @@ export function SiteFooter() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           <div className="col-span-2 sm:col-span-1">
             <p className="inline-flex items-center gap-2 text-sm font-bold bg-gradient-to-r from-pink-400 to-cyan-400 bg-clip-text text-transparent">
-              <span>LOVARENA™</span>
+              <BrandMark uppercase />
               <BetaBadge size="sm" />
             </p>
             <p className="text-slate-500 mt-2 leading-relaxed">
@@ -92,7 +92,9 @@ export function SiteFooter() {
 
         <div className="border-t border-white/5 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[11px] text-slate-600">
           <div>
-            <p>© {new Date().getFullYear()} {SITE_MARK} · lovarena.app</p>
+            <p>
+              © {new Date().getFullYear()} <BrandMark tmClassName="text-[0.5em] opacity-35 -top-[0.4em]" /> · lovarena.app
+            </p>
             <p className="mt-1 text-slate-700">All rights reserved.</p>
           </div>
           <p>Be kind. Report abuse. Stay safe.</p>

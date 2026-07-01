@@ -1,5 +1,6 @@
 import { LegalShell } from "@/components/LegalShell";
-import { SITE_NAME, SITE_MARK, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { BrandMark } from "@/components/BrandMark";
 
 export const metadata = {
   title: "Terms of Service",
@@ -9,7 +10,7 @@ export default function TermsPage() {
   return (
     <LegalShell title="Terms of Service">
       <p>
-        By using {SITE_MARK} (&quot;{SITE_NAME}&quot;) at {SITE_URL}, you agree to
+        By using <BrandMark /> (&quot;{SITE_NAME}&quot;) at {SITE_URL}, you agree to
         these Terms. If you do not agree, do not use the service.
       </p>
 
