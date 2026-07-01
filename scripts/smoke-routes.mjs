@@ -9,7 +9,10 @@ const routes = [
   "/friends",
   "/party",
   "/settings",
+  "/profile",
   "/contact",
+  "/privacy",
+  "/terms",
   "/api/health",
   "/api/stats/online",
 ];

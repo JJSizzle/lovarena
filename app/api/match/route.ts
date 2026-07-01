@@ -4,11 +4,11 @@ import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
 import {
   applyIpRateLimit,
-  applyTieredRateLimit,
+  applyMatchRateLimit,
   MATCH_IP_RATE,
-  MATCH_RATE_TIERS,
 } from "@/lib/rate-limit-tiers";
 import { assertMatchCaptchaAccess } from "@/lib/security/match-captcha";
+import { isLowReputation, matchPollIntervalMs } from "@/lib/reputation-gating";
 import { clientIp } from "@/lib/rate-limit";
 
 import { isValidUsStateCode } from "@/lib/us-states";
@@ -38,12 +38,11 @@ export async function POST(req: NextRequest) {
     const ipRl = await applyIpRateLimit("match-ip", ip, MATCH_IP_RATE);
     if (!ipRl.allowed) return ipRl.response;
 
-    const rl = await applyTieredRateLimit(
-      "match",
+    const rl = await applyMatchRateLimit(
       profile.id,
       ip,
       profile.created_at,
-      MATCH_RATE_TIERS
+      profile.reputation_score
     );
     if (!rl.allowed) return rl.response;
 
@@ -83,7 +82,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ roomId, userId: profile.id });
+    return NextResponse.json({
+      roomId,
+      userId: profile.id,
+      lowReputation: isLowReputation(profile.reputation_score),
+    });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Match request failed unexpectedly";

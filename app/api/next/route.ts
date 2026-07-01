@@ -3,10 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
 import { processQualifiedChat } from "@/lib/referral/process-qualified-chat";
-import {
-  applyTieredRateLimit,
-  NEXT_RATE_TIERS,
-} from "@/lib/rate-limit-tiers";
+import { applyNextRateLimit } from "@/lib/rate-limit-tiers";
 import { clientIp } from "@/lib/rate-limit";
 
 import { isValidUsStateCode } from "@/lib/us-states";
@@ -21,12 +18,11 @@ export async function POST(req: NextRequest) {
       await req.json();
 
     const ip = clientIp(req);
-    const rl = await applyTieredRateLimit(
-      "next",
+    const rl = await applyNextRateLimit(
       profile.id,
       ip,
       profile.created_at,
-      NEXT_RATE_TIERS
+      profile.reputation_score
     );
     if (!rl.allowed) return rl.response;
 

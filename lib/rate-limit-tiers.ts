@@ -1,5 +1,6 @@
 import { rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { isLowReputation, lowRepRateLimitResponse } from "@/lib/reputation-gating";
 import type { NextResponse } from "next/server";
 
 const NEW_ACCOUNT_MS = 24 * 60 * 60 * 1000;
@@ -40,6 +41,102 @@ export async function applyTieredRateLimit(
   }
 
   return { allowed: true };
+}
+
+function pickMatchRateTier(
+  profileCreatedAt: string,
+  reputationScore: number
+): RateTier {
+  const newAcct = isNewAccount(profileCreatedAt);
+  const lowRep = isLowReputation(reputationScore);
+
+  if (newAcct && lowRep) {
+    return { maxHits: 5, windowSeconds: 60 };
+  }
+  if (newAcct) {
+    return MATCH_RATE_TIERS.newAccount;
+  }
+  if (lowRep) {
+    return { maxHits: 6, windowSeconds: 60 };
+  }
+  return MATCH_RATE_TIERS.established;
+}
+
+function pickNextRateTier(
+  profileCreatedAt: string,
+  reputationScore: number
+): RateTier {
+  const newAcct = isNewAccount(profileCreatedAt);
+  const lowRep = isLowReputation(reputationScore);
+
+  if (newAcct && lowRep) {
+    return { maxHits: 4, windowSeconds: 60 };
+  }
+  if (newAcct) {
+    return NEXT_RATE_TIERS.newAccount;
+  }
+  if (lowRep) {
+    return { maxHits: 5, windowSeconds: 60 };
+  }
+  return NEXT_RATE_TIERS.established;
+}
+
+async function applyProfileRateLimit(
+  bucketPrefix: string,
+  profileId: string,
+  ip: string,
+  tier: RateTier,
+  lowRepMessage: boolean
+): Promise<{ allowed: true } | { allowed: false; response: NextResponse }> {
+  const rl = await rateLimit(
+    `${bucketPrefix}:${profileId}:${ip}`,
+    tier.maxHits,
+    tier.windowSeconds
+  );
+
+  if (!rl.allowed) {
+    const retryAfter = rl.retryAfterSeconds ?? 60;
+    return {
+      allowed: false,
+      response: lowRepMessage
+        ? lowRepRateLimitResponse(retryAfter)
+        : rateLimitResponse(retryAfter),
+    };
+  }
+
+  return { allowed: true };
+}
+
+export async function applyMatchRateLimit(
+  profileId: string,
+  ip: string,
+  profileCreatedAt: string,
+  reputationScore: number
+): Promise<{ allowed: true } | { allowed: false; response: NextResponse }> {
+  const tier = pickMatchRateTier(profileCreatedAt, reputationScore);
+  return applyProfileRateLimit(
+    "match",
+    profileId,
+    ip,
+    tier,
+    isLowReputation(reputationScore)
+  );
+}
+
+export async function applyNextRateLimit(
+  profileId: string,
+  ip: string,
+  profileCreatedAt: string,
+  reputationScore: number
+): Promise<{ allowed: true } | { allowed: false; response: NextResponse }> {
+  const tier = pickNextRateTier(profileCreatedAt, reputationScore);
+  return applyProfileRateLimit(
+    "next",
+    profileId,
+    ip,
+    tier,
+    isLowReputation(reputationScore)
+  );
 }
 
 export async function applyIpRateLimit(

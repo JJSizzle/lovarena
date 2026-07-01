@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 21 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 22 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -327,6 +327,19 @@ select migration, status from (
         select 1 from information_schema.tables
         where table_schema = 'public' and table_name = 'party_read_cursors'
       ) then '❌ party_read_cursors missing — run party-read-cursors.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 22, 'party-host-unlock',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'profiles'
+          and column_name = 'party_host_unlocked'
+      ) then '❌ party_host_unlocked missing — run party-host-unlock.sql'
       else '✅ applied'
     end
 ) checks

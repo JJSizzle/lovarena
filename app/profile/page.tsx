@@ -35,7 +35,8 @@ import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { AppPageHeader } from "@/components/AppPageHeader";
 import { isInvitedNewcomer, CONNECTOR_REFERRALS, AMBASSADOR_REFERRALS } from "@/lib/referral/badges";
-import { REP_MAX, reputationTier } from "@/lib/reputation";
+import { REP_MAX, REP_PARTY_HOST_MIN, REP_PARTY_HOST_REVOKE, reputationTier } from "@/lib/reputation";
+import { canHostParty } from "@/lib/reputation-gating";
 import { COUNTRIES } from "@/lib/countries";
 import { US_STATES } from "@/lib/us-states";
 import { formatProfileLocation } from "@/lib/profile-location";
@@ -259,6 +260,18 @@ export default function ProfilePage() {
                   · {reputationTier(profile?.reputation_score ?? 100)}
                 </span>
               </p>
+              {!canHostParty(
+                profile?.reputation_score ?? 100,
+                profile?.party_host_unlocked ?? false
+              ) && (
+                <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                  {(profile?.reputation_score ?? 100) < REP_PARTY_HOST_REVOKE
+                    ? `Fast matching and party hosting need reputation above ${REP_PARTY_HOST_REVOKE}.`
+                    : (profile?.party_host_unlocked ?? false)
+                      ? `Party hosting pauses below ${REP_PARTY_HOST_REVOKE} reputation.`
+                      : `Party hosting unlocks at ${REP_PARTY_HOST_MIN} reputation — earn kudos from positive chats.`}
+                </p>
+              )}
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <p className="text-xs text-fuchsia-300">
                   🔥 {profile?.chat_streak ?? 0}-day streak · 👍{" "}

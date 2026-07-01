@@ -64,5 +64,13 @@ Lovarena — Ops setup (Batch C)
    - Supabase SQL Editor → run supabase/security-tier2.sql
    - Verify check-migrations rows 19–20
 
+10. Cloudflare WAF (edge protection)
+   - Full guide: docs/CLOUDFLARE_WAF.md
+   - Add lovarena.app to Cloudflare, SSL Full (strict), Bot Fight Mode
+   - Rate limit /api/match, /api/messages, /login at the edge
+
+11. Manual smoke test (two browsers)
+   - Follow docs/SMOKE_TEST.md after each major deploy
+
 Health check: https://lovarena.app/api/health
 `);

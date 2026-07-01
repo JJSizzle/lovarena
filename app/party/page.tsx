@@ -17,6 +17,11 @@ import {
 } from "@/lib/chat-buttons";
 import type { PartyGameMode, PartyState } from "@/lib/party/party-types";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { REP_PARTY_HOST_MIN, REP_PARTY_HOST_REVOKE } from "@/lib/reputation";
+import {
+  canHostParty,
+  partyHostBlockMessage,
+} from "@/lib/reputation-gating";
 import { usePartyWebRTC } from "@/lib/webrtc/usePartyWebRTC";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { AppPageHeader } from "@/components/AppPageHeader";
@@ -364,6 +369,9 @@ function PartyPageContent() {
   }
 
   const selfLabel = profile?.username ? `${profile.username} (You)` : "You";
+  const repScore = profile?.reputation_score ?? 100;
+  const partyHostUnlocked = profile?.party_host_unlocked ?? false;
+  const mayHostParty = canHostParty(repScore, partyHostUnlocked);
 
   return (
     <main
@@ -474,14 +482,26 @@ function PartyPageContent() {
                   ))}
                 </div>
               </div>
+              {!mayHostParty && (
+                <p className="text-[11px] text-amber-400/90 leading-relaxed rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+                  {partyHostBlockMessage(repScore, partyHostUnlocked)} You can
+                  still join parties with a friend&apos;s invite code.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={handleCreate}
-                disabled={busy}
-                className={`${chatBtnLove} w-full !py-3`}
+                disabled={busy || !mayHostParty}
+                className={`${chatBtnLove} w-full !py-3 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {busy ? "Creating…" : "Create party"}
               </button>
+              {mayHostParty && partyHostUnlocked && repScore < REP_PARTY_HOST_MIN && (
+                <p className="text-[10px] text-slate-600 text-center">
+                  Party host unlocked — stays active unless rep drops below{" "}
+                  {REP_PARTY_HOST_REVOKE}.
+                </p>
+              )}
             </div>
 
             <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-6 space-y-3">

@@ -39,7 +39,7 @@ Health should report:
 
 ## Infrastructure
 
-- [ ] Domain on Cloudflare (DNS + optional WAF / Bot Fight Mode)
+- [ ] Domain on Cloudflare (DNS + WAF) — see [CLOUDFLARE_WAF.md](./CLOUDFLARE_WAF.md)
 - [ ] Vercel HTTPS only; no secrets in client bundle
 - [ ] Supabase: leaked-password protection enabled
 - [ ] Admin account: MFA enabled in Supabase Auth
@@ -55,6 +55,7 @@ Health should report:
 - [ ] **Admin IP allowlist** — optional `ADMIN_ALLOWED_IPS` on Vercel
 - [ ] **Report / block / admin** flows working
 - [ ] **Avatar upload** — Sightengine nudity/offensive/gore scan
+- [ ] **Reputation gating** — party unlocks at 125 rep, pauses below 75; low rep (≤75) gets slower match limits
 
 ## Security tier 2 SQL
 
@@ -82,9 +83,11 @@ Then verify rows 19–20 in `supabase/check-migrations.sql`.
 
 ## Optional next layers
 
-- Cloudflare WAF rules for `/api/*`
+- Turnstile on **Google OAuth** sign-in path
+- **Structured security logs** (rate-limit hits, failed auth patterns)
+- **Tighter CSP** (drop `unsafe-eval` / `unsafe-inline` where possible)
 - Phone verification before match
 - Video frame sampling on reports
 - Real ID age verification (Persona / Onfido)
 
-See also: [SMOKE_TEST.md](./SMOKE_TEST.md)
+See also: [SMOKE_TEST.md](./SMOKE_TEST.md), [CLOUDFLARE_WAF.md](./CLOUDFLARE_WAF.md)

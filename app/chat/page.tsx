@@ -27,6 +27,7 @@ import { RestrictionPanel } from "@/components/RestrictionPanel";
 import { FriendProfileSheet } from "@/components/FriendProfileSheet";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { markFirstChatComplete } from "@/lib/install-prompt";
+import { matchPollIntervalMs } from "@/lib/reputation-gating";
 import dynamic from "next/dynamic";
 
 const LazyChatParticles = dynamic(
@@ -550,13 +551,14 @@ export default function ChatPage() {
     }
 
     void tryMatch();
-    const interval = setInterval(tryMatch, 2000);
+    const pollMs = matchPollIntervalMs(profile?.reputation_score ?? 100);
+    const interval = setInterval(tryMatch, pollMs);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [userId, authLoading, profile?.age_verified, status, router, matchScopeKey, matchCaptchaBlocked, matchCaptchaToken]);
+  }, [userId, authLoading, profile?.age_verified, profile?.reputation_score, status, router, matchScopeKey, matchCaptchaBlocked, matchCaptchaToken]);
 
   async function handleExpandRegion() {
     if (status !== "matching" || expandingRegion) return;

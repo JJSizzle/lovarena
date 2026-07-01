@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { generateInviteCode } from "@/lib/party/game-content";
 import { areFriends } from "@/lib/party/party-auth";
+import { assertCanHostParty, syncPartyHostUnlock } from "@/lib/reputation-gating";
 import { buildPartyState, syncPartyRoom } from "@/lib/party/party-state";
 import type { PartyGameMode } from "@/lib/party/party-types";
 
@@ -115,6 +116,19 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
+
+    const partyHostUnlocked = await syncPartyHostUnlock(
+      supabase,
+      auth.profile.id,
+      auth.profile.reputation_score,
+      auth.profile.party_host_unlocked ?? false
+    );
+
+    const hostBlock = assertCanHostParty(
+      auth.profile.reputation_score,
+      partyHostUnlocked
+    );
+    if (hostBlock) return hostBlock;
 
     const { data: memberRows } = await supabase
       .from("party_members")
