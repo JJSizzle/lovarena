@@ -4,17 +4,22 @@ import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const svgPath = join(root, "public/icons/icon.svg");
-const svg = readFileSync(svgPath);
+const iconsDir = join(root, "public/icons");
 
-const sizes = [
-  { name: "icon-192.png", size: 192 },
-  { name: "icon-512.png", size: 512 },
-  { name: "apple-touch-icon.png", size: 180 },
+const exports = [
+  { source: "icon.svg", name: "icon-192.png", size: 192 },
+  { source: "icon.svg", name: "icon-512.png", size: 512 },
+  { source: "icon.svg", name: "apple-touch-icon.png", size: 180 },
+  {
+    source: "instagram-profile.svg",
+    name: "instagram-profile.png",
+    size: 1080,
+  },
 ];
 
-for (const { name, size } of sizes) {
-  const out = join(root, "public/icons", name);
+for (const { source, name, size } of exports) {
+  const svg = readFileSync(join(iconsDir, source));
+  const out = join(iconsDir, name);
   await sharp(svg).resize(size, size).png().toFile(out);
-  console.log(`Wrote ${name} (${size}x${size})`);
+  console.log(`Wrote ${name} (${size}x${size}) from ${source}`);
 }
