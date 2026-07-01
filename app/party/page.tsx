@@ -383,6 +383,15 @@ function PartyPageContent() {
               </p>
             </div>
 
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-100/90 leading-relaxed">
+              You must be friends with the host to join. Add them from chat or
+              accept a request on{" "}
+              <Link href="/friends" className="text-amber-200 underline">
+                Friends
+              </Link>{" "}
+              first.
+            </div>
+
             <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-6 space-y-4">
               <h2 className="font-bold text-fuchsia-300">Start a party</h2>
               <div>

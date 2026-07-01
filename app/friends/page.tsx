@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
@@ -136,6 +136,7 @@ export default function FriendsPage() {
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [requestNotice, setRequestNotice] = useState<string | null>(null);
   const [friendsLoaded, setFriendsLoaded] = useState(false);
+  const chatPanelRef = useRef<HTMLDivElement>(null);
 
   const loadFriends = useCallback(async () => {
     const res = await fetch("/api/friends", { cache: "no-store" });
@@ -175,6 +176,18 @@ export default function FriendsPage() {
     setRequestNotice("That friend wasn't found — they may have removed you.");
     router.replace("/friends", { scroll: false });
   }, [friendsLoaded, friends, chatIdFromUrl, router]);
+
+  useEffect(() => {
+    if (!activeFriend) return;
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
+
+    const timer = window.setTimeout(() => {
+      chatPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [activeFriend?.id]);
 
   async function handleRequestAction(
     requesterId: string,
@@ -517,7 +530,7 @@ export default function FriendsPage() {
       />
 
       {activeFriend && (
-        <div className="relative z-10">
+        <div ref={chatPanelRef} className="relative z-10">
           <FriendsPanel
             friendId={activeFriend.id}
             friendUsername={activeFriend.username}

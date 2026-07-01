@@ -10,6 +10,7 @@ import { FriendMessageNotifier } from "@/components/FriendMessageNotifier";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationProvider } from "@/components/NotificationProvider";
 import { RouteAwareFooter } from "@/components/RouteAwareFooter";
+import { PageBottomPad } from "@/components/PageBottomPad";
 import { WebPushManager } from "@/components/WebPushManager";
 import "./globals.css";
 
@@ -83,7 +84,7 @@ export default function RootLayout({
         <AuthProvider>
           <NotificationProvider>
             <AgeGate>
-              <div className="flex flex-col min-h-full flex-1">{children}</div>
+              <PageBottomPad>{children}</PageBottomPad>
               <RouteAwareFooter />
               <CookieConsent />
               <InstallPrompt />

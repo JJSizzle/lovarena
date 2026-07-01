@@ -1231,7 +1231,7 @@ export default function ChatPage() {
           {profile && (
             <Link
               href="/settings"
-              className="text-[10px] text-slate-400 hover:text-white hidden md:inline transition"
+              className="text-[10px] text-slate-400 hover:text-white transition"
             >
               Settings
             </Link>

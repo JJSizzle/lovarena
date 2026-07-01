@@ -6,6 +6,7 @@ import {
   ANALYTICS_CONSENT_KEY,
   COOKIE_KEY,
 } from "@/lib/referral";
+import { notifyBottomChromeChanged } from "@/lib/bottom-chrome";
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
@@ -26,6 +27,7 @@ export function CookieConsent() {
       analytics ? "granted" : "denied"
     );
     setVisible(false);
+    notifyBottomChromeChanged();
   }
 
   return (

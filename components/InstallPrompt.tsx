@@ -6,6 +6,10 @@ import {
   hasCompletedFirstChat,
   isInstallDismissed,
 } from "@/lib/install-prompt";
+import {
+  BOTTOM_CHROME_EVENT,
+  isCookieBannerVisible,
+} from "@/lib/bottom-chrome";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -33,6 +37,18 @@ export function InstallPrompt() {
   );
   const [dismissed, setDismissed] = useState(false);
   const [showIosHint, setShowIosHint] = useState(false);
+  const [cookieVisible, setCookieVisible] = useState(false);
+
+  useEffect(() => {
+    function syncCookie() {
+      setCookieVisible(isCookieBannerVisible());
+    }
+    syncCookie();
+    window.addEventListener(BOTTOM_CHROME_EVENT, syncCookie);
+    return () => window.removeEventListener(BOTTOM_CHROME_EVENT, syncCookie);
+  }, []);
+
+  const installPosition = cookieVisible ? "bottom-36" : "bottom-4";
 
   useEffect(() => {
     if (isStandalone()) return;
@@ -82,7 +98,9 @@ export function InstallPrompt() {
 
   if (showIosHint && isIos()) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-purple-500/30 bg-slate-900/95 backdrop-blur px-4 py-3 shadow-lg">
+      <div
+        className={`fixed ${installPosition} left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-purple-500/30 bg-slate-900/95 backdrop-blur px-4 py-3 shadow-lg`}
+      >
         <p className="text-sm text-slate-200">
           <strong className="text-fuchsia-300">Add Lovarena to Home Screen:</strong>{" "}
           tap Share → Add to Home Screen for quick access on{" "}
@@ -102,7 +120,9 @@ export function InstallPrompt() {
   if (!deferred) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-purple-500/30 bg-slate-900/95 backdrop-blur px-4 py-3 shadow-lg">
+    <div
+      className={`fixed ${installPosition} left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-purple-500/30 bg-slate-900/95 backdrop-blur px-4 py-3 shadow-lg`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-slate-200">
