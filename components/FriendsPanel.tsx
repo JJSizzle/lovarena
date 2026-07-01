@@ -107,6 +107,10 @@ export function FriendsPanel({
   }
 
   useEffect(() => {
+    setMessages([]);
+    setPeerLastReadAt(null);
+    setInput("");
+    setError(null);
     markThreadRead(friendId);
   }, [friendId]);
 
@@ -118,13 +122,7 @@ export function FriendsPanel({
       );
       const data = await res.json();
       if (res.ok && data.messages) {
-        setMessages((prev) => {
-          let next = prev;
-          for (const msg of data.messages as PrivateMessage[]) {
-            next = appendPrivateMessage(next, msg);
-          }
-          return next === prev ? prev : next;
-        });
+        setMessages(data.messages as PrivateMessage[]);
         setPeerLastReadAt(data.peerLastReadAt ?? null);
         const loaded = data.messages as PrivateMessage[];
         const latestIncoming = [...loaded]

@@ -593,6 +593,8 @@ export default function ChatPage() {
   useEffect(() => {
     if (!roomId) return;
 
+    setMessages([]);
+
     const supabase = createClient();
 
     async function loadMessages() {
@@ -746,6 +748,9 @@ export default function ChatPage() {
 
   function handleResumeMatching() {
     setError(null);
+    setMessages([]);
+    setRoomId(null);
+    setPartnerId(null);
     setStatus("matching");
   }
 
@@ -884,20 +889,6 @@ export default function ChatPage() {
     }
 
     setLoadingNext(false);
-
-    const poll = setInterval(async () => {
-      const r = await fetch("/api/match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildMatchPayload()),
-      });
-      const d = await r.json();
-      if (d.roomId) {
-        setRoomId(d.roomId);
-        setStatus("connected");
-        clearInterval(poll);
-      }
-    }, 2000);
   }
 
   function generateIceBreaker() {

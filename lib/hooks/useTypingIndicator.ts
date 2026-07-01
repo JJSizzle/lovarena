@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 export function useTypingIndicator(
@@ -11,10 +12,16 @@ export function useTypingIndicator(
 ) {
   const [partnerTyping, setPartnerTyping] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const subscribedRef = useRef(false);
+  const textRef = useRef(text);
+  textRef.current = text;
 
   useEffect(() => {
     if (!channelName || !userId || !active) {
       setPartnerTyping(false);
+      channelRef.current = null;
+      subscribedRef.current = false;
       return;
     }
 
@@ -34,30 +41,45 @@ export function useTypingIndicator(
       }
     });
 
-    channel.subscribe();
+    channel.subscribe((status) => {
+      subscribedRef.current = status === "SUBSCRIBED";
+      if (status === "SUBSCRIBED") {
+        void channel.send({
+          type: "broadcast",
+          event: "typing",
+          payload: {
+            from: userId,
+            typing: textRef.current.trim().length > 0,
+          },
+        });
+      }
+    });
+
+    channelRef.current = channel;
+
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      channelRef.current = null;
+      subscribedRef.current = false;
       supabase.removeChannel(channel);
     };
   }, [channelName, userId, active]);
 
   useEffect(() => {
-    if (!channelName || !userId || !active) return;
+    const channel = channelRef.current;
+    if (!channel || !subscribedRef.current || !channelName || !userId || !active) {
+      return;
+    }
 
-    const supabase = createClient();
-    const channel = supabase.channel(channelName);
-
-    const typing = text.trim().length > 0;
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        void channel.send({
-          type: "broadcast",
-          event: "typing",
-          payload: { from: userId, typing },
-        });
-      }
+    void channel.send({
+      type: "broadcast",
+      event: "typing",
+      payload: {
+        from: userId,
+        typing: textRef.current.trim().length > 0,
+      },
     });
-  }, [channelName, userId, text, active]);
+  }, [text, channelName, userId, active]);
 
   return partnerTyping;
 }
