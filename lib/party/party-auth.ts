@@ -1,24 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { areFriends } from "@/lib/friends/are-friends";
 import type { PartyRoomRow } from "@/lib/party/party-types";
 
-export async function areFriends(
-  userA: string,
-  userB: string
-): Promise<boolean> {
-  if (userA === userB) return true;
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from("friendships")
-    .select("id")
-    .eq("status", "accepted")
-    .or(
-      `and(user_id.eq.${userA},friend_id.eq.${userB}),and(user_id.eq.${userB},friend_id.eq.${userA})`
-    )
-    .limit(1);
-
-  return Boolean(data?.length);
-}
+export { areFriends } from "@/lib/friends/are-friends";
 
 export async function assertPartyMember(
   partyId: string,

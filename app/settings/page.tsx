@@ -55,10 +55,12 @@ function Toggle({
   checked,
   onChange,
   disabled = false,
+  label,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   disabled?: boolean;
+  label: string;
 }) {
   return (
     <label className="inline-flex items-center gap-2 cursor-pointer">
@@ -67,6 +69,7 @@ function Toggle({
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
+        aria-label={label}
         className="accent-fuchsia-500 w-4 h-4"
       />
     </label>
@@ -320,6 +323,7 @@ export default function SettingsPage() {
               <Toggle
                 checked={preferSharedInterests}
                 onChange={setPreferSharedInterests}
+                label="Prefer shared interests"
               />
             </SettingRow>
             <SettingRow
@@ -329,6 +333,7 @@ export default function SettingsPage() {
               <Toggle
                 checked={preferSharedLanguages}
                 onChange={setPreferSharedLanguages}
+                label="Prefer shared languages"
               />
             </SettingRow>
           </section>
@@ -341,13 +346,21 @@ export default function SettingsPage() {
               title="Blur stranger until Reveal"
               description="Your own preview always stays clear."
             >
-              <Toggle checked={faceBlurDefault} onChange={setFaceBlurDefault} />
+              <Toggle
+                checked={faceBlurDefault}
+                onChange={setFaceBlurDefault}
+                label="Blur stranger until Reveal"
+              />
             </SettingRow>
             <SettingRow
               title="Voice-only by default"
               description="Skip camera on new matches — mic only."
             >
-              <Toggle checked={voiceOnlyDefault} onChange={setVoiceOnlyDefault} />
+              <Toggle
+                checked={voiceOnlyDefault}
+                onChange={setVoiceOnlyDefault}
+                label="Voice-only by default"
+              />
             </SettingRow>
           </section>
 
@@ -374,6 +387,7 @@ export default function SettingsPage() {
                 checked={autoTranslate}
                 disabled={!isSupportedTranslationLanguage(primaryLanguage)}
                 onChange={setAutoTranslate}
+                label="Auto-translate incoming messages"
               />
             </SettingRow>
           </section>
@@ -391,13 +405,18 @@ export default function SettingsPage() {
               <Toggle
                 checked={allowFriendRequests}
                 onChange={setAllowFriendRequests}
+                label="Allow friend requests"
               />
             </SettingRow>
             <SettingRow
               title="Allow mutual spark"
               description="Let in-chat ✨ spark create a mutual connection when you both tap."
             >
-              <Toggle checked={allowMutualSpark} onChange={setAllowMutualSpark} />
+              <Toggle
+                checked={allowMutualSpark}
+                onChange={setAllowMutualSpark}
+                label="Allow mutual spark"
+              />
             </SettingRow>
           </section>
 
@@ -414,7 +433,11 @@ export default function SettingsPage() {
               title="Sound effects"
               description="Connect chime, message pings, and Next sound."
             >
-              <Toggle checked={soundEffects} onChange={setSoundEffects} />
+              <Toggle
+                checked={soundEffects}
+                onChange={setSoundEffects}
+                label="Sound effects"
+              />
             </SettingRow>
             <SettingRow
               title="Friend message emails"
@@ -423,6 +446,7 @@ export default function SettingsPage() {
               <Toggle
                 checked={notificationsEnabled}
                 onChange={setNotificationsEnabled}
+                label="Friend message emails"
               />
             </SettingRow>
             <SettingRow
@@ -432,6 +456,7 @@ export default function SettingsPage() {
               <Toggle
                 checked={readReceiptsEnabled}
                 onChange={setReadReceiptsEnabled}
+                label="Read receipts"
               />
             </SettingRow>
             <SettingRow
@@ -443,6 +468,7 @@ export default function SettingsPage() {
                   checked={webPushEnabled}
                   onChange={(next) => void handleWebPushToggle(next)}
                   disabled={pushBusy}
+                  label="Browser notifications"
                 />
                 {!webPushEnabled && (
                   <button

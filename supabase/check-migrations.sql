@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 20 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 21 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -316,6 +316,17 @@ select migration, status from (
         select 1 from information_schema.tables
         where table_schema = 'public' and table_name = 'match_captcha_grants'
       ) then '❌ match_captcha_grants missing — run security-tier2.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 21, 'party-read-cursors',
+    case
+      when not exists (
+        select 1 from information_schema.tables
+        where table_schema = 'public' and table_name = 'party_read_cursors'
+      ) then '❌ party_read_cursors missing — run party-read-cursors.sql'
       else '✅ applied'
     end
 ) checks

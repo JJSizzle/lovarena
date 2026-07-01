@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { assertPartyMember } from "@/lib/party/party-auth";
+import { getPartyReadCursors, markPartyRead } from "@/lib/party/read-cursors";
 import { moderateMessageContent } from "@/lib/moderation/moderate-message";
 import { applyTimedRestriction } from "@/lib/moderation/user-restriction";
 import { getRestrictionApiPayload } from "@/lib/moderation/enforce-violation";
@@ -46,16 +47,50 @@ export async function GET(req: NextRequest) {
 
     const nameById = new Map((profiles ?? []).map((p) => [p.id, p.username]));
 
-    return NextResponse.json({
-      messages: (rows ?? []).map((row) => ({
+    const { data: memberRows } = await supabase
+      .from("party_members")
+      .select("profile_id")
+      .eq("party_id", partyId);
+
+    const memberIds = (memberRows ?? []).map((m) => m.profile_id);
+    const otherMemberIds = memberIds.filter((id) => id !== auth.profile.id);
+
+    let readCursors = new Map<string, string>();
+    try {
+      readCursors = await getPartyReadCursors(supabase, partyId);
+    } catch {
+      // table may not exist until migration runs
+    }
+
+    const messages = (rows ?? []).map((row) => {
+      const isYou = row.sender_id === auth.profile.id;
+      let seenByAll = false;
+      if (isYou && otherMemberIds.length > 0) {
+        seenByAll = otherMemberIds.every((memberId) => {
+          const cursor = readCursors.get(memberId);
+          return cursor
+            ? new Date(cursor).getTime() >= new Date(row.created_at).getTime()
+            : false;
+        });
+      }
+
+      return {
         id: row.id,
         senderId: row.sender_id,
         username: nameById.get(row.sender_id) ?? "Player",
         content: row.content,
         createdAt: row.created_at,
-        isYou: row.sender_id === auth.profile.id,
-      })),
+        isYou,
+        seenByAll,
+      };
     });
+
+    const latest = rows?.[rows.length - 1];
+    if (latest) {
+      void markPartyRead(supabase, partyId, auth.profile.id, latest.created_at);
+    }
+
+    return NextResponse.json({ messages });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Messages load failed";
     return NextResponse.json({ error: message }, { status: 500 });

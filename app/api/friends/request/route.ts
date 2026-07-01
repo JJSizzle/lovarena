@@ -18,6 +18,12 @@ import { rateLimitResponse } from "@/lib/rate-limit-response";
 import {
   allowsFriendRequests,
 } from "@/lib/social-privacy";
+import {
+  assertFriendCapacityForPair,
+  friendLimitMessage,
+  isAtFriendLimit,
+} from "@/lib/friends/limits";
+import { countAcceptedFriends } from "@/lib/friends/are-friends";
 
 export async function POST(req: NextRequest) {
   try {
@@ -116,6 +122,14 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+      const capacity = await assertFriendCapacityForPair(
+        supabase,
+        auth.profile.id,
+        friendId
+      );
+      if (!capacity.ok) {
+        return NextResponse.json({ error: capacity.error }, { status: 400 });
+      }
       await acceptFriendshipPair(supabase, auth.profile.id, friendId);
       void notifyFriendRequestAccepted({
         requesterId: friendId,
@@ -164,6 +178,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (status === "pending_received") {
+      const capacity = await assertFriendCapacityForPair(
+        supabase,
+        auth.profile.id,
+        friendId
+      );
+      if (!capacity.ok) {
+        return NextResponse.json({ error: capacity.error }, { status: 400 });
+      }
       await acceptFriendshipPair(supabase, auth.profile.id, friendId);
       void notifyFriendRequestAccepted({
         requesterId: friendId,
@@ -190,6 +212,14 @@ export async function POST(req: NextRequest) {
           error: `${targetProfile?.username ?? "This user"} isn't accepting friend requests right now.`,
         },
         { status: 403 }
+      );
+    }
+
+    const senderCount = await countAcceptedFriends(auth.profile.id, supabase);
+    if (isAtFriendLimit(senderCount)) {
+      return NextResponse.json(
+        { error: friendLimitMessage(senderCount) },
+        { status: 400 }
       );
     }
 

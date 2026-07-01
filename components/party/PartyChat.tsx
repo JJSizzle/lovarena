@@ -78,7 +78,14 @@ export function PartyChat({ partyId, enabled }: Props) {
             Say hi to your friends…
           </p>
         )}
-        {messages.map((msg) => (
+        {messages.map((msg, index) => {
+          const showSeen =
+            msg.isYou &&
+            msg.seenByAll &&
+            (index === messages.length - 1 ||
+              !messages.slice(index + 1).some((m) => m.isYou));
+
+          return (
           <div
             key={msg.id}
             className={`text-xs ${msg.isYou ? "text-right" : "text-left"}`}
@@ -95,8 +102,12 @@ export function PartyChat({ partyId, enabled }: Props) {
             >
               {msg.content}
             </p>
+            {showSeen && (
+              <p className="text-[9px] text-slate-500 mt-0.5">Seen</p>
+            )}
           </div>
-        ))}
+        );
+        })}
         <div ref={bottomRef} />
       </div>
       <form onSubmit={handleSend} className="flex gap-2 p-2 border-t border-white/5">
@@ -105,6 +116,7 @@ export function PartyChat({ partyId, enabled }: Props) {
           onChange={(e) => setDraft(e.target.value)}
           maxLength={500}
           placeholder="Message…"
+          aria-label="Party chat message"
           className="flex-1 rounded-xl bg-slate-900 border border-purple-500/20 px-3 py-2 text-xs outline-none focus:border-fuchsia-500/40"
         />
         <button

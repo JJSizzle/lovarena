@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { removeFriendshipPair } from "@/lib/friends/friend-link-status";
+import { MAX_FRIENDS } from "@/lib/friends/limits";
 
 export async function GET() {
   try {
@@ -80,6 +81,8 @@ export async function GET() {
         ...profile,
         connection_type: connectionByFriendId.get(profile.id) ?? null,
       })),
+      friendCount: friendIds.length,
+      friendLimit: MAX_FRIENDS,
       incomingRequests: (pendingIncoming ?? [])
         .map((row) => {
           const profile = incomingById.get(row.user_id);

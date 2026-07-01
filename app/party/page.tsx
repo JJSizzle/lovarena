@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useConfirm } from "@/components/ConfirmProvider";
-import { ParticleBackground } from "@/components/ParticleBackground";
+import dynamic from "next/dynamic";
 import { CopyInviteButton, PartyChat } from "@/components/party/PartyChat";
+import { PartyInviteFriends } from "@/components/party/PartyInviteFriends";
 import { PartyGameView, PartyHangoutView, PartyLobby } from "@/components/party/PartyViews";
 import { PartyVideoPanel } from "@/components/party/PartyVideoPanel";
 import { createClient } from "@/lib/supabase/client";
@@ -19,6 +20,14 @@ import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { usePartyWebRTC } from "@/lib/webrtc/usePartyWebRTC";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { AppPageHeader } from "@/components/AppPageHeader";
+
+const AdaptiveParticleBackground = dynamic(
+  () =>
+    import("@/components/AdaptiveParticleBackground").then((m) => ({
+      default: m.AdaptiveParticleBackground,
+    })),
+  { ssr: false }
+);
 
 function PartyPageContent() {
   const router = useRouter();
@@ -348,7 +357,7 @@ function PartyPageContent() {
   if (loading || !user) {
     return (
       <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-slate-400">
-        <ParticleBackground />
+        <AdaptiveParticleBackground />
         <span className="relative z-10">Loading…</span>
       </div>
     );
@@ -360,7 +369,7 @@ function PartyPageContent() {
     <main
       className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white px-4 py-8 pb-24 overflow-hidden`}
     >
-      <ParticleBackground />
+      <AdaptiveParticleBackground />
       <div className="relative z-10 max-w-4xl mx-auto">
         <AppPageHeader
           title="Party"
@@ -534,7 +543,13 @@ function PartyPageContent() {
                     onLeave={handleLeave}
                     onKick={party.isHost ? handleKick : undefined}
                   />
-                  <div className="mt-4">
+                  <div className="mt-4 space-y-3">
+                    <PartyInviteFriends
+                      partyId={party.id}
+                      memberIds={party.members.map((m) => m.id)}
+                      isHost={party.isHost}
+                      partyFull={party.members.length >= party.maxPlayers}
+                    />
                     <CopyInviteButton inviteUrl={party.inviteUrl} />
                   </div>
                 </>
@@ -552,7 +567,13 @@ function PartyPageContent() {
                     onEndCancel={() => setEndConfirmOpen(false)}
                   />
                   {party.status === "lobby" && (
-                    <div className="mt-4">
+                    <div className="mt-4 space-y-3">
+                      <PartyInviteFriends
+                        partyId={party.id}
+                        memberIds={party.members.map((m) => m.id)}
+                        isHost={party.isHost}
+                        partyFull={party.members.length >= party.maxPlayers}
+                      />
                       <CopyInviteButton inviteUrl={party.inviteUrl} />
                     </div>
                   )}

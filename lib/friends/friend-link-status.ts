@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FriendConnectionType } from "@/lib/friends/connection-type";
+import { assertFriendCapacityForPair } from "@/lib/friends/limits";
 
 export type FriendLinkStatus =
   | "none"
@@ -96,6 +97,13 @@ export async function ensureMutualSparkFriendship(
   userId: string,
   partnerId: string
 ): Promise<void> {
+  const capacity = await assertFriendCapacityForPair(
+    supabase,
+    userId,
+    partnerId
+  );
+  if (!capacity.ok) return;
+
   await acceptFriendshipPair(supabase, userId, partnerId, "mutual_connect");
 }
 

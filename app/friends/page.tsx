@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useConfirm } from "@/components/ConfirmProvider";
+import dynamic from "next/dynamic";
 import { FriendProfileSheet } from "@/components/FriendProfileSheet";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { ParticleBackground } from "@/components/ParticleBackground";
 import { chatBtnGhost, chatBtnLove, chatBtnBlock } from "@/lib/chat-buttons";
 import type { FriendConnectionType } from "@/lib/friends/connection-type";
 import type { FriendProfileView } from "@/lib/friends/friend-profile-view";
@@ -16,6 +16,14 @@ import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { AppPageHeader } from "@/components/AppPageHeader";
 import { markSenderRead } from "@/lib/notifications/seen-state";
+
+const AdaptiveParticleBackground = dynamic(
+  () =>
+    import("@/components/AdaptiveParticleBackground").then((m) => ({
+      default: m.AdaptiveParticleBackground,
+    })),
+  { ssr: false }
+);
 
 type Friend = {
   id: string;
@@ -138,6 +146,8 @@ export default function FriendsPage() {
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
   const [requestNotice, setRequestNotice] = useState<string | null>(null);
   const [friendsLoaded, setFriendsLoaded] = useState(false);
+  const [friendCount, setFriendCount] = useState(0);
+  const [friendLimit, setFriendLimit] = useState(200);
   const chatPanelRef = useRef<HTMLDivElement>(null);
 
   const loadFriends = useCallback(async () => {
@@ -150,6 +160,8 @@ export default function FriendsPage() {
     setFriends(data.friends ?? []);
     setIncomingRequests(data.incomingRequests ?? []);
     setOutgoingRequests(data.outgoingRequests ?? []);
+    if (typeof data.friendCount === "number") setFriendCount(data.friendCount);
+    if (typeof data.friendLimit === "number") setFriendLimit(data.friendLimit);
     setFriendsLoaded(true);
   }, []);
 
@@ -306,7 +318,7 @@ export default function FriendsPage() {
       <div
         className={`relative min-h-screen flex items-center justify-center bg-gradient-to-br ${seasonal.gradient} text-slate-400`}
       >
-        <ParticleBackground />
+        <AdaptiveParticleBackground />
         <span className="relative z-10">Loading…</span>
       </div>
     );
@@ -344,7 +356,7 @@ export default function FriendsPage() {
     <div
       className={`relative min-h-screen flex flex-col lg:flex-row bg-gradient-to-br ${seasonal.gradient} text-white overflow-hidden`}
     >
-      <ParticleBackground />
+      <AdaptiveParticleBackground />
       <main className="relative z-10 flex-1 max-w-md mx-auto w-full px-6 py-8">
         <AppPageHeader
           title="Friends"
@@ -500,12 +512,31 @@ export default function FriendsPage() {
         ) : (
           <div className="space-y-6">
             <section>
-              <h2 className="text-xs font-bold text-fuchsia-300 mb-1 uppercase tracking-wide">
-                Friends
-              </h2>
-              <p className="text-[10px] text-slate-500 mb-2">
-                Mutual sparks and accepted requests · tap a name for profile
-              </p>
+              <div className="flex items-baseline justify-between gap-2 mb-2">
+                <div>
+                  <h2 className="text-xs font-bold text-fuchsia-300 uppercase tracking-wide">
+                    Friends
+                  </h2>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Mutual sparks and accepted requests · tap a name for profile
+                  </p>
+                </div>
+                <span
+                  className={`text-[10px] font-semibold tabular-nums shrink-0 ${
+                    friendCount >= friendLimit
+                      ? "text-amber-400"
+                      : "text-slate-500"
+                  }`}
+                  title={`${friendCount} of ${friendLimit} friend slots used`}
+                >
+                  {friendCount} / {friendLimit}
+                </span>
+              </div>
+              {friendCount >= friendLimit && (
+                <p className="text-[10px] text-amber-400/90 mb-2 leading-relaxed">
+                  Friend list full — remove someone before accepting new requests.
+                </p>
+              )}
               <ul className="space-y-2">{sortedFriends.map(renderFriendRow)}</ul>
             </section>
           </div>

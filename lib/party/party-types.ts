@@ -36,6 +36,7 @@ export type PartyMessageView = {
   content: string;
   createdAt: string;
   isYou: boolean;
+  seenByAll?: boolean;
 };
 
 export type PartyState = {
