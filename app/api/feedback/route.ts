@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth/api-auth";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
-import { REP_THUMBS_DOWN, subtractReputation } from "@/lib/reputation";
+import { applyFeedbackReputationChange } from "@/lib/feedback/apply-feedback-reputation";
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,31 +57,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (ratingChanged) {
-      if (rating === "up") {
-        await supabase.rpc("apply_positive_rating", { p_partner_id: partnerId });
-      } else {
-        const { error: repError } = await supabase.rpc("subtract_reputation", {
-          p_user_id: partnerId,
-          p_amount: REP_THUMBS_DOWN,
-        });
-
-        if (repError) {
-          const { data: partnerRow } = await supabase
-            .from("profiles")
-            .select("reputation_score")
-            .eq("id", partnerId)
-            .maybeSingle();
-          await supabase
-            .from("profiles")
-            .update({
-              reputation_score: subtractReputation(
-                partnerRow?.reputation_score ?? 100,
-                REP_THUMBS_DOWN
-              ),
-            })
-            .eq("id", partnerId);
-        }
-      }
+      await applyFeedbackReputationChange(
+        supabase,
+        partnerId,
+        existingFeedback?.rating ?? null,
+        rating
+      );
     }
 
     return NextResponse.json({ ok: true });

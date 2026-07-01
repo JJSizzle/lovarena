@@ -75,12 +75,24 @@ export async function GET() {
       (outgoingProfiles ?? []).map((p) => [p.id, p])
     );
 
+    const friends = (profiles ?? []).map((profile) => ({
+      ...profile,
+      connection_type: connectionByFriendId.get(profile.id) ?? null,
+    }));
+
+    const profileIdSet = new Set(friends.map((friend) => friend.id));
+    const orphanFriendIds = friendIds.filter((id) => !profileIdSet.has(id));
+    if (orphanFriendIds.length) {
+      await Promise.all(
+        orphanFriendIds.map((orphanId) =>
+          removeFriendshipPair(supabase, auth.profile.id, orphanId)
+        )
+      );
+    }
+
     return NextResponse.json({
-      friends: (profiles ?? []).map((profile) => ({
-        ...profile,
-        connection_type: connectionByFriendId.get(profile.id) ?? null,
-      })),
-      friendCount: friendIds.length,
+      friends,
+      friendCount: friends.length,
       friendLimit: MAX_FRIENDS,
       incomingRequests: (pendingIncoming ?? [])
         .map((row) => {

@@ -181,6 +181,28 @@ export default function SettingsPage() {
     setError(null);
     setMessage(null);
 
+    const priorMatchPrefs = {
+      matchMode: getMatchMode(),
+      countryCode: getCountryCode(),
+      stateCode: getStateCode(),
+      preferSharedInterests: getPreferSharedInterests(),
+      preferSharedLanguages: getPreferSharedLanguages(),
+    };
+    const priorSoundEffects = soundsEnabled();
+    const priorProfileFields = profile
+      ? {
+          faceBlurDefault: profile.face_blur_default ?? true,
+          voiceOnlyDefault: profile.voice_only_default ?? false,
+          primaryLanguage: profile.primary_language ?? "English",
+          autoTranslate: profile.auto_translate ?? false,
+          notificationsEnabled: profile.notifications_enabled ?? true,
+          readReceiptsEnabled: profile.read_receipts_enabled !== false,
+          webPushEnabled: profile.web_push_enabled !== false,
+          allowFriendRequests: profile.allow_friend_requests !== false,
+          allowMutualSpark: profile.allow_mutual_spark !== false,
+        }
+      : null;
+
     setMatchPrefs(
       matchMode,
       countryCode,
@@ -211,6 +233,33 @@ export default function SettingsPage() {
       await refreshProfile();
       setMessage("Settings saved.");
     } catch (err) {
+      setMatchPrefs(
+        priorMatchPrefs.matchMode,
+        priorMatchPrefs.countryCode,
+        priorMatchPrefs.preferSharedInterests,
+        priorMatchPrefs.stateCode,
+        priorMatchPrefs.preferSharedLanguages
+      );
+      setMatchMode(priorMatchPrefs.matchMode);
+      setCountryCode(priorMatchPrefs.countryCode);
+      setStateCode(priorMatchPrefs.stateCode);
+      setPreferSharedInterests(priorMatchPrefs.preferSharedInterests);
+      setPreferSharedLanguages(priorMatchPrefs.preferSharedLanguages);
+      setSoundEffects(priorSoundEffects);
+      setSoundsEnabled(priorSoundEffects);
+
+      if (priorProfileFields) {
+        setFaceBlurDefault(priorProfileFields.faceBlurDefault);
+        setVoiceOnlyDefault(priorProfileFields.voiceOnlyDefault);
+        setPrimaryLanguage(priorProfileFields.primaryLanguage);
+        setAutoTranslate(priorProfileFields.autoTranslate);
+        setNotificationsEnabled(priorProfileFields.notificationsEnabled);
+        setReadReceiptsEnabled(priorProfileFields.readReceiptsEnabled);
+        setWebPushEnabled(priorProfileFields.webPushEnabled);
+        setAllowFriendRequests(priorProfileFields.allowFriendRequests);
+        setAllowMutualSpark(priorProfileFields.allowMutualSpark);
+      }
+
       setError(err instanceof Error ? err.message : "Could not save settings");
     } finally {
       setSaving(false);
