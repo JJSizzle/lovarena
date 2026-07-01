@@ -1259,13 +1259,13 @@ export default function ChatPage() {
           </button>
         </div>
       )}
-      <header className="flex items-center justify-between px-4 py-3 gap-2 text-sm">
+      <header className="grid grid-cols-[auto_1fr_auto] items-center px-3 sm:px-4 py-3 gap-2 text-sm min-w-0">
         <Link href="/" className="text-slate-400 hover:text-white shrink-0 text-xs">
           ← Home
         </Link>
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center justify-center gap-1.5 min-w-0 text-[10px] sm:text-xs text-slate-400">
           <span
-            className={`h-2 w-2 rounded-full ${
+            className={`h-2 w-2 shrink-0 rounded-full ${
               status === "connected"
                 ? "bg-emerald-400"
                 : status === "matching"
@@ -1273,19 +1273,26 @@ export default function ChatPage() {
                   : "bg-red-400"
             }`}
           />
-          {status === "matching" && "Looking for someone…"}
-          {status === "idle" && "Matching paused"}
-          {status === "connected" && "Connected"}
-          {status === "disconnected" &&
-            (endedBySelf ? "Chat ended" : "Stranger left")}
-          {status === "restricted" && "Restricted"}
+          <span className="truncate">
+            {status === "matching" && (
+              <>
+                <span className="max-[380px]:hidden">Looking for someone…</span>
+                <span className="hidden max-[380px]:inline">Matching…</span>
+              </>
+            )}
+            {status === "idle" && "Matching paused"}
+            {status === "connected" && "Connected"}
+            {status === "disconnected" &&
+              (endedBySelf ? "Chat ended" : "Stranger left")}
+            {status === "restricted" && "Restricted"}
+          </span>
         </div>
-        <div className="flex items-center gap-2 shrink-0 pr-11">
+        <div className="flex items-center justify-end gap-1.5 shrink-0 pr-12 sm:pr-14">
           {status === "connected" && partnerId && (
             <button
               type="button"
               onClick={() => setPartnerProfileOpen(true)}
-              className={`${chatBtnGhost} !text-[10px] !py-1 !px-2`}
+              className={`${chatBtnGhost} !text-[10px] !py-1 !px-2 max-[380px]:!px-1.5`}
             >
               Profile
             </button>
@@ -1293,7 +1300,7 @@ export default function ChatPage() {
           {profile && (
             <Link
               href="/settings"
-              className="text-[10px] text-slate-400 hover:text-white transition"
+              className="hidden min-[381px]:inline text-[10px] text-slate-400 hover:text-white transition"
             >
               Settings
             </Link>

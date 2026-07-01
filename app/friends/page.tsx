@@ -398,7 +398,7 @@ export default function FriendsPage() {
       className={`relative min-h-screen flex flex-col lg:flex-row bg-gradient-to-br ${seasonal.gradient} text-white overflow-hidden`}
     >
       <AdaptiveParticleBackground />
-      <main className="relative z-10 flex-1 max-w-md mx-auto w-full px-6 py-8">
+      <main className="relative z-10 flex-1 max-w-md mx-auto lg:max-w-none w-full px-6 py-8 lg:py-8">
         <AppPageHeader
           title="Friends"
           backHref="/profile"
@@ -623,11 +623,12 @@ export default function FriendsPage() {
       />
 
       {activeFriend && (
-        <div ref={chatPanelRef} className="relative z-10">
+        <div ref={chatPanelRef} className="relative z-10 lg:flex-1 lg:min-w-0">
           <FriendsPanel
             friendId={activeFriend.id}
             friendUsername={activeFriend.username}
             myId={profile.id}
+            onClose={() => setActiveFriend(null)}
             onViewProfile={() => setProfileFriendId(activeFriend.id)}
             onRemoved={() => {
               setActiveFriend(null);

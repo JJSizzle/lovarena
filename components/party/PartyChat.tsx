@@ -79,7 +79,7 @@ export function PartyChat({ partyId, enabled }: Props) {
       </div>
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-2 max-h-48 lg:max-h-none"
+        className="flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-2 min-h-[8rem] max-h-[min(50vh,24rem)] lg:max-h-none"
       >
         {messages.length === 0 && (
           <p className="text-xs text-slate-600 text-center py-4">

@@ -45,6 +45,7 @@ type FriendsPanelProps = {
   myId: string;
   onRemoved?: () => void;
   onViewProfile?: () => void;
+  onClose?: () => void;
 };
 
 function appendPrivateMessage(
@@ -61,6 +62,7 @@ export function FriendsPanel({
   myId,
   onRemoved,
   onViewProfile,
+  onClose,
 }: FriendsPanelProps) {
   const { profile, refreshProfile } = useAuth();
   const { confirm } = useConfirm();
@@ -266,11 +268,20 @@ export function FriendsPanel({
 
   return (
     <aside
-      className="w-full lg:w-80 shrink-0 border-l border-white/10 bg-slate-900/50 flex flex-col min-h-0"
+      className="w-full lg:w-80 shrink-0 border-l border-white/10 bg-slate-900/50 flex flex-col min-h-0 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:h-[min(88dvh,100%)] max-lg:rounded-t-2xl max-lg:border-t max-lg:border-l-0 max-lg:shadow-[0_-8px_40px_rgba(0,0,0,0.45)]"
     >
-      <div className="px-4 py-3 border-b border-white/10">
+      <div className="px-4 py-3 border-b border-white/10 shrink-0">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="lg:hidden mb-1 text-[11px] font-semibold text-slate-400 hover:text-white"
+              >
+                ← Back to friends
+              </button>
+            )}
             <p className="text-xs text-pink-400 font-medium uppercase tracking-wide">
               Friends chat
             </p>
@@ -325,7 +336,7 @@ export function FriendsPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-[160px] max-h-[40vh] lg:max-h-none">
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0">
         {error && (
           <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-2 py-1">
             {error}
@@ -374,7 +385,7 @@ export function FriendsPanel({
 
       <form
         onSubmit={sendPrivate}
-        className="p-3 border-t border-white/10 flex gap-2"
+        className="p-3 border-t border-white/10 flex gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       >
         <input
           value={input}

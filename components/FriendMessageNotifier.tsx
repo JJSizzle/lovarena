@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { useAppNotifications } from "@/components/NotificationProvider";
 import { playMessageSound } from "@/lib/sounds";
 import { markSenderRead } from "@/lib/notifications/seen-state";
 import { useToastBottomOffset } from "@/lib/hooks/useToastBottomOffset";
@@ -17,17 +18,46 @@ type Toast = {
   createdAt: string;
 };
 
+function titleForUnread(count: number, senderUsername: string) {
+  if (count <= 1) return `(1) ${senderUsername} messaged you`;
+  return `(${count}) new messages`;
+}
+
 export function FriendMessageNotifier() {
   const { profile } = useAuth();
+  const { unreadMessageCount, refresh } = useAppNotifications();
   const pathname = usePathname();
   const toastOffset = useToastBottomOffset();
   const [toast, setToast] = useState<Toast | null>(null);
   const baseTitle = useRef<string>("");
   const blinkRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const blinkingRef = useRef(false);
+  const latestSenderRef = useRef("A friend");
 
   useEffect(() => {
     baseTitle.current = document.title;
   }, []);
+
+  useEffect(() => {
+    if (!blinkingRef.current || !document.hidden) return;
+
+    const count = Math.max(unreadMessageCount, 1);
+    const alertTitle = titleForUnread(count, latestSenderRef.current);
+
+    if (blinkRef.current) clearInterval(blinkRef.current);
+    let on = true;
+    blinkRef.current = setInterval(() => {
+      document.title = on ? alertTitle : baseTitle.current;
+      on = !on;
+    }, 1200);
+
+    return () => {
+      if (blinkRef.current) {
+        clearInterval(blinkRef.current);
+        blinkRef.current = null;
+      }
+    };
+  }, [unreadMessageCount]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -75,31 +105,29 @@ export function FriendMessageNotifier() {
           }
 
           if (document.hidden) {
-            if (blinkRef.current) clearInterval(blinkRef.current);
-            let on = true;
-            blinkRef.current = setInterval(() => {
-              document.title = on
-                ? `(1) ${senderUsername} messaged you`
-                : baseTitle.current;
-              on = !on;
-            }, 1200);
+            latestSenderRef.current = senderUsername;
+            blinkingRef.current = true;
           }
+
+          void refresh();
         }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      blinkingRef.current = false;
       if (blinkRef.current) {
         clearInterval(blinkRef.current);
         blinkRef.current = null;
       }
       document.title = baseTitle.current;
     };
-  }, [profile?.id, pathname]);
+  }, [profile?.id, pathname, refresh]);
 
   useEffect(() => {
     function resetTitle() {
+      blinkingRef.current = false;
       if (blinkRef.current) {
         clearInterval(blinkRef.current);
         blinkRef.current = null;

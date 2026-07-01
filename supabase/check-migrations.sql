@@ -384,5 +384,17 @@ select migration, status from (
       ) then '❌ apply_referral_referrer_bonus missing — run referral-referrer-bonus.sql'
       else '✅ applied'
     end
+
+  union all
+
+  select 26, 'dm-unread-threads',
+    case
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'latest_dm_by_sender'
+      ) then '❌ latest_dm_by_sender missing — run dm-unread-threads.sql'
+      else '✅ applied'
+    end
 ) checks
 order by ord;

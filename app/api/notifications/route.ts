@@ -6,6 +6,55 @@ import { isDmUnreadServer } from "@/lib/dm/read-cursors";
 const RECENT_DM_SCAN_LIMIT = 500;
 const DM_LIST_DISPLAY_LIMIT = 25;
 
+type LatestDmRow = {
+  id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+};
+
+async function loadLatestDmBySender(
+  supabase: ReturnType<typeof createAdminClient>,
+  myId: string
+): Promise<LatestDmRow[] | null> {
+  const { data, error } = await supabase.rpc("latest_dm_by_sender", {
+    p_receiver_id: myId,
+  });
+
+  if (error) {
+    const missingRpc =
+      error.code === "PGRST202" ||
+      error.message.toLowerCase().includes("latest_dm_by_sender");
+    if (missingRpc) return null;
+    throw error;
+  }
+
+  return (data ?? []) as LatestDmRow[];
+}
+
+function dedupeLatestBySender(
+  recentMessages: LatestDmRow[]
+): Map<string, { id: string; senderId: string; preview: string; createdAt: string }> {
+  const latestBySender = new Map<
+    string,
+    { id: string; senderId: string; preview: string; createdAt: string }
+  >();
+
+  for (const msg of recentMessages) {
+    if (latestBySender.has(msg.sender_id)) continue;
+    const preview =
+      msg.content.length > 80 ? `${msg.content.slice(0, 77)}…` : msg.content;
+    latestBySender.set(msg.sender_id, {
+      id: msg.id,
+      senderId: msg.sender_id,
+      preview,
+      createdAt: msg.created_at,
+    });
+  }
+
+  return latestBySender;
+}
+
 export async function GET() {
   try {
     const auth = await requireAuthProfile();
@@ -64,32 +113,27 @@ export async function GET() {
       })
       .filter(Boolean);
 
-    const { data: recentMessages, error: msgError } = await supabase
-      .from("private_messages")
-      .select("id, sender_id, content, created_at")
-      .eq("receiver_id", myId)
-      .order("created_at", { ascending: false })
-      .limit(RECENT_DM_SCAN_LIMIT);
-
-    if (msgError) {
-      return NextResponse.json({ error: msgError.message }, { status: 500 });
-    }
-
-    const latestBySender = new Map<
+    let latestBySender: Map<
       string,
       { id: string; senderId: string; preview: string; createdAt: string }
-    >();
+    >;
 
-    for (const msg of recentMessages ?? []) {
-      if (latestBySender.has(msg.sender_id)) continue;
-      const preview =
-        msg.content.length > 80 ? `${msg.content.slice(0, 77)}…` : msg.content;
-      latestBySender.set(msg.sender_id, {
-        id: msg.id,
-        senderId: msg.sender_id,
-        preview,
-        createdAt: msg.created_at,
-      });
+    const rpcRows = await loadLatestDmBySender(supabase, myId);
+    if (rpcRows) {
+      latestBySender = dedupeLatestBySender(rpcRows);
+    } else {
+      const { data: recentMessages, error: msgError } = await supabase
+        .from("private_messages")
+        .select("id, sender_id, content, created_at")
+        .eq("receiver_id", myId)
+        .order("created_at", { ascending: false })
+        .limit(RECENT_DM_SCAN_LIMIT);
+
+      if (msgError) {
+        return NextResponse.json({ error: msgError.message }, { status: 500 });
+      }
+
+      latestBySender = dedupeLatestBySender(recentMessages ?? []);
     }
 
     const senderIds = [...latestBySender.keys()];

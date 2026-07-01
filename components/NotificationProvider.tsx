@@ -43,6 +43,7 @@ type NotificationContextValue = {
   unreadMessages: MessageNotification[];
   totalCount: number;
   incomingFriendCount: number;
+  unreadMessageCount: number;
   refresh: () => Promise<void>;
 };
 
@@ -176,6 +177,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       totalCount:
         data.incomingFriendRequestCount + data.unreadMessageCount,
       incomingFriendCount: data.incomingFriendRequestCount,
+      unreadMessageCount: data.unreadMessageCount,
       refresh,
     }),
     [

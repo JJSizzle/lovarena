@@ -40,7 +40,7 @@ function formatWhen(iso: string) {
 export function NotificationBell() {
   const { user } = useAuth();
   const pathname = usePathname();
-  const { friendRequests, unreadMessages, totalCount, refresh } =
+  const { friendRequests, unreadMessages, totalCount, unreadMessageCount, refresh } =
     useAppNotifications();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -189,7 +189,14 @@ export function NotificationBell() {
             )}
           </div>
 
-          <div className="border-t border-purple-500/20 px-4 py-2.5">
+          <div className="border-t border-purple-500/20 px-4 py-2.5 space-y-1.5">
+            {unreadMessageCount > unreadMessages.length && (
+              <p className="text-center text-[11px] text-slate-500">
+                +{unreadMessageCount - unreadMessages.length} more unread
+                conversation
+                {unreadMessageCount - unreadMessages.length === 1 ? "" : "s"}
+              </p>
+            )}
             <Link
               href="/friends"
               onClick={() => setOpen(false)}
