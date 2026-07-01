@@ -104,16 +104,30 @@ export async function awardTriviaRoundScores(
   room: PartyRoomRow
 ): Promise<void> {
   if (room.game_mode !== "trivia" || !room.correct_option_id) return;
-  if ((room.last_scored_round ?? -1) >= room.round_index) return;
+
+  const { data: claimed } = await supabase
+    .from("party_rooms")
+    .update({
+      last_scored_round: room.round_index,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", room.id)
+    .or(
+      `last_scored_round.is.null,last_scored_round.lt.${room.round_index}`
+    )
+    .select("id, correct_option_id, round_index")
+    .maybeSingle();
+
+  if (!claimed) return;
 
   const { data: votes } = await supabase
     .from("party_votes")
     .select("profile_id, option_id")
     .eq("party_id", room.id)
-    .eq("round_index", room.round_index);
+    .eq("round_index", claimed.round_index);
 
   for (const vote of votes ?? []) {
-    if (vote.option_id !== room.correct_option_id) continue;
+    if (vote.option_id !== claimed.correct_option_id) continue;
 
     const { data: existing } = await supabase
       .from("party_trivia_scores")
@@ -131,14 +145,6 @@ export async function awardTriviaRoundScores(
       { onConflict: "party_id,profile_id" }
     );
   }
-
-  await supabase
-    .from("party_rooms")
-    .update({
-      last_scored_round: room.round_index,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", room.id);
 }
 
 export async function buildPartyState(

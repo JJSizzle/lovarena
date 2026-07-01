@@ -46,32 +46,42 @@ export async function processQualifiedChat(
 
   if (!qualified) return null;
 
-  await supabase
+  const { data: markedComplete } = await supabase
     .from("profiles")
     .update({ first_chat_completed: true })
-    .eq("id", userId);
+    .eq("id", userId)
+    .eq("first_chat_completed", false)
+    .select("referred_by, referral_reward_claimed, reputation_score")
+    .maybeSingle();
 
-  if (!profile.referred_by || profile.referral_reward_claimed) {
+  if (!markedComplete) return null;
+
+  if (!markedComplete.referred_by || markedComplete.referral_reward_claimed) {
     return null;
   }
 
   const inviteeRep = addReputation(
-    profile.reputation_score ?? 100,
+    markedComplete.reputation_score ?? 100,
     REFERRAL_REP_BONUS
   );
 
-  await supabase
+  const { data: claimedInvitee } = await supabase
     .from("profiles")
     .update({
       referral_reward_claimed: true,
       reputation_score: inviteeRep,
     })
-    .eq("id", userId);
+    .eq("id", userId)
+    .eq("referral_reward_claimed", false)
+    .select("id")
+    .maybeSingle();
+
+  if (!claimedInvitee) return null;
 
   const { data: referrer } = await supabase
     .from("profiles")
     .select("reputation_score, qualified_referrals")
-    .eq("id", profile.referred_by)
+    .eq("id", markedComplete.referred_by)
     .maybeSingle();
 
   if (referrer) {
@@ -84,7 +94,7 @@ export async function processQualifiedChat(
           REFERRAL_REP_BONUS
         ),
       })
-      .eq("id", profile.referred_by);
+      .eq("id", markedComplete.referred_by);
   }
 
   return {

@@ -60,20 +60,27 @@ export async function POST(req: NextRequest) {
       if (rating === "up") {
         await supabase.rpc("apply_positive_rating", { p_partner_id: partnerId });
       } else {
-        const { data: partnerRow } = await supabase
-          .from("profiles")
-          .select("reputation_score")
-          .eq("id", partnerId)
-          .maybeSingle();
-        await supabase
-          .from("profiles")
-          .update({
-            reputation_score: subtractReputation(
-              partnerRow?.reputation_score ?? 100,
-              REP_THUMBS_DOWN
-            ),
-          })
-          .eq("id", partnerId);
+        const { error: repError } = await supabase.rpc("subtract_reputation", {
+          p_user_id: partnerId,
+          p_amount: REP_THUMBS_DOWN,
+        });
+
+        if (repError) {
+          const { data: partnerRow } = await supabase
+            .from("profiles")
+            .select("reputation_score")
+            .eq("id", partnerId)
+            .maybeSingle();
+          await supabase
+            .from("profiles")
+            .update({
+              reputation_score: subtractReputation(
+                partnerRow?.reputation_score ?? 100,
+                REP_THUMBS_DOWN
+              ),
+            })
+            .eq("id", partnerId);
+        }
       }
     }
 

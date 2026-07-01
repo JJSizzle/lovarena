@@ -65,23 +65,63 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { count } = await supabase
-      .from("party_members")
-      .select("profile_id", { count: "exact", head: true })
-      .eq("party_id", room.id);
-
-    if ((count ?? 0) >= room.max_players) {
-      return NextResponse.json({ error: "Party is full." }, { status: 409 });
-    }
-
-    const { error: joinError } = await supabase.from("party_members").insert({
-      party_id: room.id,
-      profile_id: auth.profile.id,
-      role: "member",
-    });
+    const { data: joinStatus, error: joinError } = await supabase.rpc(
+      "join_party_if_not_full",
+      {
+        p_party_id: room.id,
+        p_profile_id: auth.profile.id,
+      }
+    );
 
     if (joinError) {
-      return NextResponse.json({ error: joinError.message }, { status: 500 });
+      const missingRpc =
+        joinError.code === "PGRST202" ||
+        joinError.message.toLowerCase().includes("join_party_if_not_full");
+
+      if (!missingRpc) {
+        return NextResponse.json({ error: joinError.message }, { status: 500 });
+      }
+
+      const { count } = await supabase
+        .from("party_members")
+        .select("profile_id", { count: "exact", head: true })
+        .eq("party_id", room.id);
+
+      if ((count ?? 0) >= room.max_players) {
+        return NextResponse.json({ error: "Party is full." }, { status: 409 });
+      }
+
+      const { error: insertError } = await supabase.from("party_members").insert({
+        party_id: room.id,
+        profile_id: auth.profile.id,
+        role: "member",
+      });
+
+      if (insertError) {
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
+      }
+
+      const { count: afterCount } = await supabase
+        .from("party_members")
+        .select("profile_id", { count: "exact", head: true })
+        .eq("party_id", room.id);
+
+      if ((afterCount ?? 0) > room.max_players) {
+        await supabase
+          .from("party_members")
+          .delete()
+          .eq("party_id", room.id)
+          .eq("profile_id", auth.profile.id);
+        return NextResponse.json({ error: "Party is full." }, { status: 409 });
+      }
+    } else if (joinStatus === "full") {
+      return NextResponse.json({ error: "Party is full." }, { status: 409 });
+    } else if (joinStatus === "ended") {
+      return NextResponse.json({ error: "This party has ended." }, { status: 410 });
+    } else if (joinStatus === "not_found") {
+      return NextResponse.json({ error: "Party not found" }, { status: 404 });
+    } else if (joinStatus !== "ok") {
+      return NextResponse.json({ error: "Could not join party." }, { status: 500 });
     }
 
     const { data: refreshed } = await supabase

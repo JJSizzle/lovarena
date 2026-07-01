@@ -355,5 +355,22 @@ select migration, status from (
       ) then '❌ still +2 — run thumbs-up-rep-bump.sql'
       else '✅ applied'
     end
+
+  union all
+
+  select 24, 'atomic-integrity',
+    case
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'join_party_if_not_full'
+      ) then '❌ join_party_if_not_full missing — run atomic-integrity.sql'
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'subtract_reputation'
+      ) then '❌ subtract_reputation missing — run atomic-integrity.sql'
+      else '✅ applied'
+    end
 ) checks
 order by ord;

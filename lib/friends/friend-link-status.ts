@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FriendConnectionType } from "@/lib/friends/connection-type";
-import { assertFriendCapacityForPair } from "@/lib/friends/limits";
+import {
+  assertFriendCapacityForPair,
+  friendLimitMessage,
+  MAX_FRIENDS,
+} from "@/lib/friends/limits";
+import { countAcceptedFriends } from "@/lib/friends/are-friends";
 
 export type FriendLinkStatus =
   | "none"
@@ -61,6 +66,15 @@ export async function acceptFriendshipPair(
   partnerId: string,
   connectionType: FriendConnectionType = "request"
 ): Promise<void> {
+  const capacity = await assertFriendCapacityForPair(
+    supabase,
+    userId,
+    partnerId
+  );
+  if (!capacity.ok) {
+    throw new Error(capacity.error);
+  }
+
   await supabase
     .from("friendships")
     .update({ status: "accepted", connection_type: connectionType })
@@ -88,6 +102,20 @@ export async function acceptFriendshipPair(
 
   if (upsertError) {
     throw new Error(upsertError.message);
+  }
+
+  const [userCount, partnerCount] = await Promise.all([
+    countAcceptedFriends(userId, supabase),
+    countAcceptedFriends(partnerId, supabase),
+  ]);
+
+  if (userCount > MAX_FRIENDS || partnerCount > MAX_FRIENDS) {
+    await removeFriendshipPair(supabase, userId, partnerId);
+    const over =
+      userCount > MAX_FRIENDS
+        ? friendLimitMessage(userCount)
+        : friendLimitMessage(partnerCount);
+    throw new Error(over);
   }
 }
 

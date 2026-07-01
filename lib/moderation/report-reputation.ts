@@ -73,25 +73,38 @@ export async function applyReportReputationPenalty(
     return { applied: false, skipReason: gate.reason };
   }
 
-  const { data: profileRow } = await supabase
-    .from("profiles")
-    .select("reputation_score")
-    .eq("id", reportedUserId)
-    .maybeSingle();
+  const { data: newScore, error } = await supabase.rpc("subtract_reputation", {
+    p_user_id: reportedUserId,
+    p_amount: REP_REPORT_PENALTY,
+  });
 
-  if (!profileRow) {
-    return { applied: false, skipReason: "Profile not found." };
+  if (error) {
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("reputation_score")
+      .eq("id", reportedUserId)
+      .maybeSingle();
+
+    if (!profileRow) {
+      return { applied: false, skipReason: "Profile not found." };
+    }
+
+    const fallbackScore = subtractReputation(
+      profileRow.reputation_score ?? 100,
+      REP_REPORT_PENALTY
+    );
+
+    await supabase
+      .from("profiles")
+      .update({ reputation_score: fallbackScore })
+      .eq("id", reportedUserId);
+
+    return { applied: true, newScore: fallbackScore };
   }
 
-  const newScore = subtractReputation(
-    profileRow.reputation_score ?? 100,
-    REP_REPORT_PENALTY
-  );
-
-  await supabase
-    .from("profiles")
-    .update({ reputation_score: newScore })
-    .eq("id", reportedUserId);
+  if (newScore == null) {
+    return { applied: false, skipReason: "Profile not found." };
+  }
 
   return { applied: true, newScore };
 }
