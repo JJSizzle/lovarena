@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isBlockedEitherWay } from "@/lib/auth/api-auth";
+import { isBlockedEitherWay, requireAuthProfile } from "@/lib/auth/api-auth";
 import { areFriends } from "@/lib/friends/are-friends";
 import { markConversationRead } from "@/lib/dm/read-cursors";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -9,29 +8,27 @@ import { rateLimitResponse } from "@/lib/rate-limit-response";
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
 
     const { friendId, lastReadAt } = await req.json();
-    if (!friendId || friendId === user.id) {
+    if (!friendId || friendId === auth.profile.id) {
       return NextResponse.json({ error: "Invalid friendId" }, { status: 400 });
     }
 
     const ip = clientIp(req);
-    const rl = await rateLimit(`dm-read-mark:${user.id}:${ip}`, 120, 60);
+    const rl = await rateLimit(`dm-read-mark:${auth.profile.id}:${ip}`, 120, 60);
     if (!rl.allowed) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const supabase = createAdminClient();
 
-    if (!(await areFriends(user.id, friendId, supabase))) {
+    if (!(await areFriends(auth.profile.id, friendId, supabase))) {
       return NextResponse.json({ error: "Not friends" }, { status: 403 });
     }
 
-    if (await isBlockedEitherWay(user.id, friendId)) {
+    if (await isBlockedEitherWay(auth.profile.id, friendId)) {
       return NextResponse.json(
         { error: "Cannot message a blocked user." },
         { status: 403 }
@@ -45,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     const updated = await markConversationRead(
       supabase,
-      user.id,
+      auth.profile.id,
       friendId,
       at
     );

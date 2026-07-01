@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isBlockedEitherWay } from "@/lib/auth/api-auth";
+import { isBlockedEitherWay, requireAuthProfile } from "@/lib/auth/api-auth";
 import { areFriends } from "@/lib/friends/are-friends";
 import { moderateMessageContent } from "@/lib/moderation/moderate-message";
 import {
@@ -16,10 +15,8 @@ import { getPeerReadReceiptAt } from "@/lib/dm/read-cursors";
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
 
     const friendId = req.nextUrl.searchParams.get("friendId");
     if (!friendId) {
@@ -27,18 +24,18 @@ export async function GET(req: NextRequest) {
     }
 
     const ip = clientIp(req);
-    const rl = await rateLimit(`dm-read:${user.id}:${ip}`, 120, 60);
+    const rl = await rateLimit(`dm-read:${auth.profile.id}:${ip}`, 120, 60);
     if (!rl.allowed) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const supabase = createAdminClient();
 
-    if (!(await areFriends(user.id, friendId, supabase))) {
+    if (!(await areFriends(auth.profile.id, friendId, supabase))) {
       return NextResponse.json({ error: "Not friends" }, { status: 403 });
     }
 
-    if (await isBlockedEitherWay(user.id, friendId)) {
+    if (await isBlockedEitherWay(auth.profile.id, friendId)) {
       return NextResponse.json(
         { error: "Cannot message a blocked user." },
         { status: 403 }
@@ -49,7 +46,7 @@ export async function GET(req: NextRequest) {
       .from("private_messages")
       .select("*")
       .or(
-        `and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`
+        `and(sender_id.eq.${auth.profile.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${auth.profile.id})`
       )
       .order("created_at", { ascending: true });
 
@@ -60,7 +57,7 @@ export async function GET(req: NextRequest) {
     const peerLastReadAt = await getPeerReadReceiptAt(
       supabase,
       friendId,
-      user.id
+      auth.profile.id
     );
 
     return NextResponse.json({ messages: data, peerLastReadAt });
@@ -72,10 +69,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const auth = await requireAuthProfile();
+    if ("error" in auth) return auth.error;
 
     const { friendId, content } = await req.json();
     if (!friendId || !content?.trim()) {
@@ -83,14 +78,14 @@ export async function POST(req: NextRequest) {
     }
 
     const ip = clientIp(req);
-    const rl = await rateLimit(`dm-send:${user.id}:${ip}`, 40, 60);
+    const rl = await rateLimit(`dm-send:${auth.profile.id}:${ip}`, 40, 60);
     if (!rl.allowed) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
     const supabase = createAdminClient();
 
-    const restriction = await getRestrictionApiPayload(supabase, user.id);
+    const restriction = await getRestrictionApiPayload(supabase, auth.profile.id);
     if (restriction) {
       return NextResponse.json(
         {
@@ -101,11 +96,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!(await areFriends(user.id, friendId, supabase))) {
+    if (!(await areFriends(auth.profile.id, friendId, supabase))) {
       return NextResponse.json({ error: "Not friends" }, { status: 403 });
     }
 
-    if (await isBlockedEitherWay(user.id, friendId)) {
+    if (await isBlockedEitherWay(auth.profile.id, friendId)) {
       return NextResponse.json(
         { error: "Cannot message a blocked user." },
         { status: 403 }
@@ -119,7 +114,7 @@ export async function POST(req: NextRequest) {
       if (moderation.kind === "severe") {
         await applyTimedRestriction(
           supabase,
-          user.id,
+          auth.profile.id,
           "severe_hate_speech_or_slur"
         );
         return NextResponse.json(
@@ -137,7 +132,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase
       .from("private_messages")
       .insert({
-        sender_id: user.id,
+        sender_id: auth.profile.id,
         receiver_id: friendId,
         content: text,
       })
@@ -148,25 +143,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const { data: senderProfile } = await supabase
-      .from("profiles")
-      .select("username")
-      .eq("id", user.id)
-      .maybeSingle();
-
     void notifyFriendMessageEmail({
       receiverId: friendId,
-      senderId: user.id,
-      senderUsername: senderProfile?.username ?? "A friend",
+      senderId: auth.profile.id,
+      senderUsername: auth.profile.username ?? "A friend",
       preview: text,
     });
 
     const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lovarena.app";
     void sendWebPushToUser(supabase, friendId, {
-      title: `${senderProfile?.username ?? "A friend"} messaged you`,
+      title: `${auth.profile.username ?? "A friend"} messaged you`,
       body: text.length > 100 ? `${text.slice(0, 97)}…` : text,
-      url: `${site}/friends?chat=${encodeURIComponent(user.id)}`,
-      tag: `dm-${user.id}`,
+      url: `${site}/friends?chat=${encodeURIComponent(auth.profile.id)}`,
+      tag: `dm-${auth.profile.id}`,
     });
 
     return NextResponse.json({ message: data });
