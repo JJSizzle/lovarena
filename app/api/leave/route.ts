@@ -7,6 +7,7 @@ import {
 import { processQualifiedChat } from "@/lib/referral/process-qualified-chat";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { parseOptionalJsonBody } from "@/lib/api/parse-json-body";
 
 async function clearSession(supabase: ReturnType<typeof createAdminClient>, userId: string) {
   await supabase.from("waiting_users").delete().eq("user_id", userId);
@@ -23,7 +24,9 @@ export async function POST(req: NextRequest) {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const body = await req.json().catch(() => ({}));
+    const parsed = await parseOptionalJsonBody<{ roomId?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
     const roomId =
       typeof body.roomId === "string" && body.roomId.length > 0
         ? body.roomId

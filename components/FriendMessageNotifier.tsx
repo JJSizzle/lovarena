@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { useAuth } from "@/components/AuthProvider";
 import { useAppNotifications } from "@/components/NotificationProvider";
 import { playMessageSound } from "@/lib/sounds";
 import { markSenderRead } from "@/lib/notifications/seen-state";
+import {
+  NEW_DM_EVENT,
+  type NewDmDetail,
+} from "@/lib/notifications/dm-events";
 import { useToastBottomOffset } from "@/lib/hooks/useToastBottomOffset";
 
 type Toast = {
@@ -24,8 +26,7 @@ function titleForUnread(count: number, senderUsername: string) {
 }
 
 export function FriendMessageNotifier() {
-  const { profile } = useAuth();
-  const { unreadMessageCount, refresh } = useAppNotifications();
+  const { unreadMessageCount } = useAppNotifications();
   const pathname = usePathname();
   const toastOffset = useToastBottomOffset();
   const [toast, setToast] = useState<Toast | null>(null);
@@ -60,70 +61,30 @@ export function FriendMessageNotifier() {
   }, [unreadMessageCount]);
 
   useEffect(() => {
-    if (!profile?.id) return;
+    function handleNewDm(event: Event) {
+      const detail = (event as CustomEvent<NewDmDetail>).detail;
+      if (!detail) return;
 
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`dm-notify:${profile.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "private_messages",
-          filter: `receiver_id=eq.${profile.id}`,
-        },
-        async (payload) => {
-          const msg = payload.new as {
-            id: string;
-            sender_id: string;
-            content: string;
-            created_at: string;
-          };
-
-          const { data: sender } = await supabase
-            .from("profiles")
-            .select("username")
-            .eq("id", msg.sender_id)
-            .maybeSingle();
-
-          const senderUsername = sender?.username ?? "A friend";
-          const preview =
-            msg.content.length > 80
-              ? `${msg.content.slice(0, 77)}…`
-              : msg.content;
-
-          if (pathname !== "/friends") {
-            setToast({
-              id: msg.id,
-              senderId: msg.sender_id,
-              senderUsername,
-              preview,
-              createdAt: msg.created_at,
-            });
-            playMessageSound();
-          }
-
-          if (document.hidden) {
-            latestSenderRef.current = senderUsername;
-            blinkingRef.current = true;
-          }
-
-          void refresh();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      blinkingRef.current = false;
-      if (blinkRef.current) {
-        clearInterval(blinkRef.current);
-        blinkRef.current = null;
+      if (pathname !== "/friends") {
+        setToast({
+          id: detail.id,
+          senderId: detail.senderId,
+          senderUsername: detail.senderUsername,
+          preview: detail.preview,
+          createdAt: detail.createdAt,
+        });
+        playMessageSound();
       }
-      document.title = baseTitle.current;
-    };
-  }, [profile?.id, pathname, refresh]);
+
+      if (document.hidden) {
+        latestSenderRef.current = detail.senderUsername;
+        blinkingRef.current = true;
+      }
+    }
+
+    window.addEventListener(NEW_DM_EVENT, handleNewDm);
+    return () => window.removeEventListener(NEW_DM_EVENT, handleNewDm);
+  }, [pathname]);
 
   useEffect(() => {
     function resetTitle() {

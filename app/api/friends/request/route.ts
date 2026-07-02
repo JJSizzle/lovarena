@@ -24,6 +24,7 @@ import {
   isAtFriendLimit,
 } from "@/lib/friends/limits";
 import { countAcceptedFriends } from "@/lib/friends/are-friends";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,7 +41,9 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const { friendId, action } = await req.json();
+    const parsed = await parseJsonBody<{ friendId?: string; action?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { friendId, action } = parsed.data;
     if (!friendId || friendId === auth.profile.id) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }

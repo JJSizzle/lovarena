@@ -10,13 +10,20 @@ import {
   startNextRound,
   syncPartyRoom,
 } from "@/lib/party/party-state";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const { partyId, action, optionId } = await req.json();
+    const parsed = await parseJsonBody<{
+      partyId?: string;
+      action?: string;
+      optionId?: string;
+    }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { partyId, action, optionId } = parsed.data;
     if (!partyId || !action) {
       return NextResponse.json({ error: "Missing partyId or action" }, { status: 400 });
     }

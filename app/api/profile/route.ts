@@ -16,6 +16,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 import { isValidCountryCode } from "@/lib/countries";
 import { isValidUsStateCode } from "@/lib/us-states";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 const PROFILE_FIELDS =
   "id, username, username_change_count, age, show_age, age_verified, is_admin, gender_identity, looking_for, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, referral_code, notifications_enabled, read_receipts_enabled, web_push_enabled, face_blur_default, voice_only_default, allow_friend_requests, allow_mutual_spark, chat_streak, positive_ratings, qualified_referrals, referred_by, primary_language, auto_translate, country_code, state_code, created_at";
@@ -68,7 +69,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const parsed = await parseJsonBody<Record<string, unknown>>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
     const updates: Record<string, unknown> = {};
 
     const ip = clientIp(req);
@@ -343,7 +346,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { confirm } = await req.json();
+    const parsed = await parseJsonBody<{ confirm?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { confirm } = parsed.data;
     if (confirm !== "DELETE") {
       return NextResponse.json(
         { error: 'Send { "confirm": "DELETE" } to permanently delete your account.' },

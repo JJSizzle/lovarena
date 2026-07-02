@@ -14,6 +14,7 @@ import {
   MESSAGE_RATE_TIERS,
 } from "@/lib/rate-limit-tiers";
 import { clientIp } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function GET(req: NextRequest) {
   try {
@@ -53,7 +54,9 @@ export async function POST(req: NextRequest) {
     if ("error" in auth) return auth.error;
 
     const { profile } = auth;
-    const { roomId, content } = await req.json();
+    const parsed = await parseJsonBody<{ roomId?: string; content?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { roomId, content } = parsed.data;
 
     if (!roomId || !content?.trim()) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });

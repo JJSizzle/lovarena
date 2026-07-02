@@ -14,6 +14,7 @@ import type { FriendConnectionType } from "@/lib/friends/connection-type";
 import {
   allowsMutualSpark,
 } from "@/lib/social-privacy";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 async function bothSparkedInRoom(
   supabase: ReturnType<typeof createAdminClient>,
@@ -133,7 +134,9 @@ export async function POST(req: NextRequest) {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const { roomId } = await req.json();
+    const parsed = await parseJsonBody<{ roomId?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { roomId } = parsed.data;
     if (!roomId) {
       return NextResponse.json({ error: "Missing roomId" }, { status: 400 });
     }

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clientIp } from "@/lib/rate-limit";
 import { verifyTurnstileToken } from "@/lib/security/turnstile";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
-    const { token } = await req.json();
+    const parsed = await parseJsonBody<{ token?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { token } = parsed.data;
     const result = await verifyTurnstileToken(token, clientIp(req));
 
     if (!result.ok) {

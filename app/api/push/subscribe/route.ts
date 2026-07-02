@@ -3,6 +3,10 @@ import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import {
+  parseJsonBody,
+  parseOptionalJsonBody,
+} from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +21,12 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const { endpoint, keys } = await req.json();
+    const parsed = await parseJsonBody<{
+      endpoint?: string;
+      keys?: { p256dh?: string; auth?: string };
+    }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { endpoint, keys } = parsed.data;
     if (
       !endpoint ||
       !keys?.p256dh ||
@@ -63,7 +72,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { endpoint } = await req.json().catch(() => ({}));
+    const parsed = await parseOptionalJsonBody<{ endpoint?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { endpoint } = parsed.data;
     const supabase = createAdminClient();
 
     if (endpoint && typeof endpoint === "string") {

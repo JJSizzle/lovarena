@@ -3,13 +3,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const { inQueue, inChat } = await req.json();
+    const parsed = await parseJsonBody<{ inQueue?: boolean; inChat?: boolean }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { inQueue, inChat } = parsed.data;
 
     const ip = clientIp(req);
     const rl = await rateLimit(`presence:${auth.profile.id}:${ip}`, 120, 60);

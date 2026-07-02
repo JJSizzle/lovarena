@@ -6,6 +6,7 @@ import { areFriends } from "@/lib/party/party-auth";
 import { assertCanHostParty, syncPartyHostUnlock } from "@/lib/reputation-gating";
 import { buildPartyState, syncPartyRoom } from "@/lib/party/party-state";
 import type { PartyGameMode } from "@/lib/party/party-types";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 function isGameMode(value: unknown): value is PartyGameMode {
   return value === "prompts" || value === "trivia" || value === "hangout";
@@ -101,7 +102,9 @@ export async function POST(req: NextRequest) {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const body = await req.json();
+    const parsed = await parseJsonBody<{ gameMode?: unknown; maxPlayers?: unknown }>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
     const gameMode = body.gameMode;
     const maxPlayers = Number(body.maxPlayers ?? 4);
 

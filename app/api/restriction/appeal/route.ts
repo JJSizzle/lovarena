@@ -5,6 +5,7 @@ import { getUserRestriction } from "@/lib/moderation/user-restriction";
 import { notifyModerators } from "@/lib/moderation/notify-admin";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,7 +39,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
+    const parsed = await parseJsonBody<{ message?: unknown }>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
     const message =
       typeof body.message === "string" ? body.message.trim().slice(0, 500) : "";
 

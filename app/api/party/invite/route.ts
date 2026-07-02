@@ -5,6 +5,7 @@ import { assertPartyHost } from "@/lib/party/party-auth";
 import { notifyPartyInvite } from "@/lib/notifications/party-invite";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +18,9 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const { partyId, friendId } = await req.json();
+    const parsed = await parseJsonBody<{ partyId?: string; friendId?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { partyId, friendId } = parsed.data;
     if (!partyId || !friendId) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }

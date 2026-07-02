@@ -3,13 +3,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { assertPartyHost } from "@/lib/party/party-auth";
 import { buildPartyState } from "@/lib/party/party-state";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const { partyId, memberId } = await req.json();
+    const parsed = await parseJsonBody<{ partyId?: string; memberId?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { partyId, memberId } = parsed.data;
     if (!partyId || !memberId) {
       return NextResponse.json(
         { error: "Missing partyId or memberId" },

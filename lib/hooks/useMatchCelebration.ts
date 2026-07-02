@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConnectionCardData } from "@/components/ConnectionCardOverlay";
 import { useAuth } from "@/components/AuthProvider";
 import {
@@ -17,6 +17,29 @@ export function useMatchCelebration() {
   const [showCard, setShowCard] = useState(false);
   const [cardData, setCardData] = useState<ConnectionCardData | null>(null);
   const lastRoomRef = useRef<string | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
+  const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+
+  const clearCountdownTimers = useCallback(() => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (countdownTimeoutRef.current) {
+      clearTimeout(countdownTimeoutRef.current);
+      countdownTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearCountdownTimers();
+    };
+  }, [clearCountdownTimers]);
 
   const dismissCard = useCallback(() => setShowCard(false), []);
 
@@ -24,6 +47,7 @@ export function useMatchCelebration() {
     if (lastRoomRef.current === roomId) return;
     lastRoomRef.current = roomId;
 
+    clearCountdownTimers();
     playConnectSound();
     void fetch("/api/streak", { method: "POST" })
       .then((res) => {
@@ -37,15 +61,15 @@ export function useMatchCelebration() {
     playMatchCountdownTick();
 
     await new Promise<void>((resolve) => {
-      const interval = setInterval(() => {
+      countdownIntervalRef.current = setInterval(() => {
         step -= 1;
         if (step > 0) {
           setCountdown(step);
           playMatchCountdownTick();
         } else {
           setCountdown(0);
-          clearInterval(interval);
-          setTimeout(() => {
+          clearCountdownTimers();
+          countdownTimeoutRef.current = setTimeout(() => {
             setCountdown(null);
             resolve();
           }, 600);
@@ -81,14 +105,15 @@ export function useMatchCelebration() {
     } catch {
       // skip card
     }
-  }, [refreshProfile]);
+  }, [clearCountdownTimers, refreshProfile]);
 
   const resetCelebration = useCallback(() => {
+    clearCountdownTimers();
     lastRoomRef.current = null;
     setCountdown(null);
     setShowCard(false);
     setCardData(null);
-  }, []);
+  }, [clearCountdownTimers]);
 
   return {
     countdown,

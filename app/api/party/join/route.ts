@@ -3,13 +3,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile, isBlockedEitherWay } from "@/lib/auth/api-auth";
 import { areFriends } from "@/lib/party/party-auth";
 import { buildPartyState } from "@/lib/party/party-state";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const { inviteCode, partyId } = await req.json();
+    const parsed = await parseJsonBody<{ inviteCode?: string; partyId?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { inviteCode, partyId } = parsed.data;
     const supabase = createAdminClient();
 
     let roomQuery = supabase.from("party_rooms").select("*");

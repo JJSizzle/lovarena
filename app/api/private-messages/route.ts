@@ -12,6 +12,7 @@ import { rateLimitResponse } from "@/lib/rate-limit-response";
 import { notifyFriendMessageEmail } from "@/lib/notifications/friend-message-email";
 import { sendWebPushToUser } from "@/lib/notifications/web-push";
 import { getPeerReadReceiptAt } from "@/lib/dm/read-cursors";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function GET(req: NextRequest) {
   try {
@@ -72,7 +73,9 @@ export async function POST(req: NextRequest) {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const { friendId, content } = await req.json();
+    const parsed = await parseJsonBody<{ friendId?: string; content?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { friendId, content } = parsed.data;
     if (!friendId || !content?.trim()) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }

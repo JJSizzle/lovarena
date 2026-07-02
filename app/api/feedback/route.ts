@@ -8,6 +8,7 @@ import {
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 import { applyFeedbackReputationChange } from "@/lib/feedback/apply-feedback-reputation";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,7 +21,13 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const { roomId, partnerId, rating } = await req.json();
+    const parsed = await parseJsonBody<{
+      roomId?: string;
+      partnerId?: string;
+      rating?: string;
+    }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { roomId, partnerId, rating } = parsed.data;
     if (!roomId || !partnerId || (rating !== "up" && rating !== "down")) {
       return NextResponse.json({ error: "Invalid feedback" }, { status: 400 });
     }

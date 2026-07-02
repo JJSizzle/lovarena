@@ -12,6 +12,7 @@ import { isLowReputation, matchPollIntervalMs } from "@/lib/reputation-gating";
 import { clientIp } from "@/lib/rate-limit";
 
 import { isValidUsStateCode } from "@/lib/us-states";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,8 +20,17 @@ export async function POST(req: NextRequest) {
     if ("error" in auth) return auth.error;
 
     const { profile } = auth;
+    const parsed = await parseJsonBody<{
+      matchMode?: string;
+      countryCode?: string;
+      stateCode?: string;
+      preferSharedInterests?: boolean;
+      preferSharedLanguages?: boolean;
+      turnstileToken?: string;
+    }>(req);
+    if (!parsed.ok) return parsed.response;
     const { matchMode, countryCode, stateCode, preferSharedInterests, preferSharedLanguages, turnstileToken } =
-      await req.json();
+      parsed.data;
 
     const ip = clientIp(req);
 

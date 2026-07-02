@@ -11,6 +11,7 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { dispatchNewDm } from "@/lib/notifications/dm-events";
 
 export type FriendRequestNotification = {
   id: string;
@@ -142,7 +143,34 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           table: "private_messages",
           filter: `receiver_id=eq.${profile.id}`,
         },
-        () => {
+        async (payload) => {
+          const msg = payload.new as {
+            id: string;
+            sender_id: string;
+            content: string;
+            created_at: string;
+          };
+
+          const { data: sender } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("id", msg.sender_id)
+            .maybeSingle();
+
+          const senderUsername = sender?.username ?? "A friend";
+          const preview =
+            msg.content.length > 80
+              ? `${msg.content.slice(0, 77)}…`
+              : msg.content;
+
+          dispatchNewDm({
+            id: msg.id,
+            senderId: msg.sender_id,
+            senderUsername,
+            preview,
+            createdAt: msg.created_at,
+          });
+
           void refresh();
         }
       )

@@ -4,6 +4,7 @@ import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { partnerIdsFromFriendshipRows } from "@/lib/friends/are-friends";
 import { removeFriendshipPair } from "@/lib/friends/friend-link-status";
 import { MAX_FRIENDS } from "@/lib/friends/limits";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function GET() {
   try {
@@ -126,7 +127,9 @@ export async function DELETE(req: NextRequest) {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const { friendId } = await req.json();
+    const parsed = await parseJsonBody<{ friendId?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { friendId } = parsed.data;
     if (!friendId || friendId === auth.profile.id) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }

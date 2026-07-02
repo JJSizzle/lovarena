@@ -60,11 +60,11 @@ export function friendLinkStatus(
   return "none";
 }
 
-export async function acceptFriendshipPair(
+async function acceptFriendshipPairLegacy(
   supabase: SupabaseClient,
   userId: string,
   partnerId: string,
-  connectionType: FriendConnectionType = "request"
+  connectionType: FriendConnectionType
 ): Promise<void> {
   const capacity = await assertFriendCapacityForPair(
     supabase,
@@ -119,6 +119,60 @@ export async function acceptFriendshipPair(
   }
 }
 
+function rpcAcceptError(status: string): string {
+  switch (status) {
+    case "user_full":
+      return friendLimitMessage(MAX_FRIENDS);
+    case "partner_full":
+      return `Their friend list is full (${MAX_FRIENDS}/${MAX_FRIENDS}).`;
+    case "invalid":
+      return "Invalid friend request.";
+    default:
+      return `Could not accept friendship (${status}).`;
+  }
+}
+
+export async function acceptFriendshipPair(
+  supabase: SupabaseClient,
+  userId: string,
+  partnerId: string,
+  connectionType: FriendConnectionType = "request"
+): Promise<void> {
+  const { data: status, error } = await supabase.rpc(
+    "accept_friendship_if_under_cap",
+    {
+      p_user_id: userId,
+      p_partner_id: partnerId,
+      p_connection_type: connectionType,
+      p_max_friends: MAX_FRIENDS,
+    }
+  );
+
+  if (error) {
+    const missingRpc =
+      error.code === "PGRST202" ||
+      error.message.toLowerCase().includes("accept_friendship_if_under_cap");
+
+    if (missingRpc) {
+      await acceptFriendshipPairLegacy(
+        supabase,
+        userId,
+        partnerId,
+        connectionType
+      );
+      return;
+    }
+
+    throw new Error(error.message);
+  }
+
+  if (status === "ok" || status === "already_friends") {
+    return;
+  }
+
+  throw new Error(rpcAcceptError(String(status)));
+}
+
 /** Both users tapped spark in chat — create accepted friendship both ways. */
 export async function ensureMutualSparkFriendship(
   supabase: SupabaseClient,
@@ -147,8 +201,14 @@ export async function ensureMutualSparkFriendship(
     return { ok: false, error: capacity.error };
   }
 
-  await acceptFriendshipPair(supabase, userId, partnerId, "mutual_connect");
-  return { ok: true };
+  try {
+    await acceptFriendshipPair(supabase, userId, partnerId, "mutual_connect");
+    return { ok: true };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not add mutual spark friend.";
+    return { ok: false, error: message };
+  }
 }
 
 export async function removeFriendshipPair(

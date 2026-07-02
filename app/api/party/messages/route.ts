@@ -11,6 +11,7 @@ import {
   PARTY_MESSAGE_RATE_TIERS,
 } from "@/lib/rate-limit-tiers";
 import { clientIp } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function GET(req: NextRequest) {
   try {
@@ -112,7 +113,9 @@ export async function POST(req: NextRequest) {
     );
     if (!rl.allowed) return rl.response;
 
-    const { partyId, content } = await req.json();
+    const parsed = await parseJsonBody<{ partyId?: string; content?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { partyId, content } = parsed.data;
     if (!partyId) {
       return NextResponse.json({ error: "Missing partyId" }, { status: 400 });
     }

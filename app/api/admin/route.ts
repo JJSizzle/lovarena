@@ -11,6 +11,7 @@ import {
   isAdminIpAllowed,
 } from "@/lib/security/admin-access";
 import { logAdminAction } from "@/lib/security/admin-audit";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 function enforceAdminNetwork(ip: string): NextResponse | null {
   if (!isAdminIpAllowed(ip)) {
@@ -118,7 +119,9 @@ export async function PATCH(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const { reportId, status } = await req.json();
+    const parsed = await parseJsonBody<{ reportId?: string; status?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { reportId, status } = parsed.data;
     if (!reportId || !status) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
@@ -166,7 +169,15 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const { action, userId, reason, reportId, appealId } = await req.json();
+    const parsed = await parseJsonBody<{
+      action?: string;
+      userId?: string;
+      reason?: string;
+      reportId?: string;
+      appealId?: string;
+    }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { action, userId, reason, reportId, appealId } = parsed.data;
 
     if (!action) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });

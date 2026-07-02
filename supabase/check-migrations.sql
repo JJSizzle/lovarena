@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 23 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 27 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -394,6 +394,23 @@ select migration, status from (
         join pg_namespace n on n.oid = p.pronamespace
         where n.nspname = 'public' and p.proname = 'latest_dm_by_sender'
       ) then '❌ latest_dm_by_sender missing — run dm-unread-threads.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 27, 'friend-cap-enforce',
+    case
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'accept_friendship_if_under_cap'
+      ) then '❌ accept_friendship_if_under_cap missing — run friend-cap-enforce.sql'
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'count_accepted_friends'
+      ) then '❌ count_accepted_friends missing — run friend-cap-enforce.sql'
       else '✅ applied'
     end
 ) checks

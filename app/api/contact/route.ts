@@ -10,6 +10,7 @@ import { captureServerError } from "@/lib/capture-error";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 import { verifyTurnstileToken } from "@/lib/security/turnstile";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 const TOPIC_LABELS: Record<ContactTopic, string> = {
   general: "General support",
@@ -42,7 +43,15 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const { topic, email, message, name, turnstileToken } = await req.json();
+    const parsed = await parseJsonBody<{
+      topic?: unknown;
+      email?: string;
+      message?: string;
+      name?: string;
+      turnstileToken?: string;
+    }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { topic, email, message, name, turnstileToken } = parsed.data;
 
     const captcha = await verifyTurnstileToken(turnstileToken, ip);
     if (!captcha.ok) {

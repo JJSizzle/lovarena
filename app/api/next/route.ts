@@ -7,6 +7,7 @@ import { applyNextRateLimit } from "@/lib/rate-limit-tiers";
 import { clientIp } from "@/lib/rate-limit";
 
 import { isValidUsStateCode } from "@/lib/us-states";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,8 +15,17 @@ export async function POST(req: NextRequest) {
     if ("error" in auth) return auth.error;
 
     const { profile } = auth;
+    const parsed = await parseJsonBody<{
+      roomId?: string;
+      matchMode?: string;
+      countryCode?: string;
+      stateCode?: string;
+      preferSharedInterests?: boolean;
+      preferSharedLanguages?: boolean;
+    }>(req);
+    if (!parsed.ok) return parsed.response;
     const { roomId, matchMode, countryCode, stateCode, preferSharedInterests, preferSharedLanguages } =
-      await req.json();
+      parsed.data;
 
     const ip = clientIp(req);
     const rl = await applyNextRateLimit(

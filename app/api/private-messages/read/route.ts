@@ -5,13 +5,16 @@ import { areFriends } from "@/lib/friends/are-friends";
 import { markConversationRead } from "@/lib/dm/read-cursors";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
 
-    const { friendId, lastReadAt } = await req.json();
+    const parsed = await parseJsonBody<{ friendId?: string; lastReadAt?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { friendId, lastReadAt } = parsed.data;
     if (!friendId || friendId === auth.profile.id) {
       return NextResponse.json({ error: "Invalid friendId" }, { status: 400 });
     }

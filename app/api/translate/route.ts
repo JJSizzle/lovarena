@@ -4,6 +4,7 @@ import { sanitizePrimaryLanguage } from "@/lib/translation/language-codes";
 import { translateText } from "@/lib/translation/translate-text";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +17,9 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const { text, targetLanguage } = await req.json();
+    const parsed = await parseJsonBody<{ text?: string; targetLanguage?: string }>(req);
+    if (!parsed.ok) return parsed.response;
+    const { text, targetLanguage } = parsed.data;
     if (!text || typeof text !== "string") {
       return NextResponse.json({ error: "Missing text" }, { status: 400 });
     }

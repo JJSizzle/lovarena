@@ -17,6 +17,7 @@ import { notifyModerators } from "@/lib/moderation/notify-admin";
 import { captureServerError } from "@/lib/capture-error";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
+import { parseJsonBody } from "@/lib/api/parse-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,8 +30,15 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
+    const parsed = await parseJsonBody<{
+      roomId?: string;
+      reportedUserId?: string;
+      reason?: string;
+      details?: string;
+    }>(req);
+    if (!parsed.ok) return parsed.response;
     const { roomId, reportedUserId: reportedUserIdInput, reason, details } =
-      await req.json();
+      parsed.data;
 
     if (!reason || !isReportReason(reason)) {
       return NextResponse.json({ error: "Invalid report" }, { status: 400 });
