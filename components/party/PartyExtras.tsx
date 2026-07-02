@@ -10,9 +10,11 @@ import type {
 export function PartyLobbySlots({
   members,
   maxPlayers,
+  waitingForNames = [],
 }: {
   members: PartyMemberView[];
   maxPlayers: number;
+  waitingForNames?: string[];
 }) {
   const emptySlots = Math.max(0, maxPlayers - members.length);
   const waitingFor = Math.max(0, 2 - members.length);
@@ -39,25 +41,50 @@ export function PartyLobbySlots({
             </div>
           </div>
         ))}
-        {Array.from({ length: emptySlots }).map((_, i) => (
+        {Array.from({ length: emptySlots }).map((_, i) => {
+          const waitingName = waitingForNames[i];
+          return (
           <div
             key={`empty-${i}`}
             className="flex items-center gap-2 rounded-xl border border-dashed border-slate-600/50 bg-slate-950/40 px-3 py-2"
           >
             <div className="h-8 w-8 rounded-full border border-slate-600/60 flex items-center justify-center text-slate-600 text-sm">
-              ?
+              {waitingName ? "…" : "?"}
             </div>
-            <div>
-              <p className="text-xs text-slate-500">Open spot</p>
-              <p className="text-[10px] text-slate-600">Share invite link</p>
+            <div className="min-w-0">
+              {waitingName ? (
+                <>
+                  <p className="text-xs text-amber-200/90 truncate">
+                    Waiting for {waitingName}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Invite sent — they can join via link or code
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-500">Open spot</p>
+                  <p className="text-[10px] text-slate-600">Share invite link</p>
+                </>
+              )}
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
-      {waitingFor > 0 && (
+      {waitingFor > 0 && waitingForNames.length === 0 && (
         <p className="text-center text-xs text-amber-300/90">
           Waiting for {waitingFor} more friend{waitingFor === 1 ? "" : "s"} to
           join before you can start…
+        </p>
+      )}
+      {waitingForNames.length > 0 && (
+        <p className="text-center text-xs text-amber-300/90 leading-relaxed">
+          Waiting for{" "}
+          {waitingForNames.length === 1
+            ? waitingForNames[0]
+            : `${waitingForNames.slice(0, -1).join(", ")} and ${waitingForNames.at(-1)}`}{" "}
+          to join…
         </p>
       )}
       {members.length >= 2 && emptySlots > 0 && (

@@ -1398,8 +1398,13 @@ export default function ChatPage() {
               ? "✨ Mutual spark — you're friends"
               : "🤝 Friends — message anytime"
           }
-          sparkSlot={renderSparkButton()}
-          friendSlot={renderFriendRequestButton()}
+          socialCompactShowDmLink={chatFriendStatus === "friends"}
+          sparkSlot={
+            chatFriendStatus === "friends" ? null : renderSparkButton()
+          }
+          friendSlot={
+            chatFriendStatus === "friends" ? null : renderFriendRequestButton()
+          }
           actionSlot={
             roomId ? (
               <SafetyActions

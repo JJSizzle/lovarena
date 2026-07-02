@@ -161,7 +161,7 @@ export default function HomePage() {
           </div>
           <Link
             href={user ? "/profile" : "/login?next=/profile"}
-            className={`shrink-0 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1.5 text-xs font-semibold text-purple-200 hover:bg-purple-500/20 transition ${user ? "mr-11" : ""}`}
+            className={`shrink-0 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1.5 text-xs font-semibold text-purple-200 hover:bg-purple-500/20 transition ${user ? "mr-11 sm:mr-12" : ""}`}
           >
             {user ? "Profile" : "Sign in"}
           </Link>

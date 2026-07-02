@@ -51,6 +51,7 @@ function PartyPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [endConfirmOpen, setEndConfirmOpen] = useState(false);
+  const [lobbyWaitingFor, setLobbyWaitingFor] = useState<string[]>([]);
 
   const codeFromUrl = searchParams.get("code");
 
@@ -562,6 +563,7 @@ function PartyPageContent() {
                     onStart={handleStart}
                     onLeave={handleLeave}
                     onKick={party.isHost ? handleKick : undefined}
+                    waitingForNames={lobbyWaitingFor}
                   />
                   <div className="mt-4 space-y-3">
                     <PartyInviteFriends
@@ -569,6 +571,7 @@ function PartyPageContent() {
                       memberIds={party.members.map((m) => m.id)}
                       isHost={party.isHost}
                       partyFull={party.members.length >= party.maxPlayers}
+                      onWaitingForChange={setLobbyWaitingFor}
                     />
                     <CopyInviteButton inviteUrl={party.inviteUrl} />
                   </div>
@@ -585,6 +588,7 @@ function PartyPageContent() {
                     endConfirmOpen={endConfirmOpen}
                     onEndConfirm={() => handleAction("end")}
                     onEndCancel={() => setEndConfirmOpen(false)}
+                    waitingForNames={lobbyWaitingFor}
                   />
                   {party.status === "lobby" && (
                     <div className="mt-4 space-y-3">
@@ -593,6 +597,7 @@ function PartyPageContent() {
                         memberIds={party.members.map((m) => m.id)}
                         isHost={party.isHost}
                         partyFull={party.members.length >= party.maxPlayers}
+                        onWaitingForChange={setLobbyWaitingFor}
                       />
                       <CopyInviteButton inviteUrl={party.inviteUrl} />
                     </div>

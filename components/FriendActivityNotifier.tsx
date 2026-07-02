@@ -108,14 +108,25 @@ export function FriendActivityNotifier() {
         const dedupeId = `friend-pair-${[myId, otherId].sort().join("-")}`;
         const name = await usernameFor(supabase, otherId);
         const spark = row.connection_type === "mutual_connect";
+        const acceptedMyRequest =
+          !spark &&
+          eventType === "UPDATE" &&
+          row.user_id === myId &&
+          row.friend_id === otherId;
         showToast(
           {
             id: dedupeId,
-            title: spark ? "Mutual spark ✨" : "New friend",
+            title: spark
+              ? "Mutual spark ✨"
+              : acceptedMyRequest
+                ? "Request accepted"
+                : "New friend",
             body: spark
               ? `You and ${name} are connected`
-              : `You're now friends with ${name}`,
-            href: "/friends",
+              : acceptedMyRequest
+                ? `${name} accepted your friend request!`
+                : `You're now friends with ${name}`,
+            href: spark || acceptedMyRequest ? `/friends?chat=${encodeURIComponent(otherId)}` : "/friends",
           },
           true
         );

@@ -40,8 +40,16 @@ function formatWhen(iso: string) {
 export function NotificationBell() {
   const { user } = useAuth();
   const pathname = usePathname();
-  const { friendRequests, unreadMessages, totalCount, unreadMessageCount, refresh } =
-    useAppNotifications();
+  const {
+    friendRequests,
+    unreadMessages,
+    totalCount,
+    unreadMessageCount,
+    hasMoreMessages,
+    loadingMoreMessages,
+    refresh,
+    loadMoreMessages,
+  } = useAppNotifications();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -190,12 +198,17 @@ export function NotificationBell() {
           </div>
 
           <div className="border-t border-purple-500/20 px-4 py-2.5 space-y-1.5">
-            {unreadMessageCount > unreadMessages.length && (
-              <p className="text-center text-[11px] text-slate-500">
-                +{unreadMessageCount - unreadMessages.length} more unread
-                conversation
-                {unreadMessageCount - unreadMessages.length === 1 ? "" : "s"}
-              </p>
+            {hasMoreMessages && (
+              <button
+                type="button"
+                onClick={() => void loadMoreMessages()}
+                disabled={loadingMoreMessages}
+                className="block w-full text-center text-xs font-semibold text-slate-400 hover:text-slate-200 disabled:opacity-50"
+              >
+                {loadingMoreMessages
+                  ? "Loading…"
+                  : `Load more messages (${unreadMessages.length} of ${unreadMessageCount})`}
+              </button>
             )}
             <Link
               href="/friends"

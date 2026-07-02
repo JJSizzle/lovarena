@@ -89,9 +89,17 @@ type Props = {
   onStart: () => void;
   onLeave: () => void;
   onKick?: (memberId: string) => void;
+  waitingForNames?: string[];
 };
 
-export function PartyLobby({ party, busy, onStart, onLeave, onKick }: Props) {
+export function PartyLobby({
+  party,
+  busy,
+  onStart,
+  onLeave,
+  onKick,
+  waitingForNames = [],
+}: Props) {
   const spotsLeft = party.maxPlayers - party.members.length;
   const modeLabel =
     party.gameMode === "trivia"
@@ -122,7 +130,11 @@ export function PartyLobby({ party, busy, onStart, onLeave, onKick }: Props) {
         kickBusy={busy}
       />
 
-      <PartyLobbySlots members={party.members} maxPlayers={party.maxPlayers} />
+      <PartyLobbySlots
+        members={party.members}
+        maxPlayers={party.maxPlayers}
+        waitingForNames={waitingForNames}
+      />
 
       <div className="rounded-2xl border border-purple-500/20 bg-slate-950/60 px-4 py-3 text-center">
         <p className="text-sm text-slate-300">
@@ -187,6 +199,7 @@ type HangoutProps = {
   endConfirmOpen: boolean;
   onEndConfirm: () => void;
   onEndCancel: () => void;
+  waitingForNames?: string[];
 };
 
 export function PartyHangoutView({
@@ -198,6 +211,7 @@ export function PartyHangoutView({
   endConfirmOpen,
   onEndConfirm,
   onEndCancel,
+  waitingForNames = [],
 }: HangoutProps) {
   return (
     <div className="space-y-5">
@@ -228,6 +242,7 @@ export function PartyHangoutView({
         <PartyLobbySlots
           members={party.members}
           maxPlayers={party.maxPlayers}
+          waitingForNames={waitingForNames}
         />
       )}
 

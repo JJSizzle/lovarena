@@ -36,6 +36,7 @@ type VideoPanelProps = {
   showConnect?: boolean;
   socialCompact?: boolean;
   socialCompactLabel?: string;
+  socialCompactShowDmLink?: boolean;
   sparkSlot?: React.ReactNode;
   friendSlot?: React.ReactNode;
   connectSlot?: React.ReactNode;
@@ -98,6 +99,7 @@ export function VideoPanel({
   showConnect,
   socialCompact = false,
   socialCompactLabel,
+  socialCompactShowDmLink = false,
   sparkSlot,
   friendSlot,
   connectSlot,
@@ -113,6 +115,11 @@ export function VideoPanel({
   const isMuted = !audioEnabled;
   const isCameraOn = videoEnabled;
   const videoActive = status === "connected";
+  const showConnectionOverlay =
+    videoActive &&
+    !mediaError &&
+    connectionState !== "connected" &&
+    connectionState !== "completed";
 
   const strangerLabel = `${strangerFlag ? `${strangerFlag} ` : ""}Stranger`;
   const strangerTileLabel =
@@ -142,7 +149,7 @@ export function VideoPanel({
           </p>
         </div>
       )}
-      {connectionState !== "connected" && !mediaError && (
+      {showConnectionOverlay && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-slate-400 text-xs z-[1]">
           Connecting…
         </div>
@@ -312,7 +319,7 @@ export function VideoPanel({
         </p>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6 w-full max-w-4xl mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6 w-full max-w-4xl mb-2 md:mb-3">
         <VideoTile
           label={strangerTileLabel}
           labelClass="text-pink-300 border-pink-500/20"
@@ -354,33 +361,48 @@ export function VideoPanel({
       </div>
 
       <div className="w-full max-w-4xl space-y-2 mb-2 flex flex-col items-center">
-        <div className={`${chatToolbar} !gap-1.5 md:!gap-2`}>{mediaControls}</div>
+        <div className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-2 py-2 md:px-3 md:py-2.5">
+          <p className="text-[10px] text-slate-500 text-center mb-2 hidden md:block">
+            Camera &amp; mic controls
+          </p>
+          <div className={`${chatToolbar} !gap-1.5 md:!gap-2 justify-center`}>
+            {mediaControls}
+          </div>
+        </div>
         {showConnect && socialCompact && socialCompactLabel && (
-          <div className="w-full rounded-xl border border-purple-500/25 bg-purple-500/5 px-3 py-2.5 text-center">
+          <div className="w-full rounded-xl border border-purple-500/25 bg-purple-500/5 px-3 py-2.5 text-center space-y-2">
             <p className="text-xs font-semibold text-purple-100">
               {socialCompactLabel}
             </p>
+            {socialCompactShowDmLink && (
+              <Link
+                href="/friends"
+                className="inline-block text-[11px] font-semibold text-fuchsia-300 hover:text-fuchsia-200"
+              >
+                Open friend DMs →
+              </Link>
+            )}
           </div>
         )}
         {showConnect &&
           !socialCompact &&
           (socialSpark || friendSlot) && (
           <>
-            <div className="sm:hidden w-full space-y-1.5">
+            <div className="sm:hidden w-full space-y-2">
               {socialSpark && (
-                <div className="flex items-center justify-between gap-2 rounded-xl border border-pink-500/25 bg-pink-500/5 px-3 py-2">
-                  <span className="text-[9px] font-bold uppercase tracking-wide text-pink-300 shrink-0">
-                    ✨ Spark
-                  </span>
-                  <div className="min-w-0 flex justify-end">{socialSpark}</div>
+                <div className="rounded-xl border border-pink-500/25 bg-pink-500/5 px-3 py-2.5 space-y-2">
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-pink-300 text-center">
+                    ✨ Mutual spark
+                  </p>
+                  <div className="flex justify-center">{socialSpark}</div>
                 </div>
               )}
               {friendSlot && (
-                <div className="flex items-center justify-between gap-2 rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 px-3 py-2">
-                  <span className="text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 shrink-0">
-                    Friend
-                  </span>
-                  <div className="min-w-0 flex justify-end">{friendSlot}</div>
+                <div className="rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/5 px-3 py-2.5 space-y-2">
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-fuchsia-300 text-center">
+                    Add friend
+                  </p>
+                  <div className="flex justify-center">{friendSlot}</div>
                 </div>
               )}
             </div>

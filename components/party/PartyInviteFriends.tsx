@@ -13,6 +13,7 @@ type Props = {
   memberIds: string[];
   isHost: boolean;
   partyFull: boolean;
+  onWaitingForChange?: (names: string[]) => void;
 };
 
 export function PartyInviteFriends({
@@ -20,12 +21,14 @@ export function PartyInviteFriends({
   memberIds,
   isHost,
   partyFull,
+  onWaitingForChange,
 }: Props) {
   const [friends, setFriends] = useState<FriendOption[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingInvites, setPendingInvites] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isHost) return;
@@ -50,11 +53,23 @@ export function PartyInviteFriends({
     [friends, memberIds]
   );
 
+  useEffect(() => {
+    setPendingInvites((prev) => {
+      const joinedNames = new Set(
+        friends.filter((f) => memberIds.includes(f.id)).map((f) => f.username)
+      );
+      const stillWaiting = prev.filter((name) => !joinedNames.has(name));
+      onWaitingForChange?.(stillWaiting);
+      return stillWaiting;
+    });
+  }, [memberIds, friends, onWaitingForChange]);
+
   if (!isHost || partyFull) return null;
 
   async function sendInvite() {
     if (!selectedId || busy) return;
 
+    const invited = friends.find((f) => f.id === selectedId);
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -66,7 +81,17 @@ export function PartyInviteFriends({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not send invite");
-      setNotice(data.message ?? "Invite sent.");
+      if (invited) {
+        setPendingInvites((prev) => {
+          if (prev.includes(invited.username)) return prev;
+          const next = [...prev, invited.username];
+          onWaitingForChange?.(next);
+          return next;
+        });
+        setNotice(`Waiting for ${invited.username} to join…`);
+      } else {
+        setNotice(data.message ?? "Invite sent.");
+      }
       setSelectedId("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invite failed");

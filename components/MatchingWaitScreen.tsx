@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MATCH_WAIT_TIPS } from "@/lib/profile-tags";
 import {
   estimateMatchWaitSeconds,
@@ -11,6 +11,8 @@ import { getUsStateName } from "@/lib/us-states";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 const EXPAND_AFTER_SECONDS = 30;
+
+type LoadState = "loading" | "ok" | "error";
 
 type Props = {
   visible: boolean;
@@ -37,6 +39,7 @@ export function MatchingWaitScreen({
 }: Props) {
   const [online, setOnline] = useState<number | null>(null);
   const [inQueue, setInQueue] = useState<number | null>(null);
+  const [statsState, setStatsState] = useState<LoadState>("loading");
   const [tipIndex, setTipIndex] = useState(0);
   const [waitSeconds, setWaitSeconds] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -45,6 +48,23 @@ export function MatchingWaitScreen({
   const canExpand =
     Boolean(stateCode && onExpandToCountry) &&
     elapsedSeconds >= EXPAND_AFTER_SECONDS;
+
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/stats/online", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) {
+        setOnline(data.online);
+        setInQueue(data.inQueue);
+        setWaitSeconds(estimateMatchWaitSeconds(data.online, data.inQueue));
+        setStatsState("ok");
+      } else {
+        setStatsState("error");
+      }
+    } catch {
+      setStatsState("error");
+    }
+  }, []);
 
   useEffect(() => {
     if (!visible) {
@@ -63,22 +83,9 @@ export function MatchingWaitScreen({
   useEffect(() => {
     if (!visible) return;
 
-    async function loadStats() {
-      try {
-        const res = await fetch("/api/stats/online", { cache: "no-store" });
-        const data = await res.json();
-        if (res.ok) {
-          setOnline(data.online);
-          setInQueue(data.inQueue);
-          setWaitSeconds(estimateMatchWaitSeconds(data.online, data.inQueue));
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    loadStats();
-    const statsInterval = setInterval(loadStats, 5000);
+    setStatsState("loading");
+    void loadStats();
+    const statsInterval = setInterval(() => void loadStats(), 5000);
     const tipInterval = setInterval(() => {
       setTipIndex((i) => (i + 1) % MATCH_WAIT_TIPS.length);
     }, 6000);
@@ -87,7 +94,7 @@ export function MatchingWaitScreen({
       clearInterval(statsInterval);
       clearInterval(tipInterval);
     };
-  }, [visible]);
+  }, [visible, loadStats]);
 
   if (!visible) return null;
 
@@ -117,16 +124,36 @@ export function MatchingWaitScreen({
       <p className="mt-2 text-xs text-cyan-300/90">
         {formatWaitEstimate(waitSeconds)}
       </p>
-      <div className="mt-3 flex justify-center gap-6 text-xs text-slate-400">
-        <span>
-          Online:{" "}
-          <strong className="text-cyan-300">{online ?? "…"}</strong>
-        </span>
-        <span>
-          In queue:{" "}
-          <strong className="text-pink-300">{inQueue ?? "…"}</strong>
-        </span>
-      </div>
+      {statsState === "error" ? (
+        <div className="mt-3 flex flex-col items-center gap-1.5 text-xs">
+          <span className="text-slate-500">Couldn&apos;t load live stats</span>
+          <button
+            type="button"
+            onClick={() => {
+              setStatsState("loading");
+              void loadStats();
+            }}
+            className="font-semibold text-fuchsia-300 hover:text-fuchsia-200 underline-offset-2 hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3 flex justify-center gap-6 text-xs text-slate-400">
+          <span>
+            Online:{" "}
+            <strong className="text-cyan-300">
+              {statsState === "loading" ? "…" : online}
+            </strong>
+          </span>
+          <span>
+            In queue:{" "}
+            <strong className="text-pink-300">
+              {statsState === "loading" ? "…" : inQueue}
+            </strong>
+          </span>
+        </div>
+      )}
       <p className="mt-4 text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
         {MATCH_WAIT_TIPS[tipIndex]}
       </p>

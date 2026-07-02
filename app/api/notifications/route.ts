@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { isDmUnreadServer } from "@/lib/dm/read-cursors";
 
 const RECENT_DM_SCAN_LIMIT = 500;
-const DM_LIST_DISPLAY_LIMIT = 25;
+const DM_LIST_PAGE_SIZE = 25;
+const DM_LIST_MAX = 100;
 
 type LatestDmRow = {
   id: string;
@@ -55,10 +56,15 @@ function dedupeLatestBySender(
   return latestBySender;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const auth = await requireAuthProfile();
     if ("error" in auth) return auth.error;
+
+    const limitRaw = Number(req.nextUrl.searchParams.get("messageLimit"));
+    const messageLimit = Number.isFinite(limitRaw)
+      ? Math.min(Math.max(Math.round(limitRaw), 1), DM_LIST_MAX)
+      : DM_LIST_PAGE_SIZE;
 
     const supabase = createAdminClient();
     const myId = auth.profile.id;
@@ -176,13 +182,16 @@ export async function GET() {
       );
 
     const unreadMessageCount = unreadThreads.length;
-    const messages = unreadThreads.slice(0, DM_LIST_DISPLAY_LIMIT);
+    const messages = unreadThreads.slice(0, messageLimit);
+    const hasMoreMessages = unreadMessageCount > messages.length;
 
     return NextResponse.json({
       friendRequests,
       messages,
       incomingFriendRequestCount: incomingFriendRequestCount ?? 0,
       unreadMessageCount,
+      hasMoreMessages,
+      messageLimit,
     });
   } catch (err) {
     const message =

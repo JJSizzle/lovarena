@@ -37,6 +37,7 @@ type NotificationPayload = {
   messages: MessageNotification[];
   incomingFriendRequestCount: number;
   unreadMessageCount: number;
+  hasMoreMessages: boolean;
 };
 
 type NotificationContextValue = {
@@ -45,33 +46,46 @@ type NotificationContextValue = {
   totalCount: number;
   incomingFriendCount: number;
   unreadMessageCount: number;
+  hasMoreMessages: boolean;
+  loadingMoreMessages: boolean;
   refresh: () => Promise<void>;
+  loadMoreMessages: () => Promise<void>;
 };
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
 
+const MESSAGE_PAGE_SIZE = 25;
+const MESSAGE_LIST_MAX = 100;
+
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
+  const [messageLimit, setMessageLimit] = useState(MESSAGE_PAGE_SIZE);
+  const [loadingMoreMessages, setLoadingMoreMessages] = useState(false);
   const [data, setData] = useState<NotificationPayload>({
     friendRequests: [],
     messages: [],
     incomingFriendRequestCount: 0,
     unreadMessageCount: 0,
+    hasMoreMessages: false,
   });
 
-  const refresh = useCallback(async () => {
-    if (!profile?.id) {
-      setData({
-        friendRequests: [],
-        messages: [],
-        incomingFriendRequestCount: 0,
-        unreadMessageCount: 0,
-      });
-      return;
-    }
+  const fetchNotifications = useCallback(
+    async (limit: number) => {
+      if (!profile?.id) {
+        setData({
+          friendRequests: [],
+          messages: [],
+          incomingFriendRequestCount: 0,
+          unreadMessageCount: 0,
+          hasMoreMessages: false,
+        });
+        return;
+      }
 
-    try {
-      const res = await fetch("/api/notifications", { cache: "no-store" });
+      const res = await fetch(
+        `/api/notifications?messageLimit=${encodeURIComponent(String(limit))}`,
+        { cache: "no-store" }
+      );
       const json = await res.json();
       if (res.ok) {
         setData({
@@ -85,12 +99,42 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             typeof json.unreadMessageCount === "number"
               ? json.unreadMessageCount
               : (json.messages ?? []).length,
+          hasMoreMessages: Boolean(json.hasMoreMessages),
         });
       }
+    },
+    [profile?.id]
+  );
+
+  const refresh = useCallback(async () => {
+    setMessageLimit(MESSAGE_PAGE_SIZE);
+    try {
+      await fetchNotifications(MESSAGE_PAGE_SIZE);
     } catch {
       // ignore
     }
-  }, [profile?.id]);
+  }, [fetchNotifications]);
+
+  const loadMoreMessages = useCallback(async () => {
+    if (!data.hasMoreMessages || loadingMoreMessages) return;
+    const nextLimit = Math.min(messageLimit + MESSAGE_PAGE_SIZE, MESSAGE_LIST_MAX);
+    if (nextLimit === messageLimit) return;
+
+    setLoadingMoreMessages(true);
+    try {
+      await fetchNotifications(nextLimit);
+      setMessageLimit(nextLimit);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingMoreMessages(false);
+    }
+  }, [
+    data.hasMoreMessages,
+    fetchNotifications,
+    loadingMoreMessages,
+    messageLimit,
+  ]);
 
   useEffect(() => {
     void refresh();
@@ -206,14 +250,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         data.incomingFriendRequestCount + data.unreadMessageCount,
       incomingFriendCount: data.incomingFriendRequestCount,
       unreadMessageCount: data.unreadMessageCount,
+      hasMoreMessages: data.hasMoreMessages,
+      loadingMoreMessages,
       refresh,
+      loadMoreMessages,
     }),
     [
       data.friendRequests,
       data.incomingFriendRequestCount,
       data.unreadMessageCount,
+      data.hasMoreMessages,
       unreadMessages,
+      loadingMoreMessages,
       refresh,
+      loadMoreMessages,
     ]
   );
 
