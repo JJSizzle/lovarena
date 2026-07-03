@@ -127,6 +127,10 @@ export default function AdminPage() {
     adminAlertEmailConfigured: boolean;
     contactFormConfigured: boolean;
     emailAliases: string[];
+    cronConfigured: boolean;
+    cronPath: string;
+    cronSchedule: string;
+    cronScheduleLabel: string;
   } | null>(null);
   const [opsBusy, setOpsBusy] = useState<string | null>(null);
   const [opsNotice, setOpsNotice] = useState<string | null>(null);
@@ -158,7 +162,9 @@ export default function AdminPage() {
       .catch(() => {});
   }, [user, profile]);
 
-  async function runOpsTest(action: "test_sentry" | "test_moderation") {
+  async function runOpsTest(
+    action: "test_sentry" | "test_moderation" | "test_cron"
+  ) {
     setOpsBusy(action);
     setOpsNotice(null);
     try {
@@ -611,6 +617,16 @@ export default function AdminPage() {
                       {opsStatus.moderationAlertsConfigured ? "On" : "Off"}
                     </span>
                   </p>
+                  <p className="text-slate-400">
+                    Review cron:{" "}
+                    <span
+                      className={
+                        opsStatus.cronConfigured ? "text-emerald-300" : "text-red-300"
+                      }
+                    >
+                      {opsStatus.cronConfigured ? opsStatus.cronScheduleLabel : "Off"}
+                    </span>
+                  </p>
                 </div>
 
                 {!opsStatus.adminIpAllowlistConfigured && (
@@ -641,6 +657,14 @@ export default function AdminPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void runOpsTest("test_cron")}
+                    disabled={opsBusy !== null || !opsStatus.cronConfigured}
+                    className={`${chatBtnNeutral} !text-xs !border-emerald-500/30 !text-emerald-200 disabled:opacity-50`}
+                  >
+                    {opsBusy === "test_cron" ? "Running…" : "Run review cycle"}
+                  </button>
                   <button
                     type="button"
                     onClick={() => void runOpsTest("test_moderation")}
@@ -674,7 +698,8 @@ export default function AdminPage() {
                 )}
 
                 <p className="text-[10px] text-slate-600">
-                  Local check: <code>npm run verify:ops</code>
+                  Local: <code>npm run verify:ops</code> ·{" "}
+                  <code>npm run verify:cron</code> (needs CRON_SECRET)
                 </p>
               </div>
             ) : (

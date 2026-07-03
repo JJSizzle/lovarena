@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { playMessageSound } from "@/lib/sounds";
 import { useToastBottomOffset } from "@/lib/hooks/useToastBottomOffset";
+import {
+  FRIEND_ACTIVITY_EVENT,
+  type FriendActivityDetail,
+} from "@/lib/notifications/friend-activity-events";
 
 type ActivityToast = {
   id: string;
@@ -58,37 +62,28 @@ export function FriendActivityNotifier() {
     pathnameRef.current = pathname;
   }, [pathname]);
 
-  useEffect(() => {
-    if (!profile?.id) return;
+  const handleActivity = useCallback(
+    async (row: FriendActivityDetail) => {
+      if (!profile?.id) return;
 
-    const supabase = createClient();
-    const myId = profile.id;
+      const myId = profile.id;
+      const supabase = createClient();
 
-    function showToast(next: ActivityToast, playSound = false) {
-      if (wasSeen(next.id)) return;
-      markSeen(next.id);
-      if (pathnameRef.current === "/friends") return;
-      setToast(next);
-      if (playSound) playMessageSound();
-    }
+      function showToast(next: ActivityToast, playSound = false) {
+        if (wasSeen(next.id)) return;
+        markSeen(next.id);
+        if (pathnameRef.current === "/friends") return;
+        setToast(next);
+        if (playSound) playMessageSound();
+      }
 
-    async function handleRow(
-      row: {
-        id: string;
-        user_id: string;
-        friend_id: string;
-        status: string;
-        connection_type?: string | null;
-      },
-      eventType: "INSERT" | "UPDATE"
-    ) {
       const isIncomingRequest =
         row.status === "pending" && row.friend_id === myId;
       const isNewFriend =
         row.status === "accepted" &&
         (row.user_id === myId || row.friend_id === myId);
 
-      if (isIncomingRequest && eventType === "INSERT") {
+      if (isIncomingRequest && row.eventType === "INSERT") {
         const name = await usernameFor(supabase, row.user_id);
         showToast(
           {
@@ -110,7 +105,7 @@ export function FriendActivityNotifier() {
         const spark = row.connection_type === "mutual_connect";
         const acceptedMyRequest =
           !spark &&
-          eventType === "UPDATE" &&
+          row.eventType === "UPDATE" &&
           row.user_id === myId &&
           row.friend_id === otherId;
         showToast(
@@ -126,105 +121,28 @@ export function FriendActivityNotifier() {
               : acceptedMyRequest
                 ? `${name} accepted your friend request!`
                 : `You're now friends with ${name}`,
-            href: spark || acceptedMyRequest ? `/friends?chat=${encodeURIComponent(otherId)}` : "/friends",
+            href:
+              spark || acceptedMyRequest
+                ? `/friends?chat=${encodeURIComponent(otherId)}`
+                : "/friends",
           },
           true
         );
       }
+    },
+    [profile?.id]
+  );
+
+  useEffect(() => {
+    function onActivity(event: Event) {
+      const detail = (event as CustomEvent<FriendActivityDetail>).detail;
+      if (!detail) return;
+      void handleActivity(detail);
     }
 
-    const channel = supabase
-      .channel(`friend-activity:${myId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "friendships",
-          filter: `friend_id=eq.${myId}`,
-        },
-        (payload) => {
-          void handleRow(
-            payload.new as {
-              id: string;
-              user_id: string;
-              friend_id: string;
-              status: string;
-              connection_type?: string | null;
-            },
-            "INSERT"
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "friendships",
-          filter: `friend_id=eq.${myId}`,
-        },
-        (payload) => {
-          void handleRow(
-            payload.new as {
-              id: string;
-              user_id: string;
-              friend_id: string;
-              status: string;
-              connection_type?: string | null;
-            },
-            "UPDATE"
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "friendships",
-          filter: `user_id=eq.${myId}`,
-        },
-        (payload) => {
-          void handleRow(
-            payload.new as {
-              id: string;
-              user_id: string;
-              friend_id: string;
-              status: string;
-              connection_type?: string | null;
-            },
-            "INSERT"
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "friendships",
-          filter: `user_id=eq.${myId}`,
-        },
-        (payload) => {
-          void handleRow(
-            payload.new as {
-              id: string;
-              user_id: string;
-              friend_id: string;
-              status: string;
-              connection_type?: string | null;
-            },
-            "UPDATE"
-          );
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [profile?.id]);
+    window.addEventListener(FRIEND_ACTIVITY_EVENT, onActivity);
+    return () => window.removeEventListener(FRIEND_ACTIVITY_EVENT, onActivity);
+  }, [handleActivity]);
 
   useEffect(() => {
     if (!toast) return;

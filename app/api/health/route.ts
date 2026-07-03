@@ -14,6 +14,7 @@ import {
   isTurnstileConfigured,
 } from "@/lib/security/turnstile";
 import { isAdminIpAllowlistConfigured } from "@/lib/security/admin-access";
+import { REVIEW_FLAGS_CRON } from "@/lib/cron/review-flags";
 
 function buildHints(env: {
   hasServiceRoleKey: boolean;
@@ -23,6 +24,8 @@ function buildHints(env: {
   moderationAlertsEnabled: boolean;
   contactFormEnabled: boolean;
   hasCronSecret: boolean;
+  cronSchedule: string;
+  cronScheduleLabel: string;
   turnstileEnabled: boolean;
   sightengineEnabled: boolean;
   adminIpAllowlistConfigured: boolean;
@@ -61,6 +64,10 @@ function buildHints(env: {
 
   if (!env.hasCronSecret) {
     hints.push("CRON_SECRET missing — daily moderation auto-review cron won't authenticate.");
+  } else {
+    hints.push(
+      `Cron ${REVIEW_FLAGS_CRON.path} scheduled ${REVIEW_FLAGS_CRON.scheduleLabel} — run npm run verify:cron to test manually.`
+    );
   }
 
   if (!env.turnstileEnabled) {
@@ -102,6 +109,9 @@ export async function GET() {
     moderationAlertsEnabled: isModerationAlertsConfigured(),
     contactFormEnabled: isContactFormConfigured(),
     hasCronSecret: hasCronSecret(),
+    cronPath: REVIEW_FLAGS_CRON.path,
+    cronSchedule: REVIEW_FLAGS_CRON.schedule,
+    cronScheduleLabel: REVIEW_FLAGS_CRON.scheduleLabel,
     turnstileEnabled: isTurnstileConfigured(),
     sightengineEnabled: isSightengineConfigured(),
     adminIpAllowlistConfigured: isAdminIpAllowlistConfigured(),

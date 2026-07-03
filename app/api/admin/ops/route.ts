@@ -19,6 +19,10 @@ import {
   isAdminIpAllowlistConfigured,
 } from "@/lib/security/admin-access";
 import { parseJsonBody } from "@/lib/api/parse-json-body";
+import { REVIEW_FLAGS_CRON } from "@/lib/cron/review-flags";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { hasCronSecret } from "@/lib/email/resend-config";
+import { runModerationReviewCycle } from "@/lib/moderation/auto-review";
 
 export async function GET(req: NextRequest) {
   try {
@@ -53,6 +57,10 @@ export async function GET(req: NextRequest) {
         "privacy@lovarena.app",
         "legal@lovarena.app",
       ],
+      cronConfigured: hasCronSecret(),
+      cronPath: REVIEW_FLAGS_CRON.path,
+      cronSchedule: REVIEW_FLAGS_CRON.schedule,
+      cronScheduleLabel: REVIEW_FLAGS_CRON.scheduleLabel,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Ops status failed";
@@ -127,6 +135,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         message: "Test moderation alert sent to Slack and/or ADMIN_ALERT_EMAIL.",
+      });
+    }
+
+    if (action === "test_cron") {
+      if (!hasCronSecret()) {
+        return NextResponse.json(
+          {
+            error:
+              "CRON_SECRET is not configured on the server. Add it on Vercel and redeploy.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const supabase = createAdminClient();
+      const summary = await runModerationReviewCycle(supabase);
+      const ranAt = new Date().toISOString();
+      console.info("admin_ops_test_cron", { ranAt, ...summary });
+
+      return NextResponse.json({
+        ok: true,
+        message: `Review cycle ran: ${summary.expired} expired, ${summary.earlyUnrestricted} early lift, ${summary.upheld} upheld.`,
+        ranAt,
+        ...summary,
       });
     }
 

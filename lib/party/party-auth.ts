@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { areFriends } from "@/lib/friends/are-friends";
 import type { PartyRoomRow } from "@/lib/party/party-types";
-
-export { areFriends } from "@/lib/friends/are-friends";
 
 export async function assertPartyMember(
   partyId: string,

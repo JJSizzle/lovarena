@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile } from "@/lib/auth/api-auth";
 import { generateInviteCode } from "@/lib/party/game-content";
-import { areFriends } from "@/lib/party/party-auth";
+import { areFriends } from "@/lib/friends/are-friends";
 import { assertCanHostParty, syncPartyHostUnlock } from "@/lib/reputation-gating";
 import { buildPartyState, syncPartyRoom } from "@/lib/party/party-state";
 import type { PartyGameMode } from "@/lib/party/party-types";

@@ -12,6 +12,10 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { dispatchNewDm } from "@/lib/notifications/dm-events";
+import {
+  dispatchFriendActivity,
+  type FriendActivityDetail,
+} from "@/lib/notifications/friend-activity-events";
 
 export type FriendRequestNotification = {
   id: string;
@@ -158,24 +162,64 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "friendships",
           filter: `friend_id=eq.${profile.id}`,
         },
-        () => {
+        (payload) => {
+          dispatchFriendActivity({
+            ...(payload.new as Omit<FriendActivityDetail, "eventType">),
+            eventType: "INSERT",
+          });
           void refresh();
         }
       )
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "UPDATE",
+          schema: "public",
+          table: "friendships",
+          filter: `friend_id=eq.${profile.id}`,
+        },
+        (payload) => {
+          dispatchFriendActivity({
+            ...(payload.new as Omit<FriendActivityDetail, "eventType">),
+            eventType: "UPDATE",
+          });
+          void refresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
           schema: "public",
           table: "friendships",
           filter: `user_id=eq.${profile.id}`,
         },
-        () => {
+        (payload) => {
+          dispatchFriendActivity({
+            ...(payload.new as Omit<FriendActivityDetail, "eventType">),
+            eventType: "INSERT",
+          });
+          void refresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "friendships",
+          filter: `user_id=eq.${profile.id}`,
+        },
+        (payload) => {
+          dispatchFriendActivity({
+            ...(payload.new as Omit<FriendActivityDetail, "eventType">),
+            eventType: "UPDATE",
+          });
           void refresh();
         }
       )

@@ -6,7 +6,7 @@ import {
   requireAuthProfile,
 } from "@/lib/auth/api-auth";
 import { maybeAutoRestrictFromReports } from "@/lib/moderation/auto-flag-reports";
-import { areFriends } from "@/lib/party/party-auth";
+import { areFriends } from "@/lib/friends/are-friends";
 import {
   applyReportReputationPenalty,
   validateReportDetails,

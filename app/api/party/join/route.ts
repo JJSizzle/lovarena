@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuthProfile, isBlockedEitherWay } from "@/lib/auth/api-auth";
-import { areFriends } from "@/lib/party/party-auth";
+import { areFriends } from "@/lib/friends/are-friends";
 import { buildPartyState } from "@/lib/party/party-state";
 import { parseJsonBody } from "@/lib/api/parse-json-body";
 

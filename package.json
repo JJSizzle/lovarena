@@ -14,6 +14,7 @@
     "setup:admin-ip": "node scripts/print-admin-ip-setup.mjs",
     "setup:email-aliases": "node scripts/print-email-aliases-setup.mjs",
     "verify:ops": "node scripts/verify-ops.mjs",
+    "verify:cron": "node scripts/verify-cron.mjs",
     "smoke:routes": "node scripts/smoke-routes.mjs"
   },
   "dependencies": {
