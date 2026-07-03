@@ -37,6 +37,8 @@ When you are NOT traveling, lock /admin to trusted networks:
 3. Redeploy production.
 
 4. Verify:
+   - Open https://lovarena.app/api/network/ip in your browser — use THAT ip in Vercel
+     (with Cloudflare it can differ from ipify / npm run setup:admin-ip)
    - Visit https://lovarena.app/admin from an allowed network → dashboard loads
    - Visit from mobile data / another network → "Admin blocked on this network"
    - https://lovarena.app/api/health → adminIpAllowlistConfigured: true

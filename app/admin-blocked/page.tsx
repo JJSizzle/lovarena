@@ -19,15 +19,19 @@ function AdminBlockedContent() {
       </p>
       {ip && ip !== "unknown" && (
         <p className="mt-4 rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm">
-          Your IP:{" "}
+          IP this site sees:{" "}
           <code className="font-mono text-emerald-300">{ip}</code>
         </p>
       )}
       <p className="text-xs text-slate-500 mt-4 leading-relaxed">
-        Vercel → Environment Variables → add this IP to{" "}
-        <code className="text-slate-400">ADMIN_ALLOWED_IPS</code> (comma-separated),
-        then redeploy. Or run <code className="text-slate-400">npm run setup:admin-ip</code>{" "}
-        locally for setup steps.
+        Add the IP above to Vercel →{" "}
+        <code className="text-slate-400">ADMIN_ALLOWED_IPS</code> (comma-separated).
+        It may differ from what Google or ipify shows if you use Cloudflare.
+        Or check{" "}
+        <a href="/api/network/ip" className="text-sky-400 underline">
+          /api/network/ip
+        </a>{" "}
+        in this browser, then redeploy.
       </p>
       <Link
         href="/"
