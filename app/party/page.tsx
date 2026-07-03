@@ -396,7 +396,7 @@ function PartyPageContent() {
         {!inParty && user && <AppQuickNav className="mb-6 max-w-md mx-auto" />}
 
         {!inParty && (
-          <div className="max-w-md mx-auto space-y-6">
+          <div className="max-w-md mx-auto flex flex-col gap-6">
             <div className="text-center">
               <p className="text-sm text-slate-300">
                 Friends-only hangout · 2–4 players
@@ -415,98 +415,21 @@ function PartyPageContent() {
               first.
             </div>
 
-            <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-6 space-y-4">
-              <h2 className="font-bold text-fuchsia-300">Start a party</h2>
+            <div
+              className={`rounded-3xl border bg-slate-950/80 backdrop-blur-xl p-6 space-y-3 ${
+                mayHostParty
+                  ? "order-2 border-purple-500/30"
+                  : "order-1 border-emerald-500/40 shadow-[0_0_24px_rgba(16,185,129,0.12)]"
+              }`}
+            >
               <div>
-                <p className="text-xs text-slate-500 mb-2">Party type</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setGameMode("hangout")}
-                    className={`rounded-2xl border p-3 text-left text-sm ${
-                      gameMode === "hangout"
-                        ? "border-emerald-400 bg-emerald-500/10"
-                        : "border-white/10 bg-slate-900/60"
-                    }`}
-                  >
-                    <span className="font-semibold">Hang out</span>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Video + chat only
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGameMode("prompts")}
-                    className={`rounded-2xl border p-3 text-left text-sm ${
-                      gameMode === "prompts"
-                        ? "border-fuchsia-400 bg-fuchsia-500/10"
-                        : "border-white/10 bg-slate-900/60"
-                    }`}
-                  >
-                    <span className="font-semibold">Prompt cards</span>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Conversation starters
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGameMode("trivia")}
-                    className={`rounded-2xl border p-3 text-left text-sm ${
-                      gameMode === "trivia"
-                        ? "border-cyan-400 bg-cyan-500/10"
-                        : "border-white/10 bg-slate-900/60"
-                    }`}
-                  >
-                    <span className="font-semibold">Trivia</span>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Tap to vote
-                    </p>
-                  </button>
-                </div>
+                <h2 className="font-bold text-fuchsia-300">Join with code</h2>
+                {!mayHostParty && (
+                  <p className="text-[11px] text-emerald-300/80 mt-1">
+                    Always available — get a code from a friend who&apos;s hosting
+                  </p>
+                )}
               </div>
-              <div>
-                <p className="text-xs text-slate-500 mb-2">Party size</p>
-                <div className="flex gap-2">
-                  {[2, 3, 4].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setMaxPlayers(n)}
-                      className={`flex-1 rounded-xl border py-2 text-sm font-bold ${
-                        maxPlayers === n
-                          ? "border-fuchsia-400 bg-fuchsia-500/10"
-                          : "border-white/10"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {!mayHostParty && (
-                <p className="text-[11px] text-amber-400/90 leading-relaxed rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2">
-                  {partyHostBlockMessage(repScore, partyHostUnlocked)} You can
-                  still join parties with a friend&apos;s invite code.
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={busy || !mayHostParty}
-                className={`${chatBtnLove} w-full !py-3 disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {busy ? "Creating…" : "Create party"}
-              </button>
-              {mayHostParty && partyHostUnlocked && repScore < REP_PARTY_HOST_MIN && (
-                <p className="text-[10px] text-slate-600 text-center">
-                  Party host unlocked — stays active unless rep drops below{" "}
-                  {REP_PARTY_HOST_REVOKE}.
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-6 space-y-3">
-              <h2 className="font-bold text-fuchsia-300">Join with code</h2>
               <input
                 value={joinCode}
                 onChange={(e) =>
@@ -530,11 +453,127 @@ function PartyPageContent() {
               </button>
             </div>
 
+            <div
+              className={`rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-6 space-y-4 ${
+                mayHostParty ? "order-1" : "order-2 opacity-75"
+              }`}
+            >
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-bold text-fuchsia-300">Start a party</h2>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2 py-0.5 text-fuchsia-200/80">
+                    Host
+                  </span>
+                  {!mayHostParty && (
+                    <span className="text-[10px] font-semibold rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-300">
+                      🔒 {REP_PARTY_HOST_MIN} rep
+                    </span>
+                  )}
+                </div>
+                {!mayHostParty && (
+                  <p className="text-[11px] text-slate-400 mt-1.5">
+                    Unlocks at {REP_PARTY_HOST_MIN} rep · You&apos;re at{" "}
+                    {repScore}
+                  </p>
+                )}
+              </div>
+              <div className={!mayHostParty ? "pointer-events-none opacity-60" : ""}>
+                <p className="text-xs text-slate-500 mb-2">Party type</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGameMode("hangout")}
+                    disabled={!mayHostParty}
+                    className={`rounded-2xl border p-3 text-left text-sm ${
+                      gameMode === "hangout"
+                        ? "border-emerald-400 bg-emerald-500/10"
+                        : "border-white/10 bg-slate-900/60"
+                    }`}
+                  >
+                    <span className="font-semibold">Hang out</span>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Video + chat only
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGameMode("prompts")}
+                    disabled={!mayHostParty}
+                    className={`rounded-2xl border p-3 text-left text-sm ${
+                      gameMode === "prompts"
+                        ? "border-fuchsia-400 bg-fuchsia-500/10"
+                        : "border-white/10 bg-slate-900/60"
+                    }`}
+                  >
+                    <span className="font-semibold">Prompt cards</span>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Conversation starters
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGameMode("trivia")}
+                    disabled={!mayHostParty}
+                    className={`rounded-2xl border p-3 text-left text-sm ${
+                      gameMode === "trivia"
+                        ? "border-cyan-400 bg-cyan-500/10"
+                        : "border-white/10 bg-slate-900/60"
+                    }`}
+                  >
+                    <span className="font-semibold">Trivia</span>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Tap to vote
+                    </p>
+                  </button>
+                </div>
+              </div>
+              <div className={!mayHostParty ? "pointer-events-none opacity-60" : ""}>
+                <p className="text-xs text-slate-500 mb-2">Party size</p>
+                <div className="flex gap-2">
+                  {[2, 3, 4].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setMaxPlayers(n)}
+                      disabled={!mayHostParty}
+                      className={`flex-1 rounded-xl border py-2 text-sm font-bold ${
+                        maxPlayers === n
+                          ? "border-fuchsia-400 bg-fuchsia-500/10"
+                          : "border-white/10"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {!mayHostParty && (
+                <p className="text-[11px] text-amber-400/90 leading-relaxed rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+                  {partyHostBlockMessage(repScore, partyHostUnlocked)} You can
+                  still join parties with a friend&apos;s invite code above.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={busy || !mayHostParty}
+                className={`${chatBtnLove} w-full !py-3 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {busy ? "Creating…" : mayHostParty ? "Create party" : `Host at ${REP_PARTY_HOST_MIN} rep`}
+              </button>
+              {mayHostParty && partyHostUnlocked && repScore < REP_PARTY_HOST_MIN && (
+                <p className="text-[10px] text-slate-600 text-center">
+                  Party host unlocked — stays active unless rep drops below{" "}
+                  {REP_PARTY_HOST_REVOKE}.
+                </p>
+              )}
+            </div>
+
             {message && (
-              <p className="text-sm text-emerald-400 text-center">{message}</p>
+              <p className="text-sm text-emerald-400 text-center order-3">{message}</p>
             )}
             {error && (
-              <p className="text-sm text-red-400 text-center">{error}</p>
+              <p className="text-sm text-red-400 text-center order-3">{error}</p>
             )}
           </div>
         )}

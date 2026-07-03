@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useAppNotifications } from "@/components/NotificationProvider";
+import { REP_PARTY_HOST_MIN } from "@/lib/reputation";
+import { canHostParty } from "@/lib/reputation-gating";
 
 const NAV_ITEMS = [
   {
@@ -38,9 +40,13 @@ const SIGN_OUT_IDLE =
 
 export function AppQuickNav({ className = "" }: Props) {
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { totalCount } = useAppNotifications();
   const showSignOut = Boolean(user);
+  const repScore = profile?.reputation_score ?? 100;
+  const partyHostUnlocked = profile?.party_host_unlocked ?? false;
+  const mayHostParty = user ? canHostParty(repScore, partyHostUnlocked) : true;
+  const partyNavHint = `Join anytime · Host at ${REP_PARTY_HOST_MIN} rep`;
 
   return (
     <nav
@@ -50,10 +56,12 @@ export function AppQuickNav({ className = "" }: Props) {
       {NAV_ITEMS.map((item) => {
         const isActive =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const isParty = item.href === "/party";
         return (
           <Link
             key={item.href}
             href={item.href}
+            title={isParty && user && !mayHostParty ? partyNavHint : undefined}
             className={`relative rounded-xl border px-2 py-2.5 text-center text-xs font-bold tracking-wide transition ${
               isActive ? item.active : item.idle
             }`}
@@ -62,6 +70,14 @@ export function AppQuickNav({ className = "" }: Props) {
             {item.href === "/friends" && totalCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-pink-500 text-[9px] font-bold text-white flex items-center justify-center px-1 shadow-md">
                 {totalCount > 9 ? "9+" : totalCount}
+              </span>
+            )}
+            {isParty && user && !mayHostParty && (
+              <span
+                className="absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-[1.25rem] rounded-full border border-amber-500/40 bg-slate-900 text-[8px] font-bold text-amber-300 flex items-center justify-center px-0.5 shadow-md"
+                aria-hidden
+              >
+                🔒
               </span>
             )}
           </Link>
