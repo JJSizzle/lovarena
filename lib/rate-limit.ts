@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { clientIpFromRequest } from "@/lib/security/client-ip";
 
 export async function rateLimit(
   bucketKey: string,
@@ -29,7 +30,5 @@ export async function rateLimit(
 }
 
 export function clientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() ?? "unknown";
-  return req.headers.get("x-real-ip") ?? "unknown";
+  return clientIpFromRequest(req);
 }

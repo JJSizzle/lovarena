@@ -117,6 +117,19 @@ export default function AdminPage() {
   const [appeals, setAppeals] = useState<RestrictionAppeal[]>([]);
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [appealLoading, setAppealLoading] = useState<string | null>(null);
+  const [opsStatus, setOpsStatus] = useState<{
+    clientIp: string;
+    adminIpAllowlistConfigured: boolean;
+    sentryConfigured: boolean;
+    moderationAlertsConfigured: boolean;
+    slackConfigured: boolean;
+    resendConfigured: boolean;
+    adminAlertEmailConfigured: boolean;
+    contactFormConfigured: boolean;
+    emailAliases: string[];
+  } | null>(null);
+  const [opsBusy, setOpsBusy] = useState<string | null>(null);
+  const [opsNotice, setOpsNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !profile?.is_admin) return;
@@ -133,6 +146,39 @@ export default function AdminPage() {
         }
       });
   }, [user, profile]);
+
+  useEffect(() => {
+    if (!user || !profile?.is_admin) return;
+
+    fetch("/api/admin/ops")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.error) setOpsStatus(d);
+      })
+      .catch(() => {});
+  }, [user, profile]);
+
+  async function runOpsTest(action: "test_sentry" | "test_moderation") {
+    setOpsBusy(action);
+    setOpsNotice(null);
+    try {
+      const res = await fetch("/api/admin/ops", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOpsNotice(data.error ?? "Test failed");
+      } else {
+        setOpsNotice(data.message ?? "Test sent");
+      }
+    } catch {
+      setOpsNotice("Test failed — check network and try again.");
+    } finally {
+      setOpsBusy(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -520,6 +566,119 @@ export default function AdminPage() {
             ))}
             {auditLog.length === 0 && (
               <p className="text-sm text-slate-500">No admin actions logged yet.</p>
+            )}
+          </AdminCard>
+
+          <AdminCard title="Ops & monitoring" accent="text-emerald-300">
+            {opsStatus ? (
+              <div className="space-y-4 text-sm">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <p className="text-slate-400">
+                    Your IP:{" "}
+                    <code className="text-emerald-300 font-mono">{opsStatus.clientIp}</code>
+                  </p>
+                  <p className="text-slate-400">
+                    Admin IP lock:{" "}
+                    <span
+                      className={
+                        opsStatus.adminIpAllowlistConfigured
+                          ? "text-emerald-300"
+                          : "text-amber-300"
+                      }
+                    >
+                      {opsStatus.adminIpAllowlistConfigured ? "On" : "Off (optional)"}
+                    </span>
+                  </p>
+                  <p className="text-slate-400">
+                    Sentry:{" "}
+                    <span
+                      className={
+                        opsStatus.sentryConfigured ? "text-emerald-300" : "text-red-300"
+                      }
+                    >
+                      {opsStatus.sentryConfigured ? "On" : "Off"}
+                    </span>
+                  </p>
+                  <p className="text-slate-400">
+                    Moderation alerts:{" "}
+                    <span
+                      className={
+                        opsStatus.moderationAlertsConfigured
+                          ? "text-emerald-300"
+                          : "text-red-300"
+                      }
+                    >
+                      {opsStatus.moderationAlertsConfigured ? "On" : "Off"}
+                    </span>
+                  </p>
+                </div>
+
+                {!opsStatus.adminIpAllowlistConfigured && (
+                  <p className="text-xs text-slate-500 leading-relaxed rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2">
+                    #9 — Run <code className="text-slate-400">npm run setup:admin-ip</code>{" "}
+                    when home, then set{" "}
+                    <code className="text-slate-400">ADMIN_ALLOWED_IPS</code> on Vercel.
+                  </p>
+                )}
+
+                <div className="text-xs text-slate-500 leading-relaxed rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2">
+                  <p className="text-slate-400 font-semibold mb-1">#10 — Email aliases</p>
+                  <p>
+                    Contact form:{" "}
+                    {opsStatus.contactFormConfigured ? (
+                      <span className="text-emerald-300">working</span>
+                    ) : (
+                      <span className="text-red-300">needs Resend + ADMIN_ALERT_EMAIL</span>
+                    )}
+                    . Forward{" "}
+                    {opsStatus.emailAliases.map((a) => (
+                      <code key={a} className="text-slate-400 mr-1">
+                        {a}
+                      </code>
+                    ))}{" "}
+                    with <code className="text-slate-400">npm run setup:email-aliases</code>.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void runOpsTest("test_moderation")}
+                    disabled={opsBusy !== null || !opsStatus.moderationAlertsConfigured}
+                    className={`${chatBtnNeutral} !text-xs !border-violet-500/30 !text-violet-200 disabled:opacity-50`}
+                  >
+                    {opsBusy === "test_moderation" ? "Sending…" : "Test moderation alert"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void runOpsTest("test_sentry")}
+                    disabled={opsBusy !== null || !opsStatus.sentryConfigured}
+                    className={`${chatBtnNeutral} !text-xs !border-sky-500/30 !text-sky-200 disabled:opacity-50`}
+                  >
+                    {opsBusy === "test_sentry" ? "Sending…" : "Test Sentry error"}
+                  </button>
+                  <a
+                    href="/api/health"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${chatBtnGhost} !text-xs inline-flex items-center`}
+                  >
+                    Open /api/health
+                  </a>
+                </div>
+
+                {opsNotice && (
+                  <p className="text-xs text-slate-300 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2">
+                    {opsNotice}
+                  </p>
+                )}
+
+                <p className="text-[10px] text-slate-600">
+                  Local check: <code>npm run verify:ops</code>
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">Loading ops status…</p>
             )}
           </AdminCard>
         </div>
