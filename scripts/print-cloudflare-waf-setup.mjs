@@ -36,8 +36,11 @@ Full guide: docs/CLOUDFLARE_WAF.md
      Rate: 20 requests per 60 seconds per IP
      Action: Block for 300 seconds
 
-5) Caching → Cache Rules → Bypass cache when:
-     URI Path starts with /api/ OR /chat OR /party OR /friends
+5) Caching → Cache Rules → Bypass cache when expression matches:
+     (starts_with(http.request.uri.path, "/api/")) or
+     (starts_with(http.request.uri.path, "/chat")) or
+     (starts_with(http.request.uri.path, "/party")) or
+     (starts_with(http.request.uri.path, "/friends"))
 
 6) IMPORTANT — do NOT block these (allow through WAF):
      POST /api/identity/webhook  (Persona ID verification)

@@ -126,8 +126,19 @@ On Free: use rate limiting only.
 
 Create a **Cache Rule** to bypass cache for dynamic routes:
 
-| If | URI Path starts with `/api/` **OR** `/chat` **OR** `/party` **OR** `/friends` |
-| Then | Bypass cache |
+| If | Expression (paste in editor) |
+|----|------------------------------|
+| Match | See below |
+| Then | **Bypass cache** |
+
+```
+(starts_with(http.request.uri.path, "/api/")) or
+(starts_with(http.request.uri.path, "/chat")) or
+(starts_with(http.request.uri.path, "/party")) or
+(starts_with(http.request.uri.path, "/friends"))
+```
+
+> Use `starts_with(field, "/path")` function syntax — not `path starts_with "/path"`.
 
 Static assets (`/_next/static/*`, images) can stay cached.
 
