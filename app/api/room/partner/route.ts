@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const { data: partner } = await supabase
       .from("profiles")
       .select(
-        "username, age, show_age, gender_identity, interests, languages, reputation_score, created_at, age_verified, avatar_url, avatar_emoji, bio, allow_friend_requests, allow_mutual_spark, country_code, state_code"
+        "username, age, show_age, gender_identity, interests, languages, reputation_score, created_at, age_verified, id_verified, avatar_url, avatar_emoji, bio, allow_friend_requests, allow_mutual_spark, country_code, state_code"
       )
       .eq("id", partnerId)
       .maybeSingle();
@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
       reputation_score: partner?.reputation_score,
       created_at: partner?.created_at,
       age_verified: partner?.age_verified,
+      id_verified: partner?.id_verified,
     });
 
     const showAge = partner?.show_age !== false;

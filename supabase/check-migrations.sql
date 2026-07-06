@@ -413,5 +413,35 @@ select migration, status from (
       ) then '❌ count_accepted_friends missing — run friend-cap-enforce.sql'
       else '✅ applied'
     end
+
+  union all
+
+  select 28, 'id-verification',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'profiles'
+          and column_name = 'id_verified'
+      ) then '❌ id_verified missing — run id-verification.sql'
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'waiting_users'
+          and column_name = 'verified_only'
+      ) then '❌ verified_only missing — run id-verification.sql'
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'apply_id_verification_bonus'
+      ) then '❌ apply_id_verification_bonus missing — run id-verification.sql'
+      when not exists (
+        select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'find_or_create_match'
+          and pg_get_function_identity_arguments(p.oid) like '%p_verified_only%'
+      ) then '❌ find_or_create_match missing p_verified_only — run id-verification.sql'
+      else '✅ applied'
+    end
 ) checks
 order by ord;

@@ -10,7 +10,7 @@ export type ConnectionCardData = {
   countryCode?: string;
   sharedTags: string[];
   safetyLabel: string;
-  safetyTone: "green" | "amber" | "sky";
+  safetyTone: "green" | "amber" | "sky" | "violet";
   partnerUsername?: string;
   partnerAge?: number | null;
   partnerGender?: string | null;

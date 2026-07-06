@@ -22,9 +22,10 @@ export async function POST(req: NextRequest) {
       stateCode?: string;
       preferSharedInterests?: boolean;
       preferSharedLanguages?: boolean;
+      verifiedOnly?: boolean;
     }>(req);
     if (!parsed.ok) return parsed.response;
-    const { roomId, matchMode, countryCode, stateCode, preferSharedInterests, preferSharedLanguages } =
+    const { roomId, matchMode, countryCode, stateCode, preferSharedInterests, preferSharedLanguages, verifiedOnly } =
       parsed.data;
 
     const ip = clientIp(req);
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
         p_prefer_shared_interests: Boolean(preferSharedInterests),
         p_state_code: normalizedState,
         p_prefer_shared_languages: Boolean(preferSharedLanguages),
+        p_verified_only: Boolean(verifiedOnly),
       }
     );
 

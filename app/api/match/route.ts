@@ -26,10 +26,11 @@ export async function POST(req: NextRequest) {
       stateCode?: string;
       preferSharedInterests?: boolean;
       preferSharedLanguages?: boolean;
+      verifiedOnly?: boolean;
       turnstileToken?: string;
     }>(req);
     if (!parsed.ok) return parsed.response;
-    const { matchMode, countryCode, stateCode, preferSharedInterests, preferSharedLanguages, turnstileToken } =
+    const { matchMode, countryCode, stateCode, preferSharedInterests, preferSharedLanguages, verifiedOnly, turnstileToken } =
       parsed.data;
 
     const ip = clientIp(req);
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
       p_prefer_shared_interests: Boolean(preferSharedInterests),
       p_state_code: normalizedState,
       p_prefer_shared_languages: Boolean(preferSharedLanguages),
+      p_verified_only: Boolean(verifiedOnly),
     });
 
     if (error) {

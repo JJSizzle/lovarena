@@ -142,9 +142,14 @@ export function FriendProfileSheet({
                       Friend
                     </span>
                   )}
-                  {profile.ageVerified && (
-                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
-                      18+ verified
+                  {profile.idVerified && (
+                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/25">
+                      ID verified
+                    </span>
+                  )}
+                  {profile.ageVerified && !profile.idVerified && (
+                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/25">
+                      18+ attested
                     </span>
                   )}
                 </div>

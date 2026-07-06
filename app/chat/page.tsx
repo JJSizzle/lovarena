@@ -123,7 +123,7 @@ export default function ChatPage() {
     null
   );
   const [partnerSafetyTone, setPartnerSafetyTone] = useState<
-    "green" | "amber" | "sky" | null
+    "green" | "amber" | "sky" | "violet" | null
   >(null);
   const [partnerAllowsFriendRequests, setPartnerAllowsFriendRequests] =
     useState(true);

@@ -21,7 +21,7 @@ type VideoPanelProps = {
   selfLabel: string;
   partnerLabel?: string | null;
   partnerSafetyLabel?: string | null;
-  partnerSafetyTone?: "green" | "amber" | "sky" | null;
+  partnerSafetyTone?: "green" | "amber" | "sky" | "violet" | null;
   matchBadge: string;
   videoEnabled: boolean;
   mediaStarting?: boolean;

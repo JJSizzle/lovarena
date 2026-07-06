@@ -36,6 +36,7 @@ import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { AppPageHeader } from "@/components/AppPageHeader";
 import { isInvitedNewcomer, CONNECTOR_REFERRALS, AMBASSADOR_REFERRALS } from "@/lib/referral/badges";
+import { IdVerificationCard } from "@/components/IdVerificationCard";
 import { REP_MAX, REP_PARTY_HOST_MIN, REP_PARTY_HOST_REVOKE, reputationTier } from "@/lib/reputation";
 import { canHostParty } from "@/lib/reputation-gating";
 import { COUNTRIES } from "@/lib/countries";
@@ -261,6 +262,11 @@ export default function ProfilePage() {
                 <ReferralBadge
                   qualifiedReferrals={profile?.qualified_referrals ?? 0}
                 />
+                {profile?.id_verified && (
+                  <span className="text-[10px] rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-violet-200">
+                    ID verified
+                  </span>
+                )}
                 {profile &&
                   isInvitedNewcomer(profile.referred_by, profile.created_at) && (
                     <span className="text-[10px] rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-purple-200">
@@ -439,6 +445,14 @@ export default function ProfilePage() {
               {saving ? "Saving…" : "Save profile"}
             </button>
           </form>
+        </div>
+
+        <div className="rounded-3xl border border-violet-500/30 bg-slate-950/80 p-6">
+          <h2 className="font-bold text-violet-300 mb-2">ID verification</h2>
+          <IdVerificationCard
+            idVerified={profile?.id_verified}
+            onVerified={() => void refreshProfile()}
+          />
         </div>
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">

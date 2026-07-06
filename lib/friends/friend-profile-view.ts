@@ -26,6 +26,7 @@ export type FriendProfileView = {
   chatStreak: number;
   positiveRatings: number;
   ageVerified: boolean;
+  idVerified: boolean;
   memberSince: string;
   connectionType: FriendConnectionType | null;
 };
@@ -36,6 +37,7 @@ type RawProfile = {
   age: number | null;
   show_age: boolean | null;
   age_verified: boolean | null;
+  id_verified: boolean | null;
   gender_identity: string | null;
   bio: string | null;
   interests: string[] | null;
@@ -103,6 +105,7 @@ export function buildFriendProfileView(
     chatStreak: profile.chat_streak ?? 0,
     positiveRatings: profile.positive_ratings ?? 0,
     ageVerified: profile.age_verified === true,
+    idVerified: profile.id_verified === true,
     memberSince: formatMemberSince(profile.created_at),
     connectionType: options.connectionType,
   };

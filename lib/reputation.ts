@@ -1,6 +1,8 @@
 export const REP_START = 100;
 export const REP_MAX = 500;
 export const REP_REFERRAL_BONUS = 5;
+/** One-time bonus after government ID verification. */
+export const REP_ID_VERIFICATION_BONUS = 25;
 export const REP_THUMBS_UP = 3;
 export const REP_THUMBS_DOWN = 5;
 export const REP_REPORT_PENALTY = 20;

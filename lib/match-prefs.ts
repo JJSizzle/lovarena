@@ -7,6 +7,7 @@ const COUNTRY_KEY = "lovarena_country_code";
 const STATE_KEY = "lovarena_state_code";
 const PREFER_INTERESTS_KEY = "lovarena_prefer_shared_interests";
 const PREFER_LANGUAGES_KEY = "lovarena_prefer_shared_languages";
+const VERIFIED_ONLY_KEY = "lovarena_verified_only";
 
 export function getMatchMode(): MatchMode {
   if (typeof window === "undefined") return "worldwide";
@@ -55,6 +56,15 @@ export function setPreferSharedLanguages(enabled: boolean) {
   sessionStorage.setItem(PREFER_LANGUAGES_KEY, enabled ? "true" : "false");
 }
 
+export function getVerifiedOnly(): boolean {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(VERIFIED_ONLY_KEY) === "true";
+}
+
+export function setVerifiedOnly(enabled: boolean) {
+  sessionStorage.setItem(VERIFIED_ONLY_KEY, enabled ? "true" : "false");
+}
+
 export function getMatchPrefs() {
   return {
     matchMode: getMatchMode(),
@@ -62,6 +72,7 @@ export function getMatchPrefs() {
     stateCode: getStateCode(),
     preferSharedInterests: getPreferSharedInterests(),
     preferSharedLanguages: getPreferSharedLanguages(),
+    verifiedOnly: getVerifiedOnly(),
   };
 }
 
@@ -70,7 +81,8 @@ export function setMatchPrefs(
   countryCode: string,
   preferSharedInterests?: boolean,
   stateCode?: string | null,
-  preferSharedLanguages?: boolean
+  preferSharedLanguages?: boolean,
+  verifiedOnly?: boolean
 ) {
   setMatchMode(mode);
   setCountryCode(countryCode);
@@ -84,6 +96,9 @@ export function setMatchPrefs(
   }
   if (preferSharedLanguages !== undefined) {
     setPreferSharedLanguages(preferSharedLanguages);
+  }
+  if (verifiedOnly !== undefined) {
+    setVerifiedOnly(verifiedOnly);
   }
 }
 
@@ -117,6 +132,7 @@ export function getMatchRequestBody() {
     stateCode,
     preferSharedInterests: prefs.preferSharedInterests,
     preferSharedLanguages: prefs.preferSharedLanguages,
+    verifiedOnly: prefs.verifiedOnly,
   };
 }
 

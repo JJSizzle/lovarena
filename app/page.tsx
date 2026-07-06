@@ -10,6 +10,7 @@ import {
   getStateCode,
   getPreferSharedInterests,
   getPreferSharedLanguages,
+  getVerifiedOnly,
   setMatchPrefs,
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
@@ -45,12 +46,14 @@ export default function HomePage() {
   const [enterError, setEnterError] = useState<string | null>(null);
   const [preferSharedInterests, setPreferSharedInterests] = useState(false);
   const [preferSharedLanguages, setPreferSharedLanguages] = useState(false);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const seasonal = getSeasonalTheme();
 
   useEffect(() => {
     setMode(getMatchMode());
     setPreferSharedInterests(getPreferSharedInterests());
     setPreferSharedLanguages(getPreferSharedLanguages());
+    setVerifiedOnly(getVerifiedOnly());
     setCountry(getCountryCode() || guessCountryCode());
     setStateCode(getStateCode());
   }, []);
@@ -67,7 +70,7 @@ export default function HomePage() {
 
   async function handleStart() {
     setEnterError(null);
-    setMatchPrefs(mode, country, preferSharedInterests, stateCode, preferSharedLanguages);
+    setMatchPrefs(mode, country, preferSharedInterests, stateCode, preferSharedLanguages, verifiedOnly);
 
     if (!user) {
       router.push("/login?next=/chat");
@@ -331,6 +334,31 @@ export default function HomePage() {
               <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
                 Only match when you share at least one language from your
                 profile. May take longer to find someone.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 rounded-3xl border border-violet-500/25 bg-slate-950/80 backdrop-blur-xl p-4 cursor-pointer hover:border-violet-400/40 transition">
+            <input
+              type="checkbox"
+              checked={verifiedOnly}
+              onChange={(e) => setVerifiedOnly(e.target.checked)}
+              className="mt-0.5 rounded border-violet-500/40 bg-slate-900 text-violet-500 focus:ring-violet-500/50"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-violet-200">
+                Verified users only
+              </span>
+              <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
+                Only match people who completed government ID verification. Smaller
+                pool — may take longer.{" "}
+                {profile?.id_verified ? (
+                  <span className="text-violet-300">You are verified.</span>
+                ) : (
+                  <Link href="/profile" className="text-violet-300 hover:text-violet-200 underline">
+                    Verify your ID on profile
+                  </Link>
+                )}
               </span>
             </span>
           </label>

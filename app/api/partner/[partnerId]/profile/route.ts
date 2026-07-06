@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { data: profile, error } = await supabase
       .from("profiles")
       .select(
-        "id, username, age, show_age, age_verified, gender_identity, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, chat_streak, positive_ratings, country_code, state_code, created_at"
+        "id, username, age, show_age, age_verified, id_verified, gender_identity, bio, interests, languages, avatar_url, avatar_emoji, reputation_score, chat_streak, positive_ratings, country_code, state_code, created_at"
       )
       .eq("id", partnerId)
       .maybeSingle();

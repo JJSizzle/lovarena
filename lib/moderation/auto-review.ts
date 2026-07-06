@@ -57,13 +57,13 @@ async function analyzeReportCluster(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("reputation_score, age_verified")
+    .select("reputation_score, age_verified, id_verified")
     .eq("id", userId)
     .maybeSingle();
 
   const trustedProfile =
     (profile?.reputation_score ?? 0) >= REP_TRUSTED_MIN &&
-    Boolean(profile?.age_verified);
+    Boolean(profile?.id_verified);
 
   return {
     uniqueReporters,
