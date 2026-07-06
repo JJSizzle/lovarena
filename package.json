@@ -15,7 +15,11 @@
     "setup:email-aliases": "node scripts/print-email-aliases-setup.mjs",
     "verify:ops": "node scripts/verify-ops.mjs",
     "verify:cron": "node scripts/verify-cron.mjs",
-    "smoke:routes": "node scripts/smoke-routes.mjs"
+    "verify:smoke": "node scripts/verify-smoke.mjs",
+    "verify:cloudflare": "node scripts/verify-cloudflare.mjs",
+    "setup:cloudflare-waf": "node scripts/print-cloudflare-waf-setup.mjs",
+    "smoke:routes": "node scripts/smoke-routes.mjs",
+    "smoke:prod": "node scripts/verify-smoke.mjs https://lovarena.app"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.62.0",

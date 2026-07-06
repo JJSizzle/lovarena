@@ -6,11 +6,17 @@ Run after deploy or before tagging a release. Use two signed-in accounts (normal
 
 ```powershell
 npm run build
-npm run smoke:routes
+npm run verify:smoke
+npm run verify:smoke -- https://lovarena.app
+npm run verify:cloudflare
 npm run smoke:routes https://lovarena.app
 ```
 
-`smoke:routes` hits key pages and `/api/health` — see `scripts/smoke-routes.mjs`.
+- `verify:smoke` — routes + `/api/health` env checks (recommended before release)
+- `verify:cloudflare` — confirms `cf-ray` / Cloudflare proxy + WAF dashboard checklist
+- `smoke:routes` — quick HTTP status on key pages
+
+Cloudflare WAF rules: `npm run setup:cloudflare-waf` then follow `docs/CLOUDFLARE_WAF.md`.
 
 ## Manual checklist
 

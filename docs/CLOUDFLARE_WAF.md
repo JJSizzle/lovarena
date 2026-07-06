@@ -103,6 +103,8 @@ Create **three** rules (adjust if you hit free-tier limits):
 
 Action: **Block**
 
+> **Do not block:** `POST /api/identity/webhook` (Persona) or `POST /api/cron/review-flags` (Vercel cron). If you add a catch-all API block rule, exclude these paths.
+
 ### Challenge suspicious POST volume to APIs
 
 If you see bot bursts on `/api/*`:
@@ -145,7 +147,8 @@ Verify: `/api/health` → `turnstileEnabled: true`
 ## 8. Verify after deploy
 
 ```powershell
-npm run smoke:routes https://lovarena.app
+npm run verify:smoke https://lovarena.app
+npm run verify:cloudflare https://lovarena.app
 curl https://lovarena.app/api/health
 ```
 
