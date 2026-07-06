@@ -6,6 +6,11 @@ import {
 } from "@/lib/identity/persona";
 import { completeIdVerification } from "@/lib/identity/complete-id-verification";
 
+/** Persona / dashboard URL checks may use GET; events are POST only. */
+export async function GET() {
+  return NextResponse.json({ ok: true, service: "lovarena-identity-webhook" });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
