@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { REP_ID_VERIFICATION_BONUS } from "@/lib/reputation";
-import { isPersonaConfigured } from "@/lib/identity/persona-config";
+import {
+  isIdVerificationPublic,
+  isPersonaConfigured,
+} from "@/lib/identity/persona-config";
 
 export async function GET() {
   try {
@@ -14,14 +17,24 @@ export async function GET() {
     const supabase = createAdminClient();
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id_verified, id_verified_at")
+      .select("id_verified, id_verified_at, is_admin")
       .eq("id", user.id)
       .maybeSingle();
+
+    const configured = isPersonaConfigured();
+    const publiclyAvailable = isIdVerificationPublic();
+    const canStart =
+      configured &&
+      !profile?.id_verified &&
+      (publiclyAvailable || profile?.is_admin === true);
 
     return NextResponse.json({
       idVerified: profile?.id_verified === true,
       idVerifiedAt: profile?.id_verified_at ?? null,
-      configured: isPersonaConfigured(),
+      configured,
+      publiclyAvailable,
+      comingSoon: configured && !publiclyAvailable,
+      canStart,
       repBonus: REP_ID_VERIFICATION_BONUS,
     });
   } catch (err) {

@@ -7,6 +7,9 @@ import { REP_ID_VERIFICATION_BONUS } from "@/lib/reputation";
 type Status = {
   idVerified: boolean;
   configured: boolean;
+  publiclyAvailable: boolean;
+  comingSoon: boolean;
+  canStart: boolean;
   repBonus: number;
 };
 
@@ -30,6 +33,9 @@ export function IdVerificationCard({ idVerified = false, onVerified }: Props) {
         setStatus({
           idVerified: data.idVerified === true,
           configured: data.configured === true,
+          publiclyAvailable: data.publiclyAvailable === true,
+          comingSoon: data.comingSoon === true,
+          canStart: data.canStart === true,
           repBonus: data.repBonus ?? REP_ID_VERIFICATION_BONUS,
         });
       }
@@ -106,7 +112,7 @@ export function IdVerificationCard({ idVerified = false, onVerified }: Props) {
           {error}
         </p>
       )}
-      {status?.configured ? (
+      {status?.canStart ? (
         <button
           type="button"
           onClick={() => void handleStart()}
@@ -115,6 +121,12 @@ export function IdVerificationCard({ idVerified = false, onVerified }: Props) {
         >
           {starting ? "Starting…" : "Start ID verification"}
         </button>
+      ) : status?.comingSoon ? (
+        <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 leading-relaxed">
+          ID verification is launching soon — we&apos;re finishing production
+          approval. You&apos;ll be able to verify here for a badge, +{status.repBonus} rep,
+          and verified-only matching.
+        </p>
       ) : (
         <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
           ID verification is rolling out soon. Check back shortly.

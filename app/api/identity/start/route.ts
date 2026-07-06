@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createPersonaInquiry } from "@/lib/identity/persona";
-import { isPersonaConfigured } from "@/lib/identity/persona-config";
+import {
+  isIdVerificationPublic,
+  isPersonaConfigured,
+} from "@/lib/identity/persona-config";
 
 export async function POST() {
   try {
@@ -21,9 +24,16 @@ export async function POST() {
     const supabase = createAdminClient();
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id_verified")
+      .select("id_verified, is_admin")
       .eq("id", user.id)
       .maybeSingle();
+
+    if (!isIdVerificationPublic() && !profile?.is_admin) {
+      return NextResponse.json(
+        { error: "ID verification is launching soon. Check back shortly." },
+        { status: 503 }
+      );
+    }
 
     if (profile?.id_verified) {
       return NextResponse.json({ error: "You are already ID verified." }, { status: 400 });

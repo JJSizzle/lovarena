@@ -47,6 +47,7 @@ export default function HomePage() {
   const [preferSharedInterests, setPreferSharedInterests] = useState(false);
   const [preferSharedLanguages, setPreferSharedLanguages] = useState(false);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [idVerificationComingSoon, setIdVerificationComingSoon] = useState(false);
   const seasonal = getSeasonalTheme();
 
   useEffect(() => {
@@ -67,6 +68,17 @@ export default function HomePage() {
   useEffect(() => {
     if (user) router.prefetch("/chat");
   }, [user, router]);
+
+  useEffect(() => {
+    if (!user) {
+      setIdVerificationComingSoon(false);
+      return;
+    }
+    fetch("/api/identity/status", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setIdVerificationComingSoon(d.comingSoon === true))
+      .catch(() => setIdVerificationComingSoon(false));
+  }, [user]);
 
   async function handleStart() {
     setEnterError(null);
@@ -354,6 +366,10 @@ export default function HomePage() {
                 pool — may take longer.{" "}
                 {profile?.id_verified ? (
                   <span className="text-violet-300">You are verified.</span>
+                ) : idVerificationComingSoon ? (
+                  <span className="text-amber-300/90">
+                    ID verification launching soon on profile.
+                  </span>
                 ) : (
                   <Link href="/profile" className="text-violet-300 hover:text-violet-200 underline">
                     Verify your ID on profile
