@@ -359,20 +359,20 @@ export default function HomePage() {
             />
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-violet-200">
-                Verified users only
+                Verified users only (optional)
               </span>
               <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
-                Only match people who completed government ID verification. Smaller
-                pool — may take longer.{" "}
+                Optional filter — only match people who chose to verify their ID. Smaller
+                pool, may take longer. Leave unchecked to match everyone.{" "}
                 {profile?.id_verified ? (
                   <span className="text-violet-300">You are verified.</span>
                 ) : idVerificationComingSoon ? (
                   <span className="text-amber-300/90">
-                    ID verification launching soon on profile.
+                    Optional ID verification launching soon on profile.
                   </span>
                 ) : (
                   <Link href="/profile" className="text-violet-300 hover:text-violet-200 underline">
-                    Verify your ID on profile
+                    Optionally verify on profile
                   </Link>
                 )}
               </span>

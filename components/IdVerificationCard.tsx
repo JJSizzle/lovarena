@@ -96,15 +96,16 @@ export function IdVerificationCard({ idVerified = false, onVerified }: Props) {
   return (
     <div className="rounded-2xl border border-violet-500/25 bg-slate-950/60 p-4 space-y-3">
       <div>
-        <p className="text-sm font-semibold text-violet-200">Verify your ID</p>
+        <p className="text-sm font-semibold text-violet-200">Optional ID verification</p>
         <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-          Optional government ID check. Earn a verified badge, +{status?.repBonus ?? REP_ID_VERIFICATION_BONUS}{" "}
-          reputation (one time), and access to verified-only matching.
+          Completely optional — chat works without it. Verify when you want a badge,
+          +{status?.repBonus ?? REP_ID_VERIFICATION_BONUS} rep (one time), or verified-only matching.
         </p>
       </div>
       <ul className="text-[11px] text-slate-500 space-y-1 list-disc list-inside">
-        <li>Badge shown to matches and friends</li>
-        <li>Match only with other verified users (optional toggle on home)</li>
+        <li>Never required — skip it and keep matching normally</li>
+        <li>Badge shown to matches and friends if you verify</li>
+        <li>Optional verified-only pool on home (your choice)</li>
         <li>ID data handled by our verification partner — not stored on Lovarena</li>
       </ul>
       {error && (
@@ -123,13 +124,13 @@ export function IdVerificationCard({ idVerified = false, onVerified }: Props) {
         </button>
       ) : status?.comingSoon ? (
         <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 leading-relaxed">
-          ID verification is launching soon — we&apos;re finishing production
-          approval. You&apos;ll be able to verify here for a badge, +{status.repBonus} rep,
-          and verified-only matching.
+          Optional ID verification is launching soon — we&apos;re finishing production
+          approval. You can keep using Lovarena without it; when it&apos;s live, verify
+          only if you want the badge, +{status.repBonus} rep, or verified-only matching.
         </p>
       ) : (
         <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-          ID verification is rolling out soon. Check back shortly.
+          Optional ID verification is rolling out soon. You don&apos;t need it to chat — check back when you want the extra perks.
         </p>
       )}
       <button

@@ -448,7 +448,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="rounded-3xl border border-violet-500/30 bg-slate-950/80 p-6">
-          <h2 className="font-bold text-violet-300 mb-2">ID verification</h2>
+          <h2 className="font-bold text-violet-300 mb-2">Optional ID verification</h2>
           <IdVerificationCard
             idVerified={profile?.id_verified}
             onVerified={() => void refreshProfile()}
