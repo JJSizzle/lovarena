@@ -99,38 +99,60 @@ export function PartyLobbySlots({
 
 export function PartyTriviaScoreboard({
   scores,
+  roundIndex = 0,
+  phase,
 }: {
   scores: PartyTriviaScoreView[];
+  roundIndex?: number;
+  phase?: string;
 }) {
   if (!scores.length) return null;
 
   const top = scores[0]?.score ?? 0;
+  const leaders = scores.filter((s) => s.score === top && top > 0);
+  const showReveal = phase === "reveal" && top > 0;
 
   return (
-    <div className="rounded-xl border border-cyan-500/20 bg-slate-950/60 px-3 py-2">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-cyan-300 mb-2 text-center">
-        Trivia scoreboard
-      </p>
+    <div className="rounded-xl border border-cyan-500/20 bg-slate-950/60 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-cyan-300">
+          Trivia · round {roundIndex + 1}
+        </p>
+        {showReveal && leaders.length === 1 && (
+          <p className="text-[10px] text-amber-300 font-semibold">
+            👑 {leaders[0]!.isYou ? "You're leading" : `${leaders[0]!.username} leads`}
+          </p>
+        )}
+        {showReveal && leaders.length > 1 && (
+          <p className="text-[10px] text-amber-300 font-semibold">👑 Tied for lead</p>
+        )}
+      </div>
       <div className="flex flex-wrap justify-center gap-2">
-        {scores.map((entry) => (
-          <div
-            key={entry.profileId}
-            className={`rounded-lg border px-2.5 py-1 text-center min-w-[4rem] ${
-              entry.score === top && top > 0
-                ? "border-amber-400/40 bg-amber-500/10"
-                : entry.isYou
-                  ? "border-fuchsia-400/30 bg-fuchsia-500/5"
-                  : "border-white/10 bg-slate-900/50"
-            }`}
-          >
-            <p className="text-[10px] text-slate-300 truncate max-w-[5rem]">
-              {entry.isYou ? "You" : entry.username}
-            </p>
-            <p className="text-sm font-bold text-white tabular-nums">
-              {entry.score}
-            </p>
-          </div>
-        ))}
+        {scores.map((entry) => {
+          const isLeader = entry.score === top && top > 0;
+          return (
+            <div
+              key={entry.profileId}
+              className={`rounded-lg border px-2.5 py-1 text-center min-w-[4.5rem] transition ${
+                isLeader && showReveal
+                  ? "border-amber-400/50 bg-amber-500/15 ring-1 ring-amber-400/20"
+                  : isLeader
+                    ? "border-amber-400/40 bg-amber-500/10"
+                    : entry.isYou
+                      ? "border-fuchsia-400/30 bg-fuchsia-500/5"
+                      : "border-white/10 bg-slate-900/50"
+              }`}
+            >
+              <p className="text-[10px] text-slate-300 truncate max-w-[5.5rem]">
+                {isLeader && top > 0 ? "👑 " : ""}
+                {entry.isYou ? "You" : entry.username}
+              </p>
+              <p className="text-sm font-bold text-white tabular-nums">
+                {entry.score}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

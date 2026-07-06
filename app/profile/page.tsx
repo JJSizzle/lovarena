@@ -28,6 +28,7 @@ import { parseAgeInput } from "@/lib/profile-age";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ShareInviteButton } from "@/components/ShareInviteButton";
+import { BlockedUsersPanel } from "@/components/BlockedUsersPanel";
 import { MatchHistoryRow } from "@/components/MatchHistoryRow";
 import { ReferralBadge } from "@/components/ReferralBadge";
 import { ParticleBackground } from "@/components/ParticleBackground";
@@ -40,12 +41,6 @@ import { canHostParty } from "@/lib/reputation-gating";
 import { COUNTRIES } from "@/lib/countries";
 import { US_STATES } from "@/lib/us-states";
 import { formatProfileLocation } from "@/lib/profile-location";
-
-type BlockRow = {
-  id: string;
-  blockedId: string;
-  username: string;
-};
 
 type HistoryRow = {
   id: string;
@@ -73,7 +68,6 @@ export default function ProfilePage() {
   const [countryCode, setCountryCode] = useState("");
   const [stateCode, setStateCode] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState("");
-  const [blocks, setBlocks] = useState<BlockRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -106,10 +100,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    fetch("/api/blocks")
-      .then((r) => r.json())
-      .then((d) => setBlocks(d.blocks ?? []))
-      .catch(() => {});
     fetch("/api/match-history")
       .then((r) => r.json())
       .then((d) => setHistory(d.history ?? []))
@@ -165,15 +155,6 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
-  }
-
-  async function handleUnblock(blockedId: string) {
-    await fetch("/api/blocks", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blockedId }),
-    });
-    setBlocks((prev) => prev.filter((b) => b.blockedId !== blockedId));
   }
 
   async function handleDeleteAccount() {
@@ -491,18 +472,7 @@ export default function ProfilePage() {
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
           <h2 className="font-bold text-fuchsia-300 mb-3">Blocked users</h2>
-          {blocks.length === 0 ? (
-            <p className="text-xs text-slate-500">No blocked users.</p>
-          ) : (
-            <ul className="space-y-2">
-              {blocks.map((b) => (
-                <li key={b.id} className="flex items-center justify-between text-sm">
-                  <span>{b.username}</span>
-                  <button type="button" onClick={() => handleUnblock(b.blockedId)} className="text-xs text-slate-400 hover:text-white">Unblock</button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <BlockedUsersPanel />
         </div>
 
         <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 p-6">
@@ -541,19 +511,6 @@ export default function ProfilePage() {
                           : row
                       )
                     );
-                    setBlocks((prev) => {
-                      if (prev.some((b) => b.blockedId === partnerId)) {
-                        return prev;
-                      }
-                      return [
-                        {
-                          id: partnerId,
-                          blockedId: partnerId,
-                          username: h.partnerUsername,
-                        },
-                        ...prev,
-                      ];
-                    });
                   }}
                 />
               ))}

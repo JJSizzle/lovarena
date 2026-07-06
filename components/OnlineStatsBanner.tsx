@@ -6,7 +6,6 @@ type LoadState = "loading" | "ok" | "error";
 
 export function OnlineStatsBanner() {
   const [online, setOnline] = useState<number | null>(null);
-  const [inQueue, setInQueue] = useState<number | null>(null);
   const [state, setState] = useState<LoadState>("loading");
 
   const load = useCallback(async () => {
@@ -15,7 +14,6 @@ export function OnlineStatsBanner() {
       const data = await res.json();
       if (res.ok) {
         setOnline(data.online);
-        setInQueue(data.inQueue);
         setState("ok");
       } else {
         setState("error");
@@ -50,18 +48,12 @@ export function OnlineStatsBanner() {
   }
 
   return (
-    <div className="flex justify-center gap-6 text-sm">
+    <div className="flex justify-center text-sm">
       <span className="text-cyan-300">
         <strong className="text-cyan-200">
           {state === "loading" ? "…" : online}
         </strong>{" "}
         online
-      </span>
-      <span className="text-pink-300">
-        <strong className="text-pink-200">
-          {state === "loading" ? "…" : inQueue}
-        </strong>{" "}
-        in queue
       </span>
     </div>
   );

@@ -28,6 +28,7 @@ import {
   unsubscribeFromWebPush,
 } from "@/components/WebPushManager";
 import { MfaSettingsPanel } from "@/components/MfaSettingsPanel";
+import { BlockedUsersPanel } from "@/components/BlockedUsersPanel";
 
 function SettingRow({
   title,
@@ -467,6 +468,10 @@ export default function SettingsPage() {
                 label="Allow mutual spark"
               />
             </SettingRow>
+            <div className="py-4 border-b border-white/5">
+              <p className="text-sm font-medium text-slate-200 mb-1">Blocked users</p>
+              <BlockedUsersPanel compact />
+            </div>
           </section>
 
           <section className="pt-2">

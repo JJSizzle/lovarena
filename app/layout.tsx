@@ -8,6 +8,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { FriendActivityNotifier } from "@/components/FriendActivityNotifier";
 import { FriendMessageNotifier } from "@/components/FriendMessageNotifier";
+import { MilestoneToast } from "@/components/MilestoneToast";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationProvider } from "@/components/NotificationProvider";
 import { RouteAwareFooter } from "@/components/RouteAwareFooter";
@@ -92,6 +93,7 @@ export default function RootLayout({
                 <InstallPrompt />
                 <FriendMessageNotifier />
                 <FriendActivityNotifier />
+                <MilestoneToast />
                 <NotificationBell />
                 <WebPushManager />
               </AgeGate>

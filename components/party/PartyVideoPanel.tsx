@@ -191,8 +191,22 @@ export function PartyVideoPanel({
 
       {others.length > 0 && (
         <p className="text-[10px] text-slate-600 text-center sm:hidden">
-          Tap a video to enlarge
+          {showMobileFocus
+            ? "Tap a thumbnail to switch focus"
+            : members.length >= 4
+              ? "Scroll videos · tap to enlarge"
+              : "Tap a video to enlarge"}
         </p>
+      )}
+
+      {showMobileFocus && (
+        <button
+          type="button"
+          onClick={() => setFocusedId(null)}
+          className="sm:hidden text-[10px] text-cyan-400 hover:text-cyan-300 mx-auto block"
+        >
+          Show grid
+        </button>
       )}
 
       {mediaError && (
@@ -232,7 +246,7 @@ export function PartyVideoPanel({
         } ${
           others.length <= 1
             ? "grid-cols-1 sm:grid-cols-2 gap-2"
-            : "grid-cols-2 gap-1.5 sm:gap-2"
+            : "grid-cols-2 gap-1.5 sm:gap-2 max-h-[min(52vh,22rem)] sm:max-h-none overflow-y-auto sm:overflow-visible pr-0.5"
         }`}
       >
         {renderSelfTile(others.length >= 2)}

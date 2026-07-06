@@ -1446,6 +1446,7 @@ export default function ChatPage() {
         roomId={feedbackRoomId ?? ""}
         partnerId={feedbackPartnerId ?? ""}
         visible={showFeedback}
+        referralCode={profile?.referral_code}
         onClose={() => {
           setShowFeedback(false);
           if (pendingNext) {

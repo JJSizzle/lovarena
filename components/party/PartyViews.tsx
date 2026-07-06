@@ -343,7 +343,11 @@ export function PartyGameView({
       </div>
 
       {isTrivia && party.triviaScores.length > 0 && (
-        <PartyTriviaScoreboard scores={party.triviaScores} />
+        <PartyTriviaScoreboard
+          scores={party.triviaScores}
+          roundIndex={party.roundIndex}
+          phase={party.phase}
+        />
       )}
 
       <PartyMemberBar
@@ -386,6 +390,12 @@ export function PartyGameView({
             );
           })}
         </div>
+      )}
+
+      {isTrivia && party.phase === "reveal" && party.correctOptionId && (
+        <p className="text-center text-xs text-emerald-300/90">
+          Correct answer highlighted · scores update after each round
+        </p>
       )}
 
       {isTrivia && party.phase === "voting" && (

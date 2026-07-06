@@ -38,7 +38,6 @@ export function MatchingWaitScreen({
   onCaptchaToken,
 }: Props) {
   const [online, setOnline] = useState<number | null>(null);
-  const [inQueue, setInQueue] = useState<number | null>(null);
   const [statsState, setStatsState] = useState<LoadState>("loading");
   const [tipIndex, setTipIndex] = useState(0);
   const [waitSeconds, setWaitSeconds] = useState<number | null>(null);
@@ -55,7 +54,6 @@ export function MatchingWaitScreen({
       const data = await res.json();
       if (res.ok) {
         setOnline(data.online);
-        setInQueue(data.inQueue);
         setWaitSeconds(estimateMatchWaitSeconds(data.online, data.inQueue));
         setStatsState("ok");
       } else {
@@ -139,20 +137,12 @@ export function MatchingWaitScreen({
           </button>
         </div>
       ) : (
-        <div className="mt-3 flex justify-center gap-6 text-xs text-slate-400">
-          <span>
-            Online:{" "}
-            <strong className="text-cyan-300">
-              {statsState === "loading" ? "…" : online}
-            </strong>
-          </span>
-          <span>
-            In queue:{" "}
-            <strong className="text-pink-300">
-              {statsState === "loading" ? "…" : inQueue}
-            </strong>
-          </span>
-        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Online:{" "}
+          <strong className="text-cyan-300">
+            {statsState === "loading" ? "…" : online}
+          </strong>
+        </p>
       )}
       <p className="mt-4 text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
         {MATCH_WAIT_TIPS[tipIndex]}
