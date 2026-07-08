@@ -14,10 +14,61 @@ import {
 } from "@/lib/moderation/report-reputation";
 import { isReportReason, reportReasonLabel } from "@/lib/moderation/report-reasons";
 import { notifyModerators } from "@/lib/moderation/notify-admin";
+import { processReportSnapshot } from "@/lib/moderation/report-evidence";
 import { captureServerError } from "@/lib/capture-error";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rateLimitResponse } from "@/lib/rate-limit-response";
 import { parseJsonBody } from "@/lib/api/parse-json-body";
+
+type ReportPayload = {
+  roomId?: string;
+  reportedUserId?: string;
+  reason?: string;
+  details?: string;
+  snapshot?: File | null;
+};
+
+async function parseReportPayload(req: NextRequest): Promise<
+  | { ok: true; data: ReportPayload }
+  | { ok: false; response: NextResponse }
+> {
+  const contentType = req.headers.get("content-type") ?? "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await req.formData();
+    const snapshot = formData.get("snapshot");
+    return {
+      ok: true,
+      data: {
+        roomId: String(formData.get("roomId") ?? "").trim() || undefined,
+        reportedUserId:
+          String(formData.get("reportedUserId") ?? "").trim() || undefined,
+        reason: String(formData.get("reason") ?? "").trim() || undefined,
+        details: String(formData.get("details") ?? "").trim() || undefined,
+        snapshot:
+          snapshot instanceof File && snapshot.size > 0 ? snapshot : null,
+      },
+    };
+  }
+
+  const parsed = await parseJsonBody<{
+    roomId?: string;
+    reportedUserId?: string;
+    reason?: string;
+    details?: string;
+  }>(req);
+  if (!parsed.ok) {
+    return { ok: false, response: parsed.response };
+  }
+
+  return {
+    ok: true,
+    data: {
+      ...parsed.data,
+      snapshot: null,
+    },
+  };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,15 +81,16 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(rl.retryAfterSeconds);
     }
 
-    const parsed = await parseJsonBody<{
-      roomId?: string;
-      reportedUserId?: string;
-      reason?: string;
-      details?: string;
-    }>(req);
+    const parsed = await parseReportPayload(req);
     if (!parsed.ok) return parsed.response;
-    const { roomId, reportedUserId: reportedUserIdInput, reason, details } =
-      parsed.data;
+
+    const {
+      roomId,
+      reportedUserId: reportedUserIdInput,
+      reason,
+      details,
+      snapshot,
+    } = parsed.data;
 
     if (!reason || !isReportReason(reason)) {
       return NextResponse.json({ error: "Invalid report" }, { status: 400 });
@@ -95,16 +147,53 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { error } = await supabase.from("abuse_reports").insert({
-      reporter_id: auth.profile.id,
-      reported_user_id: reportedUserId,
-      room_id: reportRoomId,
-      reason,
-      details: trimmedDetails,
-    });
+    const { data: reportRow, error: insertError } = await supabase
+      .from("abuse_reports")
+      .insert({
+        reporter_id: auth.profile.id,
+        reported_user_id: reportedUserId,
+        room_id: reportRoomId,
+        reason,
+        details: trimmedDetails,
+      })
+      .select("id")
+      .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (insertError || !reportRow?.id) {
+      return NextResponse.json(
+        { error: insertError?.message ?? "Report failed" },
+        { status: 500 }
+      );
+    }
+
+    let snapshotOutcome: Awaited<ReturnType<typeof processReportSnapshot>> | null =
+      null;
+
+    if (roomId && snapshot) {
+      const bytes = new Uint8Array(await snapshot.arrayBuffer());
+      const mimeType = snapshot.type || "image/jpeg";
+      try {
+        snapshotOutcome = await processReportSnapshot(
+          supabase,
+          reportRow.id,
+          { bytes, mimeType },
+          reportedUserId,
+          reportRoomId
+        );
+        await supabase
+          .from("abuse_reports")
+          .update({
+            evidence_path: snapshotOutcome.evidencePath,
+            ai_scan_result: snapshotOutcome.aiScanResult,
+          })
+          .eq("id", reportRow.id);
+      } catch (snapshotError) {
+        await captureServerError(snapshotError, {
+          route: "/api/report",
+          stage: "snapshot",
+          reportId: reportRow.id,
+        });
+      }
     }
 
     const repResult = await applyReportReputationPenalty(
@@ -118,26 +207,35 @@ export async function POST(req: NextRequest) {
       reportedUserId
     );
 
-    if (autoFlag.restricted) {
+    const notifyBase = {
+      reportedUserId,
+      reporterId: auth.profile.id,
+      roomId: reportRoomId,
+      details: trimmedDetails,
+      aiScanResult: snapshotOutcome?.aiScanResult ?? null,
+      hasEvidence: Boolean(snapshotOutcome?.evidencePath),
+    };
+
+    if (snapshotOutcome?.aiFlagged) {
+      void notifyModerators({
+        type: "auto_flag",
+        reason: `AI snapshot: ${snapshotOutcome.aiScanResult}`,
+        ...notifyBase,
+      });
+    } else if (autoFlag.restricted) {
       void notifyModerators({
         type: "auto_flag",
         reason:
           autoFlag.result?.type === "ban"
             ? "second_strike_within_30d (reports)"
             : "3+ unique reporters in 24h (24h restrict)",
-        reportedUserId,
-        reporterId: auth.profile.id,
-        roomId: reportRoomId,
-        details: trimmedDetails,
+        ...notifyBase,
       });
     } else {
       void notifyModerators({
         type: "report",
         reason: reportReasonLabel(reason),
-        reportedUserId,
-        reporterId: auth.profile.id,
-        roomId: reportRoomId,
-        details: trimmedDetails,
+        ...notifyBase,
       });
     }
 

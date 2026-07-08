@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import { useState } from "react";
 import { AppModal } from "@/components/AppModal";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -10,13 +11,19 @@ import {
   chatBtnWarn,
 } from "@/lib/chat-buttons";
 import { ReportReasonFields } from "@/components/ReportReasonFields";
+import { captureVideoFrame } from "@/lib/capture-video-frame";
 
 type SafetyActionsProps = {
   roomId: string;
+  remoteVideoRef?: RefObject<HTMLVideoElement | null>;
   onBlocked: () => void;
 };
 
-export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
+export function SafetyActions({
+  roomId,
+  remoteVideoRef,
+  onBlocked,
+}: SafetyActionsProps) {
   const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("harassment");
@@ -27,10 +34,23 @@ export function SafetyActions({ roomId, onBlocked }: SafetyActionsProps) {
   async function submitReport() {
     setLoading(true);
     setStatus(null);
+
+    const formData = new FormData();
+    formData.append("roomId", roomId);
+    formData.append("reason", reason);
+    formData.append("details", details);
+
+    const remoteVideo = remoteVideoRef?.current;
+    if (remoteVideo) {
+      const snapshot = await captureVideoFrame(remoteVideo);
+      if (snapshot) {
+        formData.append("snapshot", snapshot, "report-snapshot.jpg");
+      }
+    }
+
     const res = await fetch("/api/report", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId, reason, details }),
+      body: formData,
     });
     const data = await res.json();
     setLoading(false);

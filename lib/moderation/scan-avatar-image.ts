@@ -1,3 +1,8 @@
+import {
+  isSightengineModerationSkipped,
+  scanImageWithSightengine,
+} from "@/lib/moderation/sightengine-scan";
+
 export type AvatarScanResult =
   | { safe: true }
   | { safe: false; userMessage: string; internalReason: string };
@@ -5,96 +10,11 @@ export type AvatarScanResult =
 const USER_MESSAGE =
   "This photo doesn't meet our community guidelines. Please choose a family-friendly profile picture.";
 
-type SightengineNudity = {
-  sexual_activity?: number;
-  sexual_display?: number;
-  erotica?: number;
-  sextoy?: number;
-  suggestive?: number;
-};
-
-type SightengineOffensive = {
-  prob?: number;
-  nazi?: number;
-  asian_swastika?: number;
-  confederate?: number;
-  supremacist?: number;
-  terrorist?: number;
-  middle_finger?: number;
-};
-
-type SightengineGore = {
-  prob?: number;
-};
-
-type SightengineResponse = {
-  status?: string;
-  error?: { message?: string };
-  nudity?: SightengineNudity;
-  offensive?: SightengineOffensive;
-  gore?: SightengineGore;
-};
-
-function score(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-
-function evaluateNudity(nudity: SightengineNudity | undefined): string | null {
-  if (!nudity) return null;
-
-  if (score(nudity.sexual_activity) >= 0.35) {
-    return "explicit sexual activity";
-  }
-  if (score(nudity.sexual_display) >= 0.35) {
-    return "explicit nudity";
-  }
-  if (score(nudity.erotica) >= 0.45) {
-    return "erotic content";
-  }
-  if (score(nudity.sextoy) >= 0.45) {
-    return "sexual content";
-  }
-  if (score(nudity.suggestive) >= 0.82) {
-    return "overly suggestive content";
-  }
-
-  return null;
-}
-
-function evaluateOffensive(
-  offensive: SightengineOffensive | undefined
-): string | null {
-  if (!offensive) return null;
-
-  const checks: Array<[string, number]> = [
-    ["hate symbol", score(offensive.nazi)],
-    ["hate symbol", score(offensive.asian_swastika)],
-    ["hate symbol", score(offensive.confederate)],
-    ["hate symbol", score(offensive.supremacist)],
-    ["terrorist imagery", score(offensive.terrorist)],
-    ["offensive gesture", score(offensive.middle_finger)],
-    ["offensive content", score(offensive.prob)],
-  ];
-
-  for (const [label, value] of checks) {
-    if (value >= 0.45) return label;
-  }
-
-  return null;
-}
-
-function evaluateGore(gore: SightengineGore | undefined): string | null {
-  if (score(gore?.prob) >= 0.45) {
-    return "graphic violence or gore";
-  }
-  return null;
-}
-
 export async function scanAvatarImage(
   bytes: Uint8Array,
   mimeType: string
 ): Promise<AvatarScanResult> {
-  if (process.env.AVATAR_MODERATION_SKIP === "1") {
+  if (isSightengineModerationSkipped()) {
     return { safe: true };
   }
 
@@ -104,63 +24,17 @@ export async function scanAvatarImage(
     throw new Error("Photo moderation is not configured on this server.");
   }
 
-  const formData = new FormData();
-  const buffer = bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength
-  ) as ArrayBuffer;
-  const blob = new Blob([buffer], { type: mimeType });
-  formData.append("media", blob, "avatar");
-  formData.append("models", "nudity-2.1,offensive,gore-2.0");
-  formData.append("api_user", apiUser);
-  formData.append("api_secret", apiSecret);
-
-  const res = await fetch("https://api.sightengine.com/1.0/check.json", {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    console.error("avatar_moderation_api_failed", res.status, errText.slice(0, 200));
+  try {
+    const scan = await scanImageWithSightengine(bytes, mimeType, "avatar");
+    if (!scan.safe) {
+      return {
+        safe: false,
+        userMessage: USER_MESSAGE,
+        internalReason: scan.internalReason,
+      };
+    }
+    return { safe: true };
+  } catch {
     throw new Error("We couldn't verify this photo. Please try again in a moment.");
   }
-
-  const data = (await res.json()) as SightengineResponse;
-  if (data.status !== "success") {
-    console.error(
-      "avatar_moderation_rejected",
-      data.error?.message ?? "unknown error"
-    );
-    throw new Error("We couldn't verify this photo. Please try again in a moment.");
-  }
-
-  const nudityReason = evaluateNudity(data.nudity);
-  if (nudityReason) {
-    return {
-      safe: false,
-      userMessage: USER_MESSAGE,
-      internalReason: nudityReason,
-    };
-  }
-
-  const offensiveReason = evaluateOffensive(data.offensive);
-  if (offensiveReason) {
-    return {
-      safe: false,
-      userMessage: USER_MESSAGE,
-      internalReason: offensiveReason,
-    };
-  }
-
-  const goreReason = evaluateGore(data.gore);
-  if (goreReason) {
-    return {
-      safe: false,
-      userMessage: USER_MESSAGE,
-      internalReason: goreReason,
-    };
-  }
-
-  return { safe: true };
 }

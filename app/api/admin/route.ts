@@ -12,6 +12,7 @@ import {
 } from "@/lib/security/admin-access";
 import { logAdminAction } from "@/lib/security/admin-audit";
 import { parseJsonBody } from "@/lib/api/parse-json-body";
+import { createReportEvidenceSignedUrl } from "@/lib/moderation/report-evidence";
 
 function enforceAdminNetwork(ip: string): NextResponse | null {
   if (!isAdminIpAllowed(ip)) {
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
       supabase
         .from("abuse_reports")
         .select(
-          "id, reason, details, status, created_at, reporter_id, reported_user_id, room_id"
+          "id, reason, details, status, created_at, reporter_id, reported_user_id, room_id, evidence_path, ai_scan_result"
         )
         .order("created_at", { ascending: false })
         .limit(50),
@@ -85,8 +86,23 @@ export async function GET(req: NextRequest) {
       (appealProfiles ?? []).map((p) => [p.id, p.username])
     );
 
+    const reportRows = reports.data ?? [];
+    const reportsWithEvidence = await Promise.all(
+      reportRows.map(async (row) => {
+        const evidencePath = row.evidence_path as string | null;
+        if (!evidencePath) {
+          return { ...row, evidenceUrl: null };
+        }
+        const evidenceUrl = await createReportEvidenceSignedUrl(
+          supabase,
+          evidencePath
+        );
+        return { ...row, evidenceUrl };
+      })
+    );
+
     return NextResponse.json({
-      reports: reports.data ?? [],
+      reports: reportsWithEvidence,
       flagged: flagged.data ?? [],
       openReportCount: openCount.count ?? 0,
       appeals: appealRows.map((row) => ({

@@ -1409,6 +1409,7 @@ export default function ChatPage() {
             roomId ? (
               <SafetyActions
                 roomId={roomId}
+                remoteVideoRef={remoteVideoRef}
                 onBlocked={() => {
                   stopMedia();
                   setRoomId(null);

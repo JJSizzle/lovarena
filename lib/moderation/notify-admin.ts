@@ -21,6 +21,8 @@ type ModerationAlert = {
   roomId?: string | null;
   details?: string | null;
   adminId?: string;
+  aiScanResult?: string | null;
+  hasEvidence?: boolean;
 };
 
 export async function notifyModerators(alert: ModerationAlert): Promise<void> {
@@ -32,6 +34,8 @@ export async function notifyModerators(alert: ModerationAlert): Promise<void> {
     alert.reporterId ? `Reporter: ${alert.reporterId}` : null,
     alert.roomId ? `Room: ${alert.roomId}` : null,
     alert.details ? `Details: ${alert.details}` : null,
+    alert.hasEvidence ? "Evidence: snapshot saved (admin dashboard)" : null,
+    alert.aiScanResult ? `AI scan: ${alert.aiScanResult}` : null,
     alert.adminId ? `Admin: ${alert.adminId}` : null,
     `Dashboard: ${site}/admin`,
   ]

@@ -23,7 +23,18 @@ type Report = {
   reporter_id: string;
   reported_user_id: string;
   room_id: string | null;
+  evidence_path?: string | null;
+  ai_scan_result?: string | null;
+  evidenceUrl?: string | null;
 };
+
+function aiScanLabel(result: string | null | undefined): string | null {
+  if (!result) return null;
+  if (result === "clear") return "AI: clear";
+  if (result === "not_scanned") return "AI: not scanned";
+  if (result === "scan_failed") return "AI: scan failed";
+  return `AI flagged: ${result}`;
+}
 
 type RestrictionAppeal = {
   id: string;
@@ -420,6 +431,29 @@ export default function AdminPage() {
                   <p className="text-slate-400 mt-1 leading-relaxed">
                     {r.details}
                   </p>
+                )}
+                {r.ai_scan_result && (
+                  <p
+                    className={`text-xs mt-2 ${
+                      r.ai_scan_result === "clear" ||
+                      r.ai_scan_result === "not_scanned" ||
+                      r.ai_scan_result === "scan_failed"
+                        ? "text-slate-500"
+                        : "text-amber-300"
+                    }`}
+                  >
+                    {aiScanLabel(r.ai_scan_result)}
+                  </p>
+                )}
+                {r.evidenceUrl && (
+                  <a
+                    href={r.evidenceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-xs text-sky-400 hover:text-sky-300 mt-2"
+                  >
+                    View report snapshot →
+                  </a>
                 )}
                 <p className="text-xs text-slate-500 mt-2 font-mono">
                   reported {r.reported_user_id.slice(0, 8)} · room{" "}

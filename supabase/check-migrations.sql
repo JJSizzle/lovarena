@@ -1,4 +1,4 @@
--- Run this entire script in Supabase SQL Editor (one result table, 27 rows)
+-- Run this entire script in Supabase SQL Editor (one result table, 29 rows)
 
 select migration, status from (
   select 1 as ord, 'reputation-scale' as migration,
@@ -441,6 +441,23 @@ select migration, status from (
         where n.nspname = 'public' and p.proname = 'find_or_create_match'
           and pg_get_function_identity_arguments(p.oid) like '%p_verified_only%'
       ) then '❌ find_or_create_match missing p_verified_only — run id-verification.sql'
+      else '✅ applied'
+    end
+
+  union all
+
+  select 29, 'report-video-evidence',
+    case
+      when not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'abuse_reports'
+          and column_name = 'evidence_path'
+      ) then '❌ evidence_path missing — run report-video-evidence.sql'
+      when not exists (
+        select 1 from storage.buckets
+        where id = 'moderation-evidence'
+      ) then '❌ moderation-evidence bucket missing — run report-video-evidence.sql'
       else '✅ applied'
     end
 ) checks
