@@ -8,7 +8,11 @@ import {
   MATCH_IP_RATE,
 } from "@/lib/rate-limit-tiers";
 import { assertMatchCaptchaAccess } from "@/lib/security/match-captcha";
-import { isLowReputation, matchPollIntervalMs } from "@/lib/reputation-gating";
+import { isLowReputation } from "@/lib/reputation-gating";
+import {
+  getWaitingQueueSize,
+  matchPollIntervalForQueue,
+} from "@/lib/match-polling";
 import { clientIp } from "@/lib/rate-limit";
 
 import { isValidUsStateCode } from "@/lib/us-states";
@@ -94,10 +98,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const queueSize = await getWaitingQueueSize(supabase);
+    const pollIntervalMs = matchPollIntervalForQueue(
+      queueSize,
+      profile.reputation_score
+    );
+
     return NextResponse.json({
       roomId,
       userId: profile.id,
       lowReputation: isLowReputation(profile.reputation_score),
+      pollIntervalMs,
+      queueSize,
     });
   } catch (err) {
     const message =

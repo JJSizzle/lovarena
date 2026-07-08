@@ -27,7 +27,10 @@ import { RestrictionPanel } from "@/components/RestrictionPanel";
 import { FriendProfileSheet } from "@/components/FriendProfileSheet";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { markFirstChatComplete } from "@/lib/install-prompt";
-import { matchPollIntervalMs } from "@/lib/reputation-gating";
+import {
+  matchPollBackoffMs,
+  matchPollIntervalMs,
+} from "@/lib/match-polling";
 import dynamic from "next/dynamic";
 
 const LazyChatParticles = dynamic(
@@ -422,7 +425,7 @@ export default function ChatPage() {
     }
 
     checkConsent();
-    const interval = setInterval(checkConsent, 3000);
+    const interval = setInterval(checkConsent, 5000);
     return () => clearInterval(interval);
   }, [roomId, status, videoBlurred]);
 
@@ -473,7 +476,7 @@ export default function ChatPage() {
     if (!roomId || status !== "connected" || !userId) return;
 
     refreshConnectStatus();
-    const interval = setInterval(refreshConnectStatus, 2000);
+    const interval = setInterval(refreshConnectStatus, 5000);
 
     const supabase = createClient();
     const channel = supabase
@@ -504,6 +507,15 @@ export default function ChatPage() {
     if (matchCaptchaBlocked && !matchCaptchaToken) return;
 
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let consecutiveWaits = 0;
+
+    function scheduleNext(ms: number) {
+      if (cancelled) return;
+      timeoutId = setTimeout(() => {
+        void tryMatch();
+      }, ms);
+    }
 
     async function tryMatch() {
       try {
@@ -520,6 +532,7 @@ export default function ChatPage() {
           setError(
             "Server returned empty response. Restart npm run dev, or redeploy on Vercel if this is lovarena.app."
           );
+          scheduleNext(5000);
           return;
         }
 
@@ -536,9 +549,15 @@ export default function ChatPage() {
           }
           if (data.flagged) {
             setStatus("restricted");
-            clearInterval(interval);
+            return;
           }
           setError(data.error ?? `Match failed (${res.status})`);
+          if (res.status === 429) {
+            const retryAfter = Number(res.headers.get("Retry-After")) || 60;
+            scheduleNext(retryAfter * 1000);
+          } else {
+            scheduleNext(matchPollIntervalMs(profile?.reputation_score ?? 100));
+          }
           return;
         }
 
@@ -548,20 +567,28 @@ export default function ChatPage() {
           setEndedBySelf(false);
           setRoomId(data.roomId);
           setStatus("connected");
-          clearInterval(interval);
+          return;
         }
+
+        consecutiveWaits += 1;
+        const baseMs =
+          typeof data.pollIntervalMs === "number"
+            ? data.pollIntervalMs
+            : matchPollIntervalMs(profile?.reputation_score ?? 100);
+        scheduleNext(matchPollBackoffMs(consecutiveWaits, baseMs));
       } catch {
-        if (!cancelled) setError("Could not reach /api/match. Is npm run dev running?");
+        if (!cancelled) {
+          setError("Could not reach /api/match. Is npm run dev running?");
+          scheduleNext(5000);
+        }
       }
     }
 
     void tryMatch();
-    const pollMs = matchPollIntervalMs(profile?.reputation_score ?? 100);
-    const interval = setInterval(tryMatch, pollMs);
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [userId, authLoading, profile?.age_verified, profile?.reputation_score, status, router, matchScopeKey, matchCaptchaBlocked, matchCaptchaToken]);
 
@@ -623,7 +650,7 @@ export default function ChatPage() {
     }
 
     loadMessages();
-    const poll = setInterval(loadMessages, 2000);
+    const poll = setInterval(loadMessages, 30_000);
 
     const channel = supabase
       .channel(`room:${roomId}`)
@@ -684,30 +711,6 @@ export default function ChatPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, status, stopMedia]);
-
-  useEffect(() => {
-    if (!roomId || status !== "connected") return;
-
-    async function checkRoom() {
-      try {
-        const res = await fetch(`/api/room?roomId=${roomId}`, {
-          cache: "no-store",
-        });
-        const data = await res.json();
-        if (res.ok && data.status === "ended") {
-          stopMedia();
-          setEndedBySelf(false);
-          setStatus("disconnected");
-        }
-      } catch {
-        // retry on next poll
-      }
-    }
-
-    checkRoom();
-    const interval = setInterval(checkRoom, 2000);
-    return () => clearInterval(interval);
   }, [roomId, status, stopMedia]);
 
   useEffect(() => {

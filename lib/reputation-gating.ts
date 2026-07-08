@@ -10,8 +10,14 @@ import {
 
 export { REP_LOW_MAX, REP_PARTY_HOST_MIN, REP_PARTY_HOST_REVOKE };
 
-export const MATCH_POLL_MS_NORMAL = 2000;
-export const MATCH_POLL_MS_LOW_REP = 5000;
+export {
+  MATCH_POLL_MS_LOW_REP,
+  MATCH_POLL_MS_MAX,
+  MATCH_POLL_MS_NORMAL,
+  matchPollBackoffMs,
+  matchPollIntervalForQueue,
+  matchPollIntervalMs,
+} from "@/lib/match-polling";
 
 export function isLowReputation(score: number): boolean {
   return clampReputation(score) <= REP_LOW_MAX;
@@ -30,10 +36,6 @@ export function canHostParty(
   if (rep < REP_PARTY_HOST_REVOKE) return false;
   if (rep >= REP_PARTY_HOST_MIN) return true;
   return partyHostUnlocked;
-}
-
-export function matchPollIntervalMs(score: number): number {
-  return isLowReputation(score) ? MATCH_POLL_MS_LOW_REP : MATCH_POLL_MS_NORMAL;
 }
 
 export function partyHostBlockMessage(
