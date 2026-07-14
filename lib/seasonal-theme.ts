@@ -34,7 +34,7 @@ export function getSeasonalTheme(): SeasonalTheme {
   }
   return {
     id: "default",
-    label: "Arena",
+    label: "",
     gradient: "from-indigo-950 via-slate-900 to-purple-950",
     accent: "purple",
   };

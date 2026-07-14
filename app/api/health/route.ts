@@ -13,6 +13,10 @@ import {
   isSightengineConfigured,
   isTurnstileConfigured,
 } from "@/lib/security/turnstile";
+import {
+  isIdVerificationPublic,
+  isPersonaConfigured,
+} from "@/lib/identity/persona-config";
 import { isAdminIpAllowlistConfigured } from "@/lib/security/admin-access";
 import { REVIEW_FLAGS_CRON } from "@/lib/cron/review-flags";
 
@@ -116,6 +120,8 @@ export async function GET() {
     sightengineEnabled: isSightengineConfigured(),
     adminIpAllowlistConfigured: isAdminIpAllowlistConfigured(),
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? null,
+    idVerificationComingSoon:
+      isPersonaConfigured() && !isIdVerificationPublic(),
   };
 
   const hints = buildHints(env);

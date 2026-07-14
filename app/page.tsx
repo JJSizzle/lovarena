@@ -12,6 +12,7 @@ import {
   getPreferSharedLanguages,
   getVerifiedOnly,
   setMatchPrefs,
+  setVerifiedOnly as persistVerifiedOnly,
 } from "@/lib/match-prefs";
 import { COUNTRIES, guessCountryCode } from "@/lib/countries";
 import { US_STATES } from "@/lib/us-states";
@@ -31,7 +32,6 @@ import { StreakBadge } from "@/components/StreakBadge";
 import { AppQuickNav } from "@/components/AppQuickNav";
 import { BetaBadge } from "@/components/BetaBadge";
 import { BrandMark } from "@/components/BrandMark";
-import { SITE_NAME } from "@/lib/site";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 
 export default function HomePage() {
@@ -70,19 +70,29 @@ export default function HomePage() {
   }, [user, router]);
 
   useEffect(() => {
-    if (!user) {
-      setIdVerificationComingSoon(false);
-      return;
-    }
-    fetch("/api/identity/status", { cache: "no-store" })
+    fetch("/api/health", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => setIdVerificationComingSoon(d.comingSoon === true))
+      .then((d) => setIdVerificationComingSoon(d.env?.idVerificationComingSoon === true))
       .catch(() => setIdVerificationComingSoon(false));
-  }, [user]);
+  }, []);
+
+  useEffect(() => {
+    if (!idVerificationComingSoon) return;
+    setVerifiedOnly(false);
+    persistVerifiedOnly(false);
+  }, [idVerificationComingSoon]);
 
   async function handleStart() {
     setEnterError(null);
-    setMatchPrefs(mode, country, preferSharedInterests, stateCode, preferSharedLanguages, verifiedOnly);
+    const useVerifiedOnly = idVerificationComingSoon ? false : verifiedOnly;
+    setMatchPrefs(
+      mode,
+      country,
+      preferSharedInterests,
+      stateCode,
+      preferSharedLanguages,
+      useVerifiedOnly
+    );
 
     if (!user) {
       router.push("/login?next=/chat");
@@ -172,7 +182,6 @@ export default function HomePage() {
               </h1>
               <BetaBadge size="sm" className="translate-y-px sm:translate-y-0.5" />
             </Link>
-            <p className="text-[10px] text-purple-300/60 mt-0.5">{seasonal.label}</p>
           </div>
           <Link
             href={user ? "/profile" : "/login?next=/profile"}
@@ -187,21 +196,14 @@ export default function HomePage() {
       </header>
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-16">
-        <div className="max-w-2xl w-full text-center space-y-6">
-          <p className="text-fuchsia-400/90 text-sm font-semibold tracking-widest uppercase">
-            Connect across borders
-          </p>
-          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight text-slate-100">
-            Welcome to{" "}
-            <span className="bg-gradient-to-r from-pink-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
-              {SITE_NAME}
-            </span>
+        <div className="max-w-2xl w-full text-center space-y-4">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight text-slate-100">
+            Video + text with real people.
           </h2>
-          <p className="text-slate-400 text-lg max-w-lg mx-auto leading-relaxed">
-            Video + text chat with real people. Pick your match — nearby or
-            worldwide.
+          <p className="text-slate-400 text-base sm:text-lg max-w-md mx-auto">
+            Nearby or worldwide.
           </p>
-          <div className="pt-2 space-y-3">
+          <div className="pt-1 space-y-2">
             <OnlineStatsBanner />
             <div className="flex justify-center">
               <StreakBadge />
@@ -209,11 +211,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="relative z-10 mt-10 w-full max-w-md space-y-5">
-          <p className="text-center text-sm text-purple-300/70 font-medium tracking-wide">
-            Matchmaking mode
-          </p>
-
+        <div className="relative z-10 mt-8 w-full max-w-md space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <button
               type="button"
@@ -279,8 +277,8 @@ export default function HomePage() {
                   </option>
                 ))}
               </select>
-              <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
-                For matching only — does not change your profile location.
+              <p className="mt-2 text-[11px] text-slate-500">
+                Matching only — not your profile location.
               </p>
               {country === "US" && (
                 <div className="mt-4">
@@ -305,9 +303,8 @@ export default function HomePage() {
                       </option>
                     ))}
                   </select>
-                  <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
-                    Narrower matches take longer. After 30 seconds waiting in
-                    chat, you can expand to the whole US.
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    Whole country is usually faster.
                   </p>
                 </div>
               )}
@@ -325,9 +322,8 @@ export default function HomePage() {
               <span className="block text-sm font-semibold text-violet-200">
                 Prefer shared interests
               </span>
-              <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
-                Only match when you share at least one interest tag from your
-                profile. May take longer to find someone.
+              <span className="block text-xs text-slate-500 mt-1">
+                Match people who share at least one of your interests.
               </span>
             </span>
           </label>
@@ -343,37 +339,53 @@ export default function HomePage() {
               <span className="block text-sm font-semibold text-cyan-200">
                 Prefer shared languages
               </span>
-              <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
-                Only match when you share at least one language from your
-                profile. May take longer to find someone.
+              <span className="block text-xs text-slate-500 mt-1">
+                Match people who speak a language you added.
               </span>
             </span>
           </label>
 
-          <label className="flex items-start gap-3 rounded-3xl border border-violet-500/25 bg-slate-950/80 backdrop-blur-xl p-4 cursor-pointer hover:border-violet-400/40 transition">
+          <label
+            className={`flex items-start gap-3 rounded-3xl border border-violet-500/25 bg-slate-950/80 backdrop-blur-xl p-4 transition ${
+              idVerificationComingSoon
+                ? "opacity-60 cursor-not-allowed"
+                : "cursor-pointer hover:border-violet-400/40"
+            }`}
+          >
             <input
               type="checkbox"
               checked={verifiedOnly}
+              disabled={idVerificationComingSoon}
               onChange={(e) => setVerifiedOnly(e.target.checked)}
-              className="mt-0.5 rounded border-violet-500/40 bg-slate-900 text-violet-500 focus:ring-violet-500/50"
+              className="mt-0.5 rounded border-violet-500/40 bg-slate-900 text-violet-500 focus:ring-violet-500/50 disabled:cursor-not-allowed"
             />
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-violet-200">
                 Verified users only (optional)
               </span>
-              <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
-                Optional filter — only match people who chose to verify their ID. Smaller
-                pool, may take longer. Leave unchecked to match everyone.{" "}
-                {profile?.id_verified ? (
-                  <span className="text-violet-300">You are verified.</span>
-                ) : idVerificationComingSoon ? (
-                  <span className="text-amber-300/90">
-                    Optional ID verification launching soon on profile.
-                  </span>
+              <span className="block text-xs text-slate-500 mt-1">
+                {idVerificationComingSoon ? (
+                  <>
+                    Coming soon — use the normal pool for now.{" "}
+                    <Link
+                      href="/profile"
+                      className="text-amber-300/90 hover:text-amber-200 underline"
+                    >
+                      Profile
+                    </Link>
+                  </>
+                ) : profile?.id_verified ? (
+                  "ID-verified users only. Smaller pool."
                 ) : (
-                  <Link href="/profile" className="text-violet-300 hover:text-violet-200 underline">
-                    Optionally verify on profile
-                  </Link>
+                  <>
+                    ID-verified users only.{" "}
+                    <Link
+                      href="/profile"
+                      className="text-violet-300 hover:text-violet-200 underline"
+                    >
+                      Verify on profile
+                    </Link>
+                  </>
                 )}
               </span>
             </span>
@@ -381,14 +393,9 @@ export default function HomePage() {
 
           {user && (
             <div className="rounded-3xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-xl p-4 shadow-[0_0_30px_rgba(168,85,247,0.1)] space-y-4">
-              <div>
-                <p className="text-sm text-purple-300/80 font-medium">
-                  Who you&apos;re matching as
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Pre-filled from your profile — change anytime before you enter.
-                </p>
-              </div>
+              <p className="text-sm text-purple-300/80 font-medium">
+                Who you&apos;re matching as
+              </p>
               <ProfileOrientationFields
                 idPrefix="home"
                 genderIdentity={genderIdentity}
