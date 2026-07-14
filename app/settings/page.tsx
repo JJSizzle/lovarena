@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { getSeasonalTheme } from "@/lib/seasonal-theme";
 import {
@@ -78,7 +78,6 @@ function Toggle({
 }
 
 export default function SettingsPage() {
-  const router = useRouter();
   const { user, profile, loading, refreshProfile } = useAuth();
 
   const [matchMode, setMatchMode] = useState<MatchMode>("worldwide");
@@ -101,11 +100,6 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) router.replace("/login?next=/settings");
-  }, [loading, user, router]);
 
   useEffect(() => {
     setMatchMode(getMatchMode());
@@ -267,18 +261,10 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading || !user) {
-    return (
-      <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-slate-400">
-        <ParticleBackground />
-        <span className="relative z-10">Loading…</span>
-      </div>
-    );
-  }
-
   const seasonal = getSeasonalTheme();
 
   return (
+    <AuthGate loading={loading} user={user} loginNext="/settings">
     <main
       className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white px-6 py-8 pb-24 overflow-hidden`}
     >
@@ -574,5 +560,6 @@ export default function SettingsPage() {
         </div>
       </div>
     </main>
+    </AuthGate>
   );
 }

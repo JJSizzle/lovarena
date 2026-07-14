@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 import { ProfileOrientationFields } from "@/components/ProfileOrientationFields";
 import { TagPicker } from "@/components/TagPicker";
 import {
@@ -75,11 +76,6 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) router.replace("/login?next=/profile");
-  }, [loading, user, router]);
 
   useEffect(() => {
     if (!profile) return;
@@ -181,15 +177,6 @@ export default function ProfilePage() {
     }
   }
 
-  if (loading || !user) {
-    return (
-      <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-slate-400">
-        <ParticleBackground />
-        <span className="relative z-10">Loading…</span>
-      </div>
-    );
-  }
-
   const seasonal = getSeasonalTheme();
 
   const usernameChangesUsed = profile?.username_change_count ?? 0;
@@ -204,6 +191,7 @@ export default function ProfilePage() {
   );
 
   return (
+    <AuthGate loading={loading} user={user} loginNext="/profile">
     <main className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white px-6 py-8 pb-24 overflow-hidden`}>
       <ParticleBackground />
       <div className="relative z-10 max-w-lg mx-auto space-y-6">
@@ -231,7 +219,7 @@ export default function ProfilePage() {
                   <span className="text-slate-400 font-normal">, {profile.age}</span>
                 )}
               </p>
-              <p className="text-xs text-slate-400 truncate">{user.email}</p>
+              <p className="text-xs text-slate-400 truncate">{user!.email}</p>
               {locationPreview && (
                 <p className="text-xs text-slate-400 mt-0.5">{locationPreview}</p>
               )}
@@ -280,7 +268,7 @@ export default function ProfilePage() {
           <form onSubmit={handleSave} className="space-y-5">
             {user && (
               <AvatarUpload
-                userId={user.id}
+                userId={user!.id}
                 avatarUrl={avatarUrl || null}
                 avatarEmoji={avatarEmoji}
                 onUploaded={async (url) => {
@@ -553,5 +541,6 @@ export default function ProfilePage() {
         </div>
       </div>
     </main>
+    </AuthGate>
   );
 }

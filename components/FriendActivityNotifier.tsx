@@ -130,7 +130,7 @@ export function FriendActivityNotifier() {
         );
       }
     },
-    [profile?.id]
+    [profile]
   );
 
   useEffect(() => {

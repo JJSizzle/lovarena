@@ -3,6 +3,32 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isAdminIpAllowed } from "@/lib/security/admin-access";
 import { clientIpFromRequest } from "@/lib/security/client-ip";
 
+const PROTECTED_PATHS = [
+  "/chat",
+  "/friends",
+  "/party",
+  "/settings",
+  "/profile",
+  "/onboarding",
+  "/admin",
+] as const;
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
+
+function loginRedirect(request: NextRequest): NextResponse {
+  const login = request.nextUrl.clone();
+  login.pathname = "/login";
+  login.searchParams.set(
+    "next",
+    `${request.nextUrl.pathname}${request.nextUrl.search}`
+  );
+  return NextResponse.redirect(login);
+}
+
 function enforceAdminNetwork(request: NextRequest): NextResponse | null {
   const pathname = request.nextUrl.pathname;
   const isAdminPage =
@@ -59,7 +85,13 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user && isProtectedPath(request.nextUrl.pathname)) {
+    return loginRedirect(request);
+  }
 
   return supabaseResponse;
 }

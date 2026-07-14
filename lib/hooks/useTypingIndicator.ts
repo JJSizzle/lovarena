@@ -15,7 +15,10 @@ export function useTypingIndicator(
   const channelRef = useRef<RealtimeChannel | null>(null);
   const subscribedRef = useRef(false);
   const textRef = useRef(text);
-  textRef.current = text;
+
+  useEffect(() => {
+    textRef.current = text;
+  }, [text]);
 
   useEffect(() => {
     if (!channelName || !userId || !active) {

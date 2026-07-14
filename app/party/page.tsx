@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 import { useConfirm } from "@/components/ConfirmProvider";
 import dynamic from "next/dynamic";
 import { CopyInviteButton, PartyChat } from "@/components/party/PartyChat";
@@ -54,11 +55,6 @@ function PartyPageContent() {
   const [lobbyWaitingFor, setLobbyWaitingFor] = useState<string[]>([]);
 
   const codeFromUrl = searchParams.get("code");
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) router.replace("/login?next=/party");
-  }, [loading, user, router]);
 
   useEffect(() => {
     if (codeFromUrl) {
@@ -360,21 +356,13 @@ function PartyPageContent() {
     }
   }, [party]);
 
-  if (loading || !user) {
-    return (
-      <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-slate-400">
-        <AdaptiveParticleBackground />
-        <span className="relative z-10">Loading…</span>
-      </div>
-    );
-  }
-
   const selfLabel = profile?.username ? `${profile.username} (You)` : "You";
   const repScore = profile?.reputation_score ?? 100;
   const partyHostUnlocked = profile?.party_host_unlocked ?? false;
   const mayHostParty = canHostParty(repScore, partyHostUnlocked);
 
   return (
+    <AuthGate loading={loading} user={user} loginNext="/party">
     <main
       className={`relative min-h-screen bg-gradient-to-br ${seasonal.gradient} text-white px-4 py-8 pb-24 overflow-hidden`}
     >
@@ -668,6 +656,7 @@ function PartyPageContent() {
         )}
       </div>
     </main>
+    </AuthGate>
   );
 }
 

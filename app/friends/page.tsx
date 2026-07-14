@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 import { useConfirm } from "@/components/ConfirmProvider";
 import dynamic from "next/dynamic";
 import { FriendProfileSheet } from "@/components/FriendProfileSheet";
@@ -168,11 +169,6 @@ export default function FriendsPage() {
     if (typeof data.friendLimit === "number") setFriendLimit(data.friendLimit);
     setFriendsLoaded(true);
   }, []);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) router.replace("/login?next=/friends");
-  }, [loading, user, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -354,17 +350,6 @@ export default function FriendsPage() {
 
   const seasonal = getSeasonalTheme();
 
-  if (loading || !user || !profile) {
-    return (
-      <div
-        className={`relative min-h-screen flex items-center justify-center bg-gradient-to-br ${seasonal.gradient} text-slate-400`}
-      >
-        <AdaptiveParticleBackground />
-        <span className="relative z-10">Loading…</span>
-      </div>
-    );
-  }
-
   const sortedFriends = [...friends].sort((a, b) => {
     const aSpark = a.connection_type === "mutual_connect" ? 0 : 1;
     const bSpark = b.connection_type === "mutual_connect" ? 0 : 1;
@@ -394,6 +379,13 @@ export default function FriendsPage() {
   }
 
   return (
+    <AuthGate
+      loading={loading}
+      user={user}
+      loginNext="/friends"
+      requireProfile
+      profile={profile}
+    >
     <div
       className={`relative min-h-screen flex flex-col lg:flex-row bg-gradient-to-br ${seasonal.gradient} text-white overflow-hidden`}
     >
@@ -627,7 +619,7 @@ export default function FriendsPage() {
           <FriendsPanel
             friendId={activeFriend.id}
             friendUsername={activeFriend.username}
-            myId={profile.id}
+            myId={profile!.id}
             onClose={() => setActiveFriend(null)}
             onViewProfile={() => setProfileFriendId(activeFriend.id)}
             onRemoved={() => {
@@ -639,5 +631,6 @@ export default function FriendsPage() {
         </div>
       )}
     </div>
+    </AuthGate>
   );
 }

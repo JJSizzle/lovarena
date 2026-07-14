@@ -28,7 +28,7 @@ export function PartyInviteFriends({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pendingInvites, setPendingInvites] = useState<string[]>([]);
+  const [, setPendingInvites] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isHost) return;

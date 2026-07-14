@@ -18,6 +18,7 @@ import {
 } from "@/lib/webrtc/media-constraints";
 import { VideoPanel } from "./video-panel";
 import { useAuth } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { SafetyActions } from "@/components/SafetyActions";
@@ -268,14 +269,14 @@ export default function ChatPage() {
       ? formatRegionalBadge(matchPrefs.countryCode, matchPrefs.stateCode)
       : "GLOBAL ROOM";
 
-  function buildMatchPayload(extra?: Record<string, unknown>) {
+  const buildMatchPayload = useCallback((extra?: Record<string, unknown>) => {
     const body = { ...getMatchRequestBody(), ...extra };
     const token = matchTurnstileTokenRef.current;
     if (matchCaptchaBlocked && token) {
       return { ...body, turnstileToken: token };
     }
     return body;
-  }
+  }, [matchCaptchaBlocked]);
 
   function handleMatchCaptchaToken(token: string) {
     matchTurnstileTokenRef.current = token;
@@ -590,7 +591,7 @@ export default function ChatPage() {
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [userId, authLoading, profile?.age_verified, profile?.reputation_score, status, router, matchScopeKey, matchCaptchaBlocked, matchCaptchaToken]);
+  }, [userId, authLoading, profile?.age_verified, profile?.reputation_score, status, router, matchScopeKey, matchCaptchaBlocked, matchCaptchaToken, buildMatchPayload]);
 
   async function handleExpandRegion() {
     if (status !== "matching" || expandingRegion) return;
@@ -1230,15 +1231,8 @@ export default function ChatPage() {
     );
   }
 
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400">
-        Loading…
-      </div>
-    );
-  }
-
   return (
+    <AuthGate loading={authLoading} user={user} loginNext="/chat">
     <div className={`min-h-screen flex flex-col lg:flex-row w-full bg-gradient-to-br ${seasonal.gradient} text-white relative`}>
     <LazyChatParticles />
     <main className="flex-1 flex flex-col min-w-0 w-full max-w-4xl mx-auto lg:mx-0 relative z-[1] pb-safe">
@@ -1651,5 +1645,6 @@ export default function ChatPage() {
       onBlock={handleBlockPartner}
     />
     </div>
+    </AuthGate>
   );
 }
