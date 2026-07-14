@@ -19,22 +19,21 @@ Full guide: docs/CLOUDFLARE_WAF.md
 
 3) Security → Bots → Bot Fight Mode → ON
 
-4) Security → WAF → Rate limiting rules → Create 3 rules:
+4) Security → WAF → Rate limiting rules
 
-   Rule A — API match throttle
-     If: URI Path contains /api/match OR /api/next
-     Rate: 30 requests per 60 seconds per IP
+   FREE PLAN — one combined rule (10-second window):
+     If expression:
+       (starts_with(http.request.uri.path, "/api/match")) or
+       (starts_with(http.request.uri.path, "/api/next")) or
+       (starts_with(http.request.uri.path, "/api/messages")) or
+       (starts_with(http.request.uri.path, "/api/private-messages")) or
+       (starts_with(http.request.uri.path, "/api/auth")) or
+       (starts_with(http.request.uri.path, "/login"))
+     Rate: 20 requests per 10 seconds per IP  (recommended — ~120/min)
+           — or 10 / 10s (~60/min) minimum safe setting
      Action: Block for 60 seconds
 
-   Rule B — API messages throttle
-     If: URI Path contains /api/messages OR /api/private-messages OR /api/party/messages
-     Rate: 120 requests per 60 seconds per IP
-     Action: Block for 60 seconds
-
-   Rule C — Auth throttle
-     If: URI Path contains /api/auth OR /login
-     Rate: 20 requests per 60 seconds per IP
-     Action: Block for 300 seconds
+   (30/min is too low for match polling on shared Wi-Fi. Free = one rule only.)
 
 5) Caching → Cache Rules → Bypass cache when expression matches:
      (starts_with(http.request.uri.path, "/api/")) or

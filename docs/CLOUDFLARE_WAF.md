@@ -54,20 +54,51 @@ Blocks obvious automated traffic before it hits Vercel/Supabase.
 
 ## 4. Rate limiting rules (recommended)
 
-**Security → WAF → Rate limiting rules → Create rule**
+**Security → WAF → Rate limiting rules**
 
-Create **three** rules (adjust if you hit free-tier limits):
+### Free plan — one combined rule (recommended)
 
-### Rule A — Match spam
+Cloudflare Free allows **one** rate limiting rule. The dashboard uses **10-second** windows (not 60-second).
+
+| Field | Value |
+|-------|--------|
+| Name | `Lovarena API throttle` |
+| If | See expression below |
+| Then | Block for 60 seconds |
+| Rate | **20 requests per 10 seconds per IP** (recommended) |
+
+Expression (paste in editor):
+
+```
+(starts_with(http.request.uri.path, "/api/match")) or
+(starts_with(http.request.uri.path, "/api/next")) or
+(starts_with(http.request.uri.path, "/api/messages")) or
+(starts_with(http.request.uri.path, "/api/private-messages")) or
+(starts_with(http.request.uri.path, "/api/auth")) or
+(starts_with(http.request.uri.path, "/login"))
+```
+
+> **Free plan rate options** (10s window ≈ per-minute equivalent):
+> - **20 / 10s** (~120/min) — **recommended** for shared Wi‑Fi (dorms, schools). What lovarena.app uses today.
+> - **10 / 10s** (~60/min) — also fine for most users.
+> - **30/min** (or lower) — too tight; adaptive match polling uses ~12–20 `/api/match` calls/min per user.
+
+> **Do not** include `/api/identity/webhook` or `/api/cron/review-flags` in block rules.
+
+### Paid plans — separate rules (optional)
+
+If you upgrade, split into targeted rules:
+
+#### Rule A — Match spam
 
 | Field | Value |
 |-------|--------|
 | Name | `API match throttle` |
 | If | URI Path contains `/api/match` **OR** `/api/next` |
 | Then | Block for 60 seconds |
-| Rate | 30 requests per 60 seconds **per IP** |
+| Rate | **60 requests per 60 seconds per IP** |
 
-### Rule B — Message spam
+#### Rule B — Message spam
 
 | Field | Value |
 |-------|--------|
@@ -76,7 +107,7 @@ Create **three** rules (adjust if you hit free-tier limits):
 | Then | Block for 60 seconds |
 | Rate | 120 requests per 60 seconds **per IP** |
 
-### Rule C — Auth brute force
+#### Rule C — Auth brute force
 
 | Field | Value |
 |-------|--------|

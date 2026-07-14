@@ -49,10 +49,11 @@ Video is **P2P** — it does not scale through Vercel. Bottlenecks are **match R
 - [ ] Confirm **Pro** if you need higher serverless concurrency (Hobby can throttle bursts).
 - [ ] Enable **Web Analytics** or use Sentry for 5xx / latency on `/api/match`.
 
-### Cloudflare (Free plan: **one** rate rule)
+### Cloudflare (Free plan: **one** rate rule, **10s** window)
 Current combined rule should **not** block legitimate match polling:
 - One user ≈ 12–20 `/api/match` per minute with adaptive polling (was ~30).
-- Shared NAT (dorms): consider **45–60** match requests per 60s per IP, or exempt authenticated traffic later.
+- Shared NAT (dorms): use **20 req / 10s** (~120/min) per IP — what lovarena.app uses today.
+- **10 / 10s** (~60/min) is the minimum safe setting on Free; avoid 30/min or lower.
 
 Recommended expression (adjust rate to taste):
 
@@ -60,11 +61,14 @@ Recommended expression (adjust rate to taste):
 (starts_with(http.request.uri.path, "/api/match")) or
 (starts_with(http.request.uri.path, "/api/next")) or
 (starts_with(http.request.uri.path, "/api/messages")) or
-(starts_with(http.request.uri.path, "/api/auth"))
+(starts_with(http.request.uri.path, "/api/private-messages")) or
+(starts_with(http.request.uri.path, "/api/auth")) or
+(starts_with(http.request.uri.path, "/login"))
 ```
 
-- **Match/next:** 45–60 requests / 60s / IP  
-- **Messages:** 90–120 / 60s / IP (lower priority now that chat uses Realtime)
+- **Production (Free):** **20 requests / 10 seconds** per IP — block 60s  
+- **Tighter option:** 10 / 10s (~60/min) if you see bot bursts  
+- **Messages:** covered by the same combined rule on Free (split on paid plans)
 
 ### TURN (Metered)
 - [ ] Check Metered dashboard for concurrent TURN sessions if video fails for many users (NAT-heavy regions).
