@@ -95,20 +95,19 @@ export function ProfileOrientationFields({
           <option value="" disabled>
             {genderIdentity ? "Select…" : "Choose how you identify first"}
           </option>
-          <optgroup label="Common">
-            {SIMPLE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label="More options">
-            {MORE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </optgroup>
+          {SIMPLE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+          <option disabled aria-hidden>
+            ────────────
+          </option>
+          {MORE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
         <p className="mt-2 text-xs text-slate-500 leading-relaxed">
           Used for matching only. Default is{" "}
