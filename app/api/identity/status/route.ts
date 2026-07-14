@@ -23,6 +23,7 @@ export async function GET() {
 
     const configured = isPersonaConfigured();
     const publiclyAvailable = isIdVerificationPublic();
+    const comingSoon = !publiclyAvailable;
     const canStart =
       configured &&
       !profile?.id_verified &&
@@ -33,7 +34,7 @@ export async function GET() {
       idVerifiedAt: profile?.id_verified_at ?? null,
       configured,
       publiclyAvailable,
-      comingSoon: configured && !publiclyAvailable,
+      comingSoon,
       canStart,
       repBonus: REP_ID_VERIFICATION_BONUS,
     });

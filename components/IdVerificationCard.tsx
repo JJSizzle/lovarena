@@ -72,6 +72,8 @@ export function IdVerificationCard({ idVerified = false, onVerified }: Props) {
   }
 
   const verified = idVerified || status?.idVerified;
+  const comingSoon = status?.comingSoon === true || status?.publiclyAvailable === false;
+  const adminCanTest = comingSoon && status?.canStart === true;
 
   if (loading) {
     return (
@@ -96,24 +98,56 @@ export function IdVerificationCard({ idVerified = false, onVerified }: Props) {
   return (
     <div className="rounded-2xl border border-violet-500/25 bg-slate-950/60 p-4 space-y-3">
       <div>
-        <p className="text-sm font-semibold text-violet-200">Optional ID verification</p>
-        <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-          Completely optional — chat works without it. Verify when you want a badge,
-          +{status?.repBonus ?? REP_ID_VERIFICATION_BONUS} rep (one time), or verified-only matching.
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-semibold text-violet-200">Optional ID verification</p>
+          {comingSoon && (
+            <span className="text-[10px] font-bold uppercase tracking-wide rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-200">
+              Coming soon
+            </span>
+          )}
+        </div>
+        {comingSoon ? (
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            Not live yet — we&apos;re finishing production approval. Chat works without it.
+            When it launches, verify only if you want the badge, +{status?.repBonus ?? REP_ID_VERIFICATION_BONUS} rep, or verified-only matching.
+          </p>
+        ) : (
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            Completely optional — chat works without it. Verify when you want a badge,
+            +{status?.repBonus ?? REP_ID_VERIFICATION_BONUS} rep (one time), or verified-only matching.
+          </p>
+        )}
       </div>
-      <ul className="text-[11px] text-slate-500 space-y-1 list-disc list-inside">
-        <li>Never required — skip it and keep matching normally</li>
-        <li>Badge shown to matches and friends if you verify</li>
-        <li>Optional verified-only pool on home (your choice)</li>
-        <li>ID data handled by our verification partner — not stored on Lovarena</li>
-      </ul>
+      {!comingSoon && (
+        <ul className="text-[11px] text-slate-500 space-y-1 list-disc list-inside">
+          <li>Never required — skip it and keep matching normally</li>
+          <li>Badge shown to matches and friends if you verify</li>
+          <li>Optional verified-only pool on home (your choice)</li>
+          <li>ID data handled by our verification partner — not stored on Lovarena</li>
+        </ul>
+      )}
       {error && (
         <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
           {error}
         </p>
       )}
-      {status?.canStart ? (
+      {comingSoon ? (
+        <>
+          <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 leading-relaxed">
+            ID verification is coming soon. You don&apos;t need it to chat — check back here when it&apos;s live.
+          </p>
+          {adminCanTest && (
+            <button
+              type="button"
+              onClick={() => void handleStart()}
+              disabled={starting}
+              className="w-full rounded-xl border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 disabled:opacity-60 text-violet-200 font-semibold py-2.5 text-sm transition"
+            >
+              {starting ? "Starting…" : "Test verification (admin only)"}
+            </button>
+          )}
+        </>
+      ) : status?.canStart ? (
         <button
           type="button"
           onClick={() => void handleStart()}
@@ -122,12 +156,6 @@ export function IdVerificationCard({ idVerified = false, onVerified }: Props) {
         >
           {starting ? "Starting…" : "Start ID verification"}
         </button>
-      ) : status?.comingSoon ? (
-        <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 leading-relaxed">
-          Optional ID verification is launching soon — we&apos;re finishing production
-          approval. You can keep using Lovarena without it; when it&apos;s live, verify
-          only if you want the badge, +{status.repBonus} rep, or verified-only matching.
-        </p>
       ) : (
         <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
           Optional ID verification is rolling out soon. You don&apos;t need it to chat — check back when you want the extra perks.
