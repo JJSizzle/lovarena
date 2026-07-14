@@ -8,6 +8,7 @@ import { isAgeVerified } from "@/lib/age-gate";
 import { authCallbackUrl, authConfirmUrl } from "@/lib/auth/redirect-urls";
 import { ProfileOrientationFields } from "@/components/ProfileOrientationFields";
 import {
+  DEFAULT_LOOKING_FOR,
   isGenderIdentity,
   isLookingFor,
   isArenaProfileComplete,
@@ -46,7 +47,7 @@ export default function LoginForm() {
   const [resendLoading, setResendLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
-  const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
+  const [lookingFor, setLookingFor] = useState<LookingFor | "">(DEFAULT_LOOKING_FOR);
   const [signupAge, setSignupAge] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [mfaStep, setMfaStep] = useState(false);

@@ -1,6 +1,6 @@
 import type { FriendConnectionType } from "@/lib/friends/connection-type";
 import {
-  genderLabel,
+  publicGenderLabel,
   type GenderIdentity,
 } from "@/lib/profile-orientation";
 import { isValidAge } from "@/lib/profile-age";
@@ -94,7 +94,7 @@ export function buildFriendProfileView(
     bio,
     age,
     gender: profile.gender_identity
-      ? genderLabel(profile.gender_identity as GenderIdentity)
+      ? publicGenderLabel(profile.gender_identity as GenderIdentity)
       : null,
     location: formatProfileLocation(profile.country_code, profile.state_code),
     interests,

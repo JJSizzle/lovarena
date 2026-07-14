@@ -12,6 +12,7 @@ import {
   LANGUAGE_OPTIONS,
 } from "@/lib/profile-tags";
 import {
+  DEFAULT_LOOKING_FOR,
   isGenderIdentity,
   isLookingFor,
   isArenaProfileComplete,
@@ -36,7 +37,7 @@ function OnboardingForm() {
   const [step, setStep] = useState<Step>("username");
   const [username, setUsername] = useState("");
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
-  const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
+  const [lookingFor, setLookingFor] = useState<LookingFor | "">(DEFAULT_LOOKING_FOR);
   const [age, setAge] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
@@ -54,7 +55,7 @@ function OnboardingForm() {
     if (!profile) return;
     setUsername(profile.username);
     setGenderIdentity(profile.gender_identity ?? "");
-    setLookingFor(profile.looking_for ?? "");
+    setLookingFor(profile.looking_for ?? DEFAULT_LOOKING_FOR);
     setAge(profile.age != null ? String(profile.age) : "");
     setInterests(profile.interests ?? []);
     setLanguages(profile.languages ?? []);

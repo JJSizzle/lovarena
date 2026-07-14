@@ -2,9 +2,12 @@
 
 import {
   GENDER_IDENTITIES,
-  LOOKING_FOR_OPTIONS,
+  MEET_PREFERENCE_OPTIONS,
+  encodeMeetPreference,
+  meetPreferenceFromLookingFor,
   type GenderIdentity,
   type LookingFor,
+  type MeetPreference,
 } from "@/lib/profile-orientation";
 
 type Props = {
@@ -15,6 +18,9 @@ type Props = {
   idPrefix?: string;
 };
 
+const SIMPLE_OPTIONS = MEET_PREFERENCE_OPTIONS.filter((o) => o.group === "simple");
+const MORE_OPTIONS = MEET_PREFERENCE_OPTIONS.filter((o) => o.group === "more");
+
 export function ProfileOrientationFields({
   genderIdentity,
   lookingFor,
@@ -24,6 +30,21 @@ export function ProfileOrientationFields({
 }: Props) {
   const selectClass =
     "select-dark w-full rounded-xl bg-slate-900 border border-purple-500/20 px-4 py-3 text-sm text-slate-100 outline-none focus:border-fuchsia-500/50";
+
+  const meetPreference = meetPreferenceFromLookingFor(
+    lookingFor || undefined
+  );
+
+  function handleGenderChange(value: GenderIdentity) {
+    onGenderIdentityChange(value);
+    if (!meetPreference) return;
+    onLookingForChange(encodeMeetPreference(meetPreference, value));
+  }
+
+  function handleMeetPreferenceChange(value: MeetPreference) {
+    if (!genderIdentity) return;
+    onLookingForChange(encodeMeetPreference(value, genderIdentity));
+  }
 
   return (
     <>
@@ -38,7 +59,7 @@ export function ProfileOrientationFields({
           id={`${idPrefix}-gender`}
           value={genderIdentity}
           onChange={(e) =>
-            onGenderIdentityChange(e.target.value as GenderIdentity)
+            handleGenderChange(e.target.value as GenderIdentity)
           }
           className={selectClass}
           required
@@ -63,20 +84,38 @@ export function ProfileOrientationFields({
         </label>
         <select
           id={`${idPrefix}-looking-for`}
-          value={lookingFor}
-          onChange={(e) => onLookingForChange(e.target.value as LookingFor)}
+          value={meetPreference}
+          onChange={(e) =>
+            handleMeetPreferenceChange(e.target.value as MeetPreference)
+          }
           className={selectClass}
           required
+          disabled={!genderIdentity}
         >
           <option value="" disabled>
-            Select…
+            {genderIdentity ? "Select…" : "Choose how you identify first"}
           </option>
-          {LOOKING_FOR_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
+          <optgroup label="Common">
+            {SIMPLE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="More options">
+            {MORE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </optgroup>
         </select>
+        <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+          Used for matching only. Default is{" "}
+          <strong className="text-slate-400">Anyone</strong> — change to Men or
+          Women if you prefer. Example: if you&apos;re a woman interested in
+          men, choose <strong className="text-slate-400">Men</strong>.
+        </p>
       </div>
     </>
   );

@@ -6,7 +6,7 @@ import {
 } from "@/lib/auth/api-auth";
 import { friendLinkStatus } from "@/lib/friends/friend-link-status";
 import { overlapTags, getSafetyLabel } from "@/lib/safety-label";
-import { genderLabel, type GenderIdentity } from "@/lib/profile-orientation";
+import { publicGenderLabel, type GenderIdentity } from "@/lib/profile-orientation";
 import {
   allowsFriendRequests,
   allowsMutualSpark,
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
       partnerUsername: partner?.username ?? "Stranger",
       partnerAge,
       partnerGender: partner?.gender_identity
-        ? genderLabel(partner.gender_identity as GenderIdentity)
+        ? publicGenderLabel(partner.gender_identity as GenderIdentity)
         : null,
       partnerLocation: formatProfileLocation(
         partner?.country_code,

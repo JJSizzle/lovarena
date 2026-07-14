@@ -18,6 +18,7 @@ import { COUNTRIES, guessCountryCode } from "@/lib/countries";
 import { US_STATES } from "@/lib/us-states";
 import { useAuth } from "@/components/AuthProvider";
 import {
+  DEFAULT_LOOKING_FOR,
   isGenderIdentity,
   isLookingFor,
   isOnboardingComplete,
@@ -41,7 +42,7 @@ export default function HomePage() {
   const [country, setCountry] = useState("US");
   const [stateCode, setStateCode] = useState<string | null>(null);
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
-  const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
+  const [lookingFor, setLookingFor] = useState<LookingFor | "">(DEFAULT_LOOKING_FOR);
   const [entering, setEntering] = useState(false);
   const [enterError, setEnterError] = useState<string | null>(null);
   const [preferSharedInterests, setPreferSharedInterests] = useState(false);
@@ -62,7 +63,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!profile) return;
     setGenderIdentity(profile.gender_identity ?? "");
-    setLookingFor(profile.looking_for ?? "");
+    setLookingFor(profile.looking_for ?? DEFAULT_LOOKING_FOR);
   }, [profile?.gender_identity, profile?.looking_for, profile]);
 
   useEffect(() => {

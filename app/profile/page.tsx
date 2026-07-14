@@ -12,6 +12,7 @@ import {
   LANGUAGE_OPTIONS,
 } from "@/lib/profile-tags";
 import {
+  DEFAULT_LOOKING_FOR,
   isGenderIdentity,
   isLookingFor,
   type GenderIdentity,
@@ -63,7 +64,7 @@ export default function ProfilePage() {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [genderIdentity, setGenderIdentity] = useState<GenderIdentity | "">("");
-  const [lookingFor, setLookingFor] = useState<LookingFor | "">("");
+  const [lookingFor, setLookingFor] = useState<LookingFor | "">(DEFAULT_LOOKING_FOR);
   const [interests, setInterests] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
   const [avatarEmoji, setAvatarEmoji] = useState("😎");
@@ -85,7 +86,7 @@ export default function ProfilePage() {
     setBio(profile.bio ?? "");
     setAvatarUrl(profile.avatar_url ?? "");
     setGenderIdentity(profile.gender_identity ?? "");
-    setLookingFor(profile.looking_for ?? "");
+    setLookingFor(profile.looking_for ?? DEFAULT_LOOKING_FOR);
     setInterests(profile.interests ?? []);
     setLanguages(profile.languages ?? []);
     setAvatarEmoji(profile.avatar_emoji ?? "😎");
