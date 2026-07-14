@@ -432,7 +432,7 @@ export default function LoginForm() {
           {mfaStep
             ? "Enter the 6-digit code from your authenticator app."
             : mode === "login"
-              ? "Sign in to add friends and send private messages."
+              ? "Sign in to meet new friends and start chatting."
               : "Join Lovarena — video + text chat with real people."}
         </p>
 
